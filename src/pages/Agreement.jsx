@@ -1,7 +1,16 @@
-import React from 'react'
+import { Link } from 'react-router-dom'
+import RentForm from '../components/RentForm'
 
-export const Agreement = () => {
+function Agreement() {
   return (
-    <div>Agreement</div>
+    <div>
+      <h1>Agreement Page</h1>
+      <RentForm />
+      <Link to="/">
+        <button>Back to Home</button>
+      </Link>
+    </div>
   )
 }
+
+export default Agreement
