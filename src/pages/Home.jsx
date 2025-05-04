@@ -1,14 +1,11 @@
-import { Link } from 'react-router-dom'
-import LandingPage from '../components/LandingPage'
+// src/pages/Home.jsx
 
 function Home() {
   return (
-    <div>
-      <h1>Home Page</h1>
-      <LandingPage />
-      <Link to="/rent">
-        <button>Go to Rent Form</button>
-      </Link>
+    <div className="flex flex-col items-center justify-center min-h-screen">
+      <h1 className="text-2xl font-bold">RawLensPH</h1>
+      <p className="mt-4">🚧 This page is under construction. 🚧</p>
+      <p className="mt-2">Please go to <strong>/rent</strong> to rent a camera.</p>
     </div>
   )
 }
