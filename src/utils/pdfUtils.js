@@ -40,4 +40,11 @@ export async function generateAgreementPdf(formData, signatureDataUrl) {
 
   const pdfBytes = await pdfDoc.save()
   download(pdfBytes, 'RawLens_Agreement_Filled.pdf', 'application/pdf')
+
+  // Success message + Instagram redirect
+  if (confirm('Success! Your agreement is ready.\nPlease send it to @rawlensph on Instagram.\n\nClick OK to open Instagram.')) {
+  window.open('https://www.instagram.com/rawlensph/', '_blank')
+
+}
+
 }

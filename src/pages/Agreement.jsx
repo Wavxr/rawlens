@@ -10,6 +10,7 @@ function Agreement() {
     contactNumber: '',
     dateBorrow: '',
     dateReturn: '',
+    modeOfDelivery: '',
   })
 
   const sigCanvasRef = useRef(null)
@@ -116,6 +117,22 @@ function Agreement() {
             className="border border-gray-300 rounded p-2 w-full"
             required
           />
+        </div>
+
+        {/* Mode of Delivery */}
+        <div>
+          <label className="block font-semibold mb-1">Mode of Delivery:</label>
+          <select
+            name="modeOfDelivery"
+            value={formData.modeOfDelivery}
+            onChange={handleChange}
+            className="border border-gray-300 rounded p-2 w-full"
+            required
+          >
+            <option value="">Select mode of delivery</option>
+            <option value="Pick Up">Pick Up</option>
+            <option value="Shipping">Shipping</option>
+          </select>
         </div>
 
         {/* Signature */}
