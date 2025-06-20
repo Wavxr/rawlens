@@ -1,3 +1,12 @@
+import { Navigate } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
+
 export default function RequireAuth({ children }) {
-  return <div>{children}</div>
+  const { user } = useAuth()
+
+  if (!user) {
+    return <Navigate to="/auth" replace />
+  }
+
+  return children
 }
