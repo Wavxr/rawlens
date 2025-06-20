@@ -1,14 +1,12 @@
 import { Routes, Route } from 'react-router-dom'
-import Home from './pages/Home'
-import Agreement from './pages/Agreement'
+import Home from './pages/home/Home'
+import AuthPage from './pages/auth/AuthPage'
 
-function App() {
+export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
-      <Route path="/rent" element={<Agreement />} />
+      <Route path="/auth" element={<AuthPage />} />
     </Routes>
   )
 }
-
-export default App
