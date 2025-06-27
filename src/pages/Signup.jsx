@@ -49,40 +49,54 @@ export default function Signup() {
       <form onSubmit={handleSubmit} className="w-full max-w-md p-6 bg-white rounded shadow">
         <h2 className="text-2xl font-bold mb-4">Create Account</h2>
         
-        {error && <div className="bg-red-100 text-red-700 p-2 mb-4">{error}</div>}
+        {error && (
+          <div className="bg-red-100 text-red-700 p-2 mb-4 rounded">
+            {error}
+          </div>
+        )}
 
         <div className="space-y-4">
           {/* Name Fields */}
           <div className="grid grid-cols-2 gap-2">
-            <input name="firstName" placeholder="First Name" className="p-2 border" />
-            <input name="lastName" placeholder="Last Name" className="p-2 border" />
+            <input name="firstName" placeholder="First Name" className="p-2 border rounded" />
+            <input name="lastName" placeholder="Last Name" className="p-2 border rounded" />
           </div>
-          <input name="middleInitial" placeholder="Middle Initial (Optional)" className="w-full p-2 border" />
-
-          {/* Email & Password */}
-          <input name="email" type="email" placeholder="Email" className="w-full p-2 border" />
-          <input name="password" type="password" placeholder="Password" className="w-full p-2 border" />
-
-          {/* Address & Contact */}
-          <input name="address" placeholder="Address" className="w-full p-2 border" />
-          <input name="contactNumber" placeholder="Contact Number" className="w-full p-2 border" />
+          <input name="middleInitial" placeholder="Middle Initial (Optional)" className="w-full p-2 border rounded" />
+          <input name="email" type="email" placeholder="Email" className="w-full p-2 border rounded" />
+          <input name="password" type="password" placeholder="Password" className="w-full p-2 border rounded" />
+          <input name="address" placeholder="Address" className="w-full p-2 border rounded" />
+          <input name="contactNumber" placeholder="Contact Number" className="w-full p-2 border rounded" />
 
           {/* ID Uploads */}
           <div className="space-y-2">
             <label className="block text-sm font-medium">National ID (Image)</label>
-            <input name="nationalID" type="file" accept="image/*" className="w-full p-2 border" />
+            <input name="nationalID" type="file" accept="image/*" className="w-full p-2 border rounded" />
             
             <label className="block text-sm font-medium">Selfie Holding ID</label>
-            <input name="selfieID" type="file" accept="image/*" className="w-full p-2 border" />
+            <input name="selfieID" type="file" accept="image/*" className="w-full p-2 border rounded" />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-500 text-white py-2 px-4 hover:bg-blue-600 disabled:bg-blue-300"
+            className="w-full bg-blue-500 text-white py-2 px-4 hover:bg-blue-600 disabled:bg-blue-300 rounded"
           >
             {loading ? 'Creating Account...' : 'Sign Up'}
           </button>
+        </div>
+
+        {/* Add login link */}
+        <div className="mt-4 text-center">
+          <p className="text-sm text-gray-600">
+            Already have an account?{' '}
+            <button
+              type="button"
+              onClick={() => navigate('/login')}
+              className="text-blue-500 hover:underline"
+            >
+              Login
+            </button>
+          </p>
         </div>
       </form>
     </div>
