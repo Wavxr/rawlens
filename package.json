@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.50.2",
     "@tailwindcss/vite": "^4.1.4",
     "downloadjs": "^1.4.7",
     "pdf-lib": "^1.17.1",
