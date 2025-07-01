@@ -1,13 +1,23 @@
-// src/components/ProtectedRoute.jsx
-import { useAuth } from '../hooks/useAuth';
 import { Navigate, Outlet } from 'react-router-dom';
+import useAuthStore from '../stores/useAuthStore';
+import { useEffect } from 'react';
 
-export default function ProtectedRoute() {
-  const { user, loading } = useAuth();
+const ProtectedRoute = ({ requiredRole }) => {
+  const { session, role, loading, roleLoading, initialize } = useAuthStore();
 
-  if (loading) return <div>Loading...</div>;
+  useEffect(() => {
+    initialize(); // run once on mount to fetch session + role
+  }, []);
 
-  if (!user) return <Navigate to="/login" />;
+  if (loading || roleLoading) return <div>Loading...</div>;
 
-  return <Outlet />; // Renders nested routes
-}
+  if (!session) return <Navigate to="/login" replace />;
+
+  if (requiredRole && role !== requiredRole) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <Outlet />;
+};
+
+export default ProtectedRoute;

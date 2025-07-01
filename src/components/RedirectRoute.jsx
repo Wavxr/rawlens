@@ -1,14 +1,22 @@
 // src/components/RedirectRoute.jsx
-import { useAuth } from '../hooks/useAuth';
-import { Navigate } from 'react-router-dom';
+import { Navigate, Outlet } from 'react-router-dom';
+import { useEffect } from 'react';
+import useAuthStore from '../stores/useAuthStore';
 
 export default function RedirectRoute() {
-  const { user, loading } = useAuth();
+  const { session, role, loading, roleLoading, initialize } = useAuthStore();
 
-  if (loading) return <div>Loading...</div>;
+  useEffect(() => { initialize(); }, []);
 
-  if (user?.role === 'admin') return <Navigate to="/admin" />;
-  if (user?.role === 'user') return <Navigate to="/user" />;
+  // wait until BOTH the auth state and the role query have finished
+  if (loading || roleLoading) return <div>Loading...</div>;
 
-  return <Navigate to="/login" />;
+  if (session) {
+    if (role === 'admin') return <Navigate to="/admin" replace />;
+    /* treat missing/unknown role as a normal user */
+    return <Navigate to="/user" replace />;
+  }
+
+  // not logged in → let them see login / signup
+  return <Outlet />;
 }

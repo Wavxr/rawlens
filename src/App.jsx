@@ -23,24 +23,26 @@ import UserProfile from './pages/user/Profile';
 function App() {
   return (
     <Routes>
-      {/* Public Routes */}
+      {/* Public Page */}
       <Route path="/" element={<Landing />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
 
-      {/* Protected Routes */}
-      <Route element={<ProtectedRoute />}>
-        {/* Redirect authenticated users */}
-        <Route path="/dashboard" element={<RedirectRoute />} />
+      {/* Redirect logged-in users away from login/signup */}
+      <Route element={<RedirectRoute />}>
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+      </Route>
 
-        {/* Admin Routes */}
+      {/* Admin Routes (only accessible to logged-in admin) */}
+      <Route element={<ProtectedRoute requiredRole="admin" />}>
         <Route path="/admin" element={<AdminDashboard />}>
           <Route index element={<AdminCameras />} />
           <Route path="cameras" element={<AdminCameras />} />
           <Route path="users" element={<AdminUsers />} />
         </Route>
+      </Route>
 
-        {/* User Routes */}
+      {/* User Routes (only accessible to logged-in user) */}
+      <Route element={<ProtectedRoute requiredRole="user" />}>
         <Route path="/user" element={<UserDashboard />}>
           <Route index element={<UserCameras />} />
           <Route path="cameras" element={<UserCameras />} />
