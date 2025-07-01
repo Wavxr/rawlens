@@ -1,7 +1,9 @@
 "use client"
 
 import { useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { Camera, Eye, EyeOff, Mail, Lock, ArrowRight } from "lucide-react"
+import useAuthStore from "../stores/useAuthStore"
 
 export default function Login() {
   const [email, setEmail] = useState("")
@@ -10,16 +12,19 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
+  const login = useAuthStore((state) => state.login)
+  const navigate = useNavigate()
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
     setError("")
 
     try {
-      // Add your Supabase auth logic here
-      console.log("Login attempt:", { email, password })
-      // Example: await supabase.auth.signInWithPassword({ email, password })
+      await login(email, password)
+      // No need to navigate manually; RedirectRoute will handle it
     } catch (err) {
+      console.error(err)
       setError("Invalid email or password")
     } finally {
       setLoading(false)
@@ -28,7 +33,6 @@ export default function Login() {
 
   const handleGoogleLogin = async () => {
     try {
-      // Add Google OAuth logic here
       console.log("Google login")
       // Example: await supabase.auth.signInWithOAuth({ provider: 'google' })
     } catch (err) {
@@ -38,14 +42,12 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-6">
-      {/* Background Elements */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-600/5 rounded-full blur-3xl"></div>
       </div>
 
       <div className="relative w-full max-w-md">
-        {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center space-x-2 mb-4">
             <Camera className="h-8 w-8 text-blue-400" />
@@ -55,7 +57,6 @@ export default function Login() {
           <p className="text-gray-400">Sign in to access your camera rentals</p>
         </div>
 
-        {/* Login Form */}
         <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-2xl p-8 shadow-2xl">
           {error && (
             <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-lg mb-6 text-sm">
@@ -64,7 +65,6 @@ export default function Login() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Email Field */}
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-medium text-gray-300">
                 Email Address
@@ -83,7 +83,6 @@ export default function Login() {
               </div>
             </div>
 
-            {/* Password Field */}
             <div className="space-y-2">
               <label htmlFor="password" className="text-sm font-medium text-gray-300">
                 Password
@@ -109,7 +108,6 @@ export default function Login() {
               </div>
             </div>
 
-            {/* Remember Me & Forgot Password */}
             <div className="flex items-center justify-between">
               <label className="flex items-center">
                 <input
@@ -123,7 +121,6 @@ export default function Login() {
               </a>
             </div>
 
-            {/* Login Button */}
             <button
               type="submit"
               disabled={loading}
@@ -140,14 +137,12 @@ export default function Login() {
             </button>
           </form>
 
-          {/* Divider */}
           <div className="my-6 flex items-center">
             <div className="flex-1 border-t border-gray-700"></div>
             <span className="px-4 text-sm text-gray-500">or</span>
             <div className="flex-1 border-t border-gray-700"></div>
           </div>
 
-          {/* Google Login */}
           <button
             onClick={handleGoogleLogin}
             className="w-full bg-gray-800/50 hover:bg-gray-800 border border-gray-700 hover:border-gray-600 text-white font-medium py-3 px-4 rounded-lg transition-all flex items-center justify-center space-x-3"
@@ -173,7 +168,6 @@ export default function Login() {
             <span>Continue with Google</span>
           </button>
 
-          {/* Sign Up Link */}
           <div className="mt-6 text-center">
             <p className="text-gray-400">
               Don't have an account?{" "}
@@ -184,7 +178,6 @@ export default function Login() {
           </div>
         </div>
 
-        {/* Back to Home */}
         <div className="text-center mt-6">
           <a
             href="/"
