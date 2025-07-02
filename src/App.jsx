@@ -7,6 +7,7 @@ import RedirectRoute from './components/RedirectRoute';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import NotFound from './pages/NotFound';
 
 // Admin
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -51,6 +52,10 @@ function App() {
           <Route path="profile" element={<UserProfile />} />
         </Route>
       </Route>
+
+      {/* Catch-all for 404 Not Found */}
+      <Route path="*" element={<NotFound />} />
+
     </Routes>
   );
 }
