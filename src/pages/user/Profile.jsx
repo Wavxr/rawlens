@@ -1,9 +1,96 @@
-import React from 'react'
+/******************************************************************************
+ * Profile.jsx
+ * ----------------------------------------------------------------------------
+ * Display the currently-logged-in user’s uploaded ID photos (national ID +
+ * selfie-with-ID). The images live in **private** Supabase buckets, so we use
+ * `createSignedUrl()` (wrapped in `signedUrl()` helper) to fetch short-lived
+ * thumbnail URLs.
+ *
+ * 1. On mount   → query `users` table for the two object keys.
+ * 2. If keys exist → fetch signed URLs in parallel, store in `imgs` state.
+ * 3. Render thumbnails; fallback text if none were uploaded yet.
+ ******************************************************************************/
 
-const Profile = () => {
+import { useEffect, useState } from "react";
+import { supabase } from "../../lib/supabaseClient.js";
+import { signedUrl } from "../../lib/storage.js";
+
+export default function Profile() {
+  /* ─────────────────────────────────────
+     Reactive state
+     ─────────────────────────────────────*/
+  const [imgs,    setImgs]    = useState({ nat: null, selfie: null }); // signed URLs
+  const [loading, setLoading] = useState(true);                        // initial spinner
+
+  /* ─────────────────────────────────────
+     Fetch keys on first render
+     ─────────────────────────────────────*/
+  useEffect(() => {
+    async function loadImages() {
+      /* 1️  Pull the two object keys for the current user */
+      const { data: row, error } = await supabase
+        .from("users")
+        .select("national_id_key, selfie_id_key")
+        .maybeSingle();               // returns null—not 406—if row missing
+
+      if (error) {
+        console.error("Profile fetch error:", error);
+        setLoading(false);
+        return;
+      }
+      if (!row) {                     // user row genuinely absent
+        setLoading(false);
+        return;
+      }
+
+      /* 2️  Generate signed thumbnails (400 px, 1 h expiry) in parallel */
+      try {
+        const [natUrl, selfieUrl] = await Promise.all([
+          signedUrl("national-ids",  row.national_id_key, { width: 400 }),
+          signedUrl("selfie-ids",    row.selfie_id_key,   { width: 400 }),
+        ]);
+        setImgs({ nat: natUrl, selfie: selfieUrl });
+      } catch (e) {
+        console.error("Signed-URL error:", e);
+      }
+
+      setLoading(false);
+    }
+
+    loadImages();
+  }, []);
+
+  /* ─────────────────────────────────────
+     Render
+     ─────────────────────────────────────*/
+  if (loading) return <p className="text-gray-400">Loading…</p>;
+
   return (
-    <div>Profile</div>
-  )
-}
+    <div className="space-y-4">
+      {/* National-ID thumbnail */}
+      {imgs.nat && (
+        <img
+          src={imgs.nat}
+          alt="National ID"
+          loading="lazy"
+          className="w-48 rounded border"
+        />
+      )}
 
-export default Profile;
+      {/* Selfie-with-ID thumbnail */}
+      {imgs.selfie && (
+        <img
+          src={imgs.selfie}
+          alt="Selfie with ID"
+          loading="lazy"
+          className="w-48 rounded border"
+        />
+      )}
+
+      {/* Fallback if no files uploaded */}
+      {!imgs.nat && !imgs.selfie && (
+        <p className="text-gray-500">No ID images on file.</p>
+      )}
+    </div>
+  );
+}
