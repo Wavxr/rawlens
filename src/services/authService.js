@@ -1,76 +1,94 @@
-/*******************************************************************************
- * AUTH SERVICE
+/******************************************************************************
+ * AUTH SERVICE  –  v2
  * ---------------------------------------------------------------------------
- * Keeps sign-up / sign-in / file-upload logic in one place.
- * 1. signUp   → creates auth account, uploads ID photos, saves profile row
- * 2. signIn   → logs a user in with email + password
- * 3. getCurrentUser → returns the user tied to the current session
- * Helpers:
- *    • generateFileName → builds a unique image name
- *    • uploadFile       → uploads a file and returns its public URL
+ * • Creates the auth user
+ * • Uploads private KYC images
+ * • Inserts a profile row with snake-case column names
  ******************************************************************************/
 
-import { supabase } from '../lib/supabaseClient'
+import { supabase } from "../lib/supabaseClient.js"
 
-// Create a unique filename like "uid-selfie-20250630125000.jpg"
-const generateFileName = (userId, type) => {
-  const timestamp = new Date().toISOString().replace(/[^0-9]/g, '')
-  return `${userId}-${type}-${timestamp}.jpg`
+/* ---------- helpers ------------------------------------------------------ */
+
+const objectPath = (uid, type) => `${uid}/${type}-${Date.now()}.jpg`
+
+const uploadPrivate = async (bucket, file, path) => {
+  if (!file) throw new Error("File missing")
+
+  const { error } = await supabase.storage.from(bucket).upload(path, file, {
+    contentType: file.type,
+    upsert: false,
+  })
+  if (error) throw error
+  return path // return the key only
 }
 
-// Upload a file to the chosen bucket and return its public URL
-const uploadFile = async (file, userId, folder) => {
-  if (!file) return null
+/** Convert camelCase userData ➜ snake_case for DB insert */
+const toDbRow = (uid, userData, natKey, selfieKey) => ({
+  id: uid,
+  first_name:      userData.firstName,
+  last_name:       userData.lastName,
+  middle_initial:  userData.middleInitial,
+  email:           userData.email,
+  address:         userData.address,
+  contact_number:  userData.contactNumber,
+  national_id_key: natKey,
+  selfie_id_key:   selfieKey,
+  // role, created_at are optional and can be defaulted in the DB
+})
 
-  const fileName = generateFileName(userId, folder)
-  const { error: uploadError } = await supabase.storage.from(folder).upload(fileName, file)
-  if (uploadError) throw uploadError
+/* ---------- exports ------------------------------------------------------ */
 
-  const { data, error: urlError } = supabase.storage.from(folder).getPublicUrl(fileName)
-  if (urlError) throw urlError
+/** SIGN-UP: auth ➜ file uploads ➜ profile insert */
+export const signUp = async (
+  email,
+  password,
+  userData,       // camel-case keys from the form
+  nationalIDFile,
+  selfieFile
+) => {
+  /* 1. Create auth account */
+  const { data: auth, error: authErr } = await supabase.auth.signUp({
+    email,
+    password,
+  })
+  if (authErr) return { error: authErr }
 
-  return data.publicUrl
-}
-
-// Sign-up flow: auth account → upload images → save profile row
-export const signUp = async (email, password, userData, nationalID, selfieID) => {
-  const { data: authData, error: authError } = await supabase.auth.signUp({ email, password })
-  if (authError) return { error: authError }
-
-  const userId = authData.user.id
+  const uid = auth.user.id
 
   try {
-    const nationalIDUrl = await uploadFile(nationalID, userId, 'national-ids')
-    const selfieIDUrl   = await uploadFile(selfieID,   userId, 'selfie-ids')
+    /* 2. Upload KYC files to private buckets */
+    const natKey   = await uploadPrivate(
+      "national-ids",
+      nationalIDFile,
+      objectPath(uid, "nat")
+    )
+    const selfieKey = await uploadPrivate(
+      "selfie-ids",
+      selfieFile,
+      objectPath(uid, "selfie")
+    )
 
-    const { error: dbError } = await supabase.from('users').insert({
-      id:               userId,
-      first_name:       userData.firstName,
-      last_name:        userData.lastName,
-      middle_initial:   userData.middleInitial,
-      email,
-      address:          userData.address,
-      contact_number:   userData.contactNumber,
-      national_id_url:  nationalIDUrl,
-      selfie_id_url:    selfieIDUrl,
-    })
-    if (dbError) throw dbError
+    /* 3. Insert profile row with correct column names */
+    const { error: dbErr } = await supabase
+      .from("users")
+      .insert(toDbRow(uid, userData, natKey, selfieKey))
+
+    if (dbErr) throw dbErr
 
     return { success: true }
-  } catch (error) {
-    // Clean up auth user if anything fails
-    await supabase.auth.admin.deleteUser(userId)
-    return { error }
+  } catch (err) {
+    // rollback auth user if anything else failed
+    await supabase.auth.admin.deleteUser(uid)
+    return { error: err }
   }
 }
 
-// Basic email-password sign-in
-export const signIn = async (email, password) => {
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-  return { data, error }
-}
+/** EMAIL - PASSWORD SIGN-IN */
+export const signIn = async (email, password) =>
+  supabase.auth.signInWithPassword({ email, password })
 
-// Helper to get the current session user
+/** CURRENT SESSION USER */
 export const getCurrentUser = async () => {
   const { data, error } = await supabase.auth.getUser()
   return { user: data?.user, error }
