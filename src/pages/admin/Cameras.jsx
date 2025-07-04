@@ -1,69 +1,94 @@
-import { useState } from "react"
-import { insertCamera } from "../../services/cameraService"
+import { useEffect, useState } from 'react';
+import { supabase } from '../../lib/supabaseClient';
 
-export default function Cameras() {
-  const [camera, setCamera] = useState({
-    name: "",
-    description: "",
-    pricePerDay: ""
-  })
-  const [image, setImage] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
-  const [success, setSuccess] = useState(false)
+export default function AdminCameras() {
+  const [cameras, setCameras] = useState([]);
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    price_per_day: '',
+    image_url: '',
+  });
 
-  const handleChange = e => setCamera({ ...camera, [e.target.name]: e.target.value })
-  const handleImageChange = e => setImage(e.target.files[0])
+  // Fetch all cameras
+  useEffect(() => {
+    const fetchCameras = async () => {
+      const { data, error } = await supabase.from('cameras').select('*');
+      if (!error) setCameras(data);
+    };
+    fetchCameras();
+  }, []);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-    setError("")
-    setSuccess(false)
-
-    if (!camera.name || !camera.description || !camera.pricePerDay || !image) {
-      setError("All fields are required.")
-      setLoading(false)
-      return
+  // Add new camera
+  const handleAdd = async (e) => {
+    e.preventDefault();
+    const { data, error } = await supabase.from('cameras').insert([formData]);
+    if (!error) {
+      setCameras([...cameras, data[0]]);
+      setFormData({ name: '', description: '', price_per_day: '', image_url: '' });
     }
+  };
 
-    const { error: insertError } = await insertCamera(camera, image)
-    if (insertError) setError(insertError.message)
-    else {
-      setSuccess(true)
-      setCamera({ name: "", description: "", pricePerDay: "" })
-      setImage(null)
-    }
-
-    setLoading(false)
-  }
+  // Delete camera
+  const handleDelete = async (id) => {
+    await supabase.from('cameras').delete().eq('id', id);
+    setCameras(cameras.filter((camera) => camera.id !== id));
+  };
 
   return (
-    <div className="max-w-xl mx-auto p-6 bg-white rounded shadow mt-10">
-      <h2 className="text-xl font-bold mb-4">Add New Camera</h2>
-
-      {error && <p className="text-red-500 mb-4">{error}</p>}
-      {success && <p className="text-green-500 mb-4">Camera added successfully!</p>}
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <input name="name" value={camera.name} onChange={handleChange}
-          placeholder="Camera Name" className="w-full p-2 border rounded" />
-
-        <textarea name="description" value={camera.description} onChange={handleChange}
-          placeholder="Description" className="w-full p-2 border rounded" />
-
-        <input name="pricePerDay" value={camera.pricePerDay} onChange={handleChange}
-          type="number" step="0.01" placeholder="Price per day (₱)" className="w-full p-2 border rounded" />
-
-        <input type="file" accept="image/*" onChange={handleImageChange}
-          className="w-full border p-2 rounded" />
-
-        <button type="submit"
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
-          disabled={loading}>
-          {loading ? "Saving..." : "Add Camera"}
+    <div>
+      <h2 className="text-xl font-bold mb-4">Manage Cameras</h2>
+      
+      {/* Add Form */}
+      <form onSubmit={handleAdd} className="mb-6 space-y-2">
+        <input
+          name="name"
+          placeholder="Camera Name"
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          className="w-full p-2 border"
+        />
+        <input
+          name="description"
+          placeholder="Description"
+          value={formData.description}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          className="w-full p-2 border"
+        />
+        <input
+          name="price_per_day"
+          placeholder="Price per Day"
+          type="number"
+          value={formData.price_per_day}
+          onChange={(e) => setFormData({ ...formData, price_per_day: e.target.value })}
+          className="w-full p-2 border"
+        />
+        <input
+          name="image_url"
+          placeholder="Image URL"
+          value={formData.image_url}
+          onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+          className="w-full p-2 border"
+        />
+        <button type="submit" className="bg-green-500 text-white px-4 py-2">
+          Add Camera
         </button>
       </form>
+
+      {/* List Cameras */}
+      <div className="space-y-4">
+        {cameras.map((camera) => (
+          <div key={camera.id} className="flex justify-between items-center p-4 border">
+            <span>{camera.name}</span>
+            <button
+              onClick={() => handleDelete(camera.id)}
+              className="text-red-500"
+            >
+              Delete
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
-  )
+  );
 }
