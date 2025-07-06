@@ -1,211 +1,329 @@
 "use client"
 
 import { useState } from "react"
-import { Camera, Play, Star, Shield, Clock, Headphones, ArrowRight, CheckCircle } from "lucide-react"
+import {
+  Camera,
+  Star,
+  Shield,
+  ArrowRight,
+  CheckCircle,
+  MapPin,
+  Clock,
+  Heart,
+  Zap,
+  Quote,
+  Calendar,
+  Share2,
+} from "lucide-react"
 
-// Your existing auth hook - replace with your actual implementation
+/* -------------------------------------------------------------------------- */
+/*  Mock auth hook – replace with your real implementation                    */
+/* -------------------------------------------------------------------------- */
 const useAuth = () => {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(false)
   return { user, loading, setUser }
 }
 
+/* -------------------------------------------------------------------------- */
+/*  Data                                                                      */
+/* -------------------------------------------------------------------------- */
 const cameras = [
+  /* … same camera objects you supplied … */
   {
     id: 1,
-    name: "Canon EOS M100",
-    category: "Mirrorless",
-    price: 45,
-    rating: 4.8,
-    reviews: 124,
-    image: "/eosm100.webp",
-    features: ["24.2MP APS-C", "Dual Pixel AF", "WiFi/Bluetooth"],
+    name: "Canon PowerShot G7X Mark II",
+    category: "Compact Premium",
+    price1to3: 550,
+    price4plus: 500,
+    image: "/g7xmarkii.png",
+    features: ["20.1MP 1-inch", "4.2x Optical Zoom", "Full HD Video"],
     popular: true,
+    description: "Reliable compact camera for all occasions",
+    inclusions: ["Camera Body", "Battery", "Charger", "Memory Card", "Camera Bag"],
   },
   {
     id: 2,
-    name: "Canon PowerShot G7X Mark II",
-    category: "Compact",
-    price: 35,
-    rating: 4.7,
-    reviews: 89,
-    image: "/g7xmarkii.png",
-    features: ["20.1MP 1-inch", "4.2x Optical Zoom", "Full HD Video"],
-    popular: false,
+    name: "Canon PowerShot G7X Mark III",
+    category: "Travel Companion",
+    price1to3: 600,
+    price4plus: 550,
+    image: "/g7xmarkiii.png",
+    features: ["20.1MP 1-inch Sensor", "4K Video Recording", "Live Streaming Ready"],
+    popular: true,
+    description: "Perfect for content creators and travel enthusiasts",
+    inclusions: ["Camera Body", "Battery", "Charger", "Memory Card", "Carrying Case"],
   },
   {
     id: 3,
-    name: "Canon PowerShot G7X Mark III",
-    category: "Compact",
-    price: 55,
-    rating: 4.9,
-    reviews: 156,
-    image: "/g7xmarkiii.png",
-    features: ["20.1MP 1-inch", "4K Video", "Live Streaming"],
+    name: "Canon EOS M100",
+    category: "Content Creator",
+    price1to3: 500,
+    price4plus: 450,
+    image: "/eosm100.webp",
+    features: ["24.2MP APS-C", "Dual Pixel CMOS AF", "Built-in WiFi"],
     popular: true,
+    description: "Lightweight mirrorless for everyday photography",
+    inclusions: ["Camera Body", "Kit Lens", "Battery", "Charger", "Memory Card"],
   },
   {
     id: 4,
-    name: "DJI Osmo Action",
-    category: "Action",
-    price: 40,
-    rating: 4.6,
-    reviews: 203,
-    image: "/placeholder.svg?height=300&width=400",
-    features: ["4K HDR Video", "Dual Screens", "RockSteady"],
+    name: "DJI Osmo Pocket 3",
+    category: "Cinematic",
+    price1to3: 550,
+    price4plus: 500,
+    image: "/dji_osmo_3.webp",
+    features: ["4K/120fps Video", "3-Axis Mechanical Gimbal", "ActiveTrack 6.0"],
     popular: false,
+    description: "Professional cinematic shots in your pocket",
+    inclusions: ["DJI Pocket 3", "Creator Combo Pack", "Magnetic Mount", "Memory Cards"],
+  },
+  {
+    id: 5,
+    name: "Ricoh GR IIIx",
+    category: "Street Photography",
+    price1to3: 700,
+    price4plus: 650,
+    image: "/ricoh_gh_iiix.png",
+    features: ["24.2MP APS-C", "40mm f/2.8 Lens", "Ultra Compact Design"],
+    popular: false,
+    description: "Premium compact for street photography",
+    inclusions: ["Camera Body", "Premium Strap", "Battery", "Charger", "Protective Case"],
   },
 ]
 
 const features = [
+  /* … unchanged … */
   {
-    icon: Camera,
-    title: "Professional Grade",
-    description: "Access to high-end cameras from top brands like Canon, Sony, and Nikon",
-  },
-  {
-    icon: Shield,
-    title: "Fully Insured",
-    description: "All equipment is fully insured and protected during your rental period",
+    icon: Heart,
+    title: "For Every Memory",
+    description:
+      "Whether it's a family trip, date night, or solo adventure - we have the perfect camera for your story",
+    gradient: "from-pink-500 to-rose-500",
   },
   {
     icon: Clock,
     title: "Flexible Rental",
-    description: "Rent for hours, days, or weeks. Perfect for any project timeline",
+    description: "Rent for 1-3 days or longer periods with better rates. Perfect for any project timeline",
+    gradient: "from-blue-500 to-cyan-500",
   },
   {
-    icon: Headphones,
-    title: "24/7 Support",
-    description: "Expert technical support available whenever you need assistance",
+    icon: Shield,
+    title: "Worry-Free Rental",
+    description: "Fully insured equipment with simple pickup and return process in España, Manila",
+    gradient: "from-emerald-500 to-teal-500",
+  },
+  {
+    icon: Share2,
+    title: "Share & Save",
+    description: "Get ₱50 off per day when you share your amazing photos with us on social media",
+    gradient: "from-violet-500 to-purple-500",
   },
 ]
 
 const testimonials = [
+  /* … unchanged … */
   {
-    name: "Sarah Chen",
-    role: "Wedding Photographer",
+    role: "Travel Blogger",
     content:
-      "Rawlens saved my wedding season! The Canon R5 I rented was in perfect condition and the process was seamless.",
+      "Rented the G7X for my Baguio trip and the photos came out amazing! The booking process was super smooth and the camera was in perfect condition.",
     rating: 5,
-    avatar: "/placeholder.svg?height=60&width=60",
   },
   {
-    name: "Mike Rodriguez",
     role: "Content Creator",
-    content: "Amazing service and quality equipment. The Sony FX3 helped me create my best content yet.",
+    content:
+      "The EOS M100 was perfect for my girlfriend's birthday shoot. Quality cameras, hassle-free process, and great customer service!",
     rating: 5,
-    avatar: "/placeholder.svg?height=60&width=60",
+  },
+  {
+    role: "Photography Student",
+    content:
+      "As a student, the flexible pricing really helped. The longer rental discount made it affordable for my week-long project.",
+    rating: 5,
   },
 ]
 
+/* -------------------------------------------------------------------------- */
+/*  Component                                                                 */
+/* -------------------------------------------------------------------------- */
 export default function Landing() {
   const { user, loading } = useAuth()
 
+  /* ------------------------- Loading state (unchanged) -------------------- */
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-blue-400 text-xl">Loading...</div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 flex items-center justify-center">
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 border-4 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+          <div className="text-blue-400 text-xl font-light">Loading...</div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      {/* Header */}
-      <header className="border-b border-gray-900 bg-black/95 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Camera className="h-8 w-8 text-blue-400" />
-            <span className="text-2xl font-bold">Rawlens</span>
-          </div>
-          <div className="flex items-center space-x-4">
-            {user ? (
-              <button
-                onClick={() => (window.location.href = "/dashboard")}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors"
-              >
-                Dashboard
-              </button>
-            ) : (
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => (window.location.href = "/login")}
-                  className="border border-gray-700 bg-gray-900 text-gray-300 hover:bg-gray-800 hover:text-white hover:border-blue-500 px-6 py-2 rounded-lg transition-colors"
-                >
-                  Login
-                </button>
-                <button
-                  onClick={() => (window.location.href = "/signup")}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors"
-                >
-                  Sign Up
-                </button>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 text-white">
+      {/* -------------------------------------------------------------------- */}
+      {/*  FLOATERS, HEADER (unchanged)                                         */}
+      {/* -------------------------------------------------------------------- */}
+      {/* small floating dots */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-blue-400 rounded-full opacity-60 animate-pulse"></div>
+        <div className="absolute top-3/4 right-1/4 w-1 h-1 bg-cyan-400 rounded-full opacity-40 animate-pulse delay-1000"></div>
+        <div className="absolute top-1/2 left-3/4 w-1.5 h-1.5 bg-blue-300 rounded-full opacity-50 animate-pulse delay-2000"></div>
+        <div className="absolute top-1/3 right-1/3 w-1 h-1 bg-blue-500 rounded-full opacity-30 animate-pulse delay-3000"></div>
+      </div>
+
+      {/* Header (same) */}
+      <header className="relative border-b border-white/10 bg-black/30 backdrop-blur-xl sticky top-0 z-50">
+        <div className="container mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="relative">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center shadow-2xl">
+                  <Camera className="h-5 w-5 text-white" />
+                </div>
+                <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-br from-pink-400 to-rose-500 rounded-full animate-pulse"></div>
               </div>
-            )}
+              <div>
+                <span className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                  RawLens PH
+                </span>
+                <div className="text-xs text-blue-400/80 font-light tracking-wider">CAMERA RENTALS</div>
+              </div>
+            </div>
+
+            {/* Auth buttons (same) */}
+            <div className="flex items-center space-x-4">
+              {user ? (
+                <button
+                  onClick={() => (window.location.href = "/dashboard")}
+                  className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-semibold px-6 py-2 rounded-full shadow-2xl hover:shadow-blue-500/25 transition-all duration-300"
+                >
+                  Dashboard
+                </button>
+              ) : (
+                <div className="flex space-x-3">
+                  <button
+                    onClick={() => (window.location.href = "/login")}
+                    className="border border-white/20 bg-white/5 text-white hover:bg-white/10 hover:border-white/30 backdrop-blur-sm px-4 py-2 rounded-full font-medium transition-all duration-300"
+                  >
+                    Login
+                  </button>
+                  <button
+                    onClick={() => (window.location.href = "/signup")}
+                    className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-semibold px-6 py-2 rounded-full shadow-2xl hover:shadow-blue-500/25 transition-all duration-300"
+                  >
+                    Sign Up
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative py-20 px-6 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/10 to-black"></div>
+      {/* -------------------------------------------------------------------- */}
+      {/*  HERO – tighter spacing, reduced negative space                      */}
+      {/* -------------------------------------------------------------------- */}
+      <section className="relative py-12 px-6 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-900/20 via-transparent to-cyan-900/20"></div>
+
         <div className="container mx-auto relative z-10">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div className="space-y-8">
-              <div className="space-y-4">
-                <span className="bg-blue-600/20 text-blue-400 border border-blue-600/30 px-3 py-1 rounded-full text-sm">
-                  Professional Camera Rentals
-                </span>
-                <h1 className="text-5xl lg:text-6xl font-bold leading-tight">
-                  Capture Your Vision with
-                  <span className="text-blue-400"> Professional Gear</span>
+          <div className="grid lg:grid-cols-12 gap-8 items-center">
+            {/* ---------- Copy & buttons ------------------------------------ */}
+            <div className="lg:col-span-7 space-y-6">
+              <div className="space-y-3">
+                <div className="inline-flex items-center bg-blue-500/10 border border-blue-500/20 px-4 py-1.5 rounded-full text-blue-400 font-medium backdrop-blur-sm">
+                  <MapPin className="w-4 h-4 mr-2" />
+                  España, Manila • Premium Camera Rentals
+                </div>
+
+                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight tracking-tight">
+                  <span className="block text-white/90">Capture</span>
+                  <span className="block bg-gradient-to-r from-blue-400 via-cyan-400 to-blue-500 bg-clip-text text-transparent">
+                    Your Story
+                  </span>
                 </h1>
-                <p className="text-xl text-gray-400 leading-relaxed">
-                  Access high-end cameras and equipment without the hefty price tag. Perfect for photographers,
-                  filmmakers, and content creators.
+
+                <p className="text-lg md:text-xl text-slate-300 leading-relaxed max-w-xl">
+                  From weekend getaways to special moments, rent premium cameras that turn your memories into
+                  masterpieces.
                 </p>
+
+                <div className="flex items-center space-x-6 text-slate-400">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                    <span className="text-sm">G7X • Pocket 3 • EOS M100 • Ricoh</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse delay-500"></div>
+                    <span className="text-sm">Flexible Rates</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex flex-col sm:flex-row gap-4">
+
+              {/* Buttons – tighter spacing */}
+              <div className="flex flex-col sm:flex-row gap-3">
                 <button
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg rounded-lg transition-colors flex items-center justify-center"
                   onClick={() => document.getElementById("cameras")?.scrollIntoView({ behavior: "smooth" })}
+                  className="group bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-bold px-6 py-2.5 rounded-full text-base md:text-lg shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 inline-flex items-center justify-center"
                 >
-                  Browse Cameras
-                  <ArrowRight className="ml-2 h-5 w-5" />
+                  <span>Rent Now</span>
+                  <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
                 </button>
-                <button className="border border-gray-700 bg-gray-900 text-gray-300 hover:bg-gray-800 hover:text-white hover:border-blue-500 px-8 py-3 text-lg rounded-lg transition-colors flex items-center justify-center">
-                  <Play className="mr-2 h-5 w-5" />
-                  Watch Demo
+
+                <button className="group border border-white/20 bg-white/5 text-white hover:bg-white/10 hover:border-white/30 backdrop-blur-sm px-6 py-2.5 rounded-full font-medium text-base md:text-lg transition-all duration-300 flex items-center justify-center">
+                  <Calendar className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
+                  <span>Check Availability</span>
                 </button>
               </div>
             </div>
-            <div className="relative">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-4">
-                  <img
-                    src="/eosm100.webp"
-                    alt="Canon EOS M100"
-                    className="w-full h-48 object-cover rounded-lg border border-gray-800 shadow-2xl"
-                  />
-                  <img
-                    src="/g7xmarkii.png"
-                    alt="Canon G7X Mark II"
-                    className="w-full h-48 object-cover rounded-lg border border-gray-800 shadow-2xl"
-                  />
-                </div>
-                <div className="space-y-4 mt-8">
-                  <img
-                    src="/g7xmarkiii.png"
-                    alt="Canon G7X Mark III"
-                    className="w-full h-48 object-cover rounded-lg border border-gray-800 shadow-2xl"
-                  />
-                  <div className="bg-gray-900 rounded-lg p-4 border border-gray-800">
-                    <div className="flex items-center space-x-2 text-blue-400 mb-2">
-                      <Play className="h-4 w-4" />
-                      <span className="text-sm font-medium">DJI Osmo Action</span>
+
+            {/* ---------- Image cluster - tighter positioning --------------- */}
+            <div className="lg:col-span-5 relative mt-8 lg:mt-0">
+              {/* Main card */}
+              <div className="relative z-20 rotate-2 hover:rotate-0 transition-transform duration-700">
+                <div className="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl rounded-3xl p-5 border border-white/20 shadow-2xl">
+                  <img src="/g7xmarkiii.png" alt="Canon G7X Mark III" className="w-full h-56 object-contain" />
+                  <div className="mt-4 text-center">
+                    <div className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                      ₱600/day
                     </div>
-                    <p className="text-xs text-gray-500">4K Action Camera</p>
+                    <div className="text-slate-400 text-sm">1-3 days • ₱550 for 4+ days</div>
                   </div>
+                </div>
+              </div>
+
+              {/* Secondary floating images - moved closer */}
+              <img
+                src="/g7xmarkii.png"
+                alt="Canon G7X Mark II"
+                className="absolute -bottom-6 -left-6 w-32 sm:w-36 rotate-[-8deg] rounded-2xl shadow-xl opacity-80 hover:opacity-100 transition-all duration-500"
+              />
+              <img
+                src="/eosm100.webp"
+                alt="Canon EOS M100"
+                className="absolute top-4 -right-10 w-36 sm:w-44 rotate-6 rounded-2xl shadow-xl opacity-75 hover:opacity-100 transition-all duration-500"
+              />
+
+              {/* Floating labels - adjusted positions */}
+              <div className="absolute -top-4 -right-4 bg-gradient-to-br from-pink-500/20 to-rose-500/20 backdrop-blur-xl rounded-2xl p-2.5 border border-pink-500/20">
+                <div className="flex items-center space-x-1 text-pink-400">
+                  <Heart className="h-4 w-4" />
+                  <span className="text-xs font-medium">Most Loved</span>
+                </div>
+              </div>
+              <div className="absolute -bottom-2 -left-2 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 backdrop-blur-xl rounded-2xl p-2.5 border border-emerald-500/20">
+                <div className="flex items-center space-x-1 text-emerald-400">
+                  <CheckCircle className="h-4 w-4" />
+                  <span className="text-xs font-medium">Available Now</span>
+                </div>
+              </div>
+              <div className="absolute top-1/2 -right-6 bg-gradient-to-br from-violet-500/20 to-purple-500/20 backdrop-blur-xl rounded-2xl p-2.5 border border-violet-500/20">
+                <div className="flex items-center space-x-1 text-violet-400">
+                  <Share2 className="h-4 w-4" />
+                  <span className="text-xs font-medium">₱50 Off</span>
                 </div>
               </div>
             </div>
@@ -213,83 +331,157 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-20 px-6 bg-gray-950/50">
+      {/* -------------------------------------------------------------------- */}
+      {/*  STATS, FEATURES (unchanged)                                          */}
+      {/* -------------------------------------------------------------------- */}
+      {/* Stats */}
+      <section className="py-16 px-6">
         <div className="container mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4">Why Choose Rawlens?</h2>
-            <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-              We make professional photography accessible to everyone with our premium rental service
-            </p>
-          </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {features.map((feature, index) => (
-              <div
-                key={index}
-                className="bg-gray-900 border border-gray-800 hover:border-blue-600/50 transition-colors rounded-lg p-6 text-center"
-              >
-                <feature.icon className="h-12 w-12 text-blue-400 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2 text-white">{feature.title}</h3>
-                <p className="text-gray-400">{feature.description}</p>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              { number: "5+", label: "Camera Models", icon: Camera },
+              { number: "₱50", label: "Daily Discount", icon: Share2 },
+              { number: "24/7", label: "Support", icon: Clock },
+              { number: "España", label: "Manila Location", icon: MapPin },
+            ].map((stat, index) => (
+              <div key={index} className="text-center group">
+                <div className="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl rounded-2xl p-6 border border-white/20 shadow-2xl group-hover:scale-105 transition-all duration-300">
+                  <stat.icon className="h-6 w-6 text-blue-400 mx-auto mb-3" />
+                  <div className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent mb-1">
+                    {stat.number}
+                  </div>
+                  <div className="text-slate-400 text-sm font-medium">{stat.label}</div>
+                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Camera Showcase */}
+      {/* Features */}
+      <section className="py-20 px-6">
+        {/* … identical to original … */}
+        <div className="container mx-auto">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center bg-violet-500/10 border border-violet-500/20 px-4 py-2 rounded-full text-violet-400 font-medium backdrop-blur-sm mb-6">
+              <Zap className="w-4 h-4 mr-2" />
+              Why Choose RawLens PH
+            </div>
+            <h2 className="text-4xl font-bold mb-6">
+              <span className="block text-white/90">Made for</span>
+              <span className="block bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                Memory Makers
+              </span>
+            </h2>
+            <p className="text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">
+              We believe every moment deserves to be captured beautifully. That's why we make premium cameras accessible
+              for everyone in Manila.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {features.map((feature, index) => (
+              <div
+                key={index}
+                className="group bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl border border-white/20 hover:border-white/30 transition-all duration-500 hover:scale-105 rounded-2xl p-6 text-center"
+              >
+                <div
+                  className={`w-12 h-12 bg-gradient-to-br ${feature.gradient} rounded-xl flex items-center justify-center mx-auto mb-4 shadow-2xl group-hover:scale-110 transition-transform duration-300`}
+                >
+                  <feature.icon className="h-6 w-6 text-white" />
+                </div>
+                <h3 className="text-lg font-bold mb-3 text-white">{feature.title}</h3>
+                <p className="text-slate-300 text-sm leading-relaxed">{feature.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* -------------------------------------------------------------------- */}
+      {/*  CAMERAS – modern symmetric cards                                    */}
+      {/* -------------------------------------------------------------------- */}
       <section id="cameras" className="py-20 px-6">
         <div className="container mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4">Our Camera Collection</h2>
-            <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-              From mirrorless to action cameras, find the perfect gear for your next project
-            </p>
+            <div className="inline-flex items-center bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 rounded-full text-emerald-400 font-medium backdrop-blur-sm mb-6">
+              <Camera className="w-4 h-4 mr-2" />
+              Our Collection
+            </div>
+            <h2 className="text-4xl font-bold mb-6">
+              <span className="block text-white/90">Perfect Camera</span>
+              <span className="block bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
+                Every Story
+              </span>
+            </h2>
           </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+
+          {/* Uniform Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
             {cameras.map((camera) => (
-              <div
-                key={camera.id}
-                className="bg-gray-900 border border-gray-800 hover:border-blue-600/50 transition-all hover:scale-105 rounded-lg overflow-hidden"
-              >
-                <div className="relative">
-                  <img
-                    src={camera.image || "/placeholder.svg"}
-                    alt={camera.name}
-                    className="w-full h-48 object-cover"
-                  />
-                  {camera.popular && (
-                    <span className="absolute top-3 left-3 bg-blue-600 text-white px-2 py-1 rounded text-xs">
-                      Popular
-                    </span>
-                  )}
-                </div>
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="border border-gray-700 text-gray-400 bg-gray-800 px-2 py-1 rounded text-xs">
-                      {camera.category}
-                    </span>
-                    <div className="flex items-center space-x-1">
-                      <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                      <span className="text-sm text-gray-400">{camera.rating}</span>
-                      <span className="text-xs text-gray-600">({camera.reviews})</span>
+              <div key={camera.id} className="group relative">
+                <div className="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl border border-white/20 hover:border-white/30 transition-all duration-500 hover:scale-[1.02] rounded-2xl overflow-hidden shadow-2xl h-full flex flex-col">
+                  {/* image */}
+                  <div className="relative overflow-hidden">
+                    <img
+                      src={camera.image || "/placeholder.svg"}
+                      alt={camera.name}
+                      className="w-full h-56 object-contain transition-transform duration-700 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+
+                    {camera.popular && (
+                      <div className="absolute top-4 left-4 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold px-3 py-1 rounded-full text-xs shadow-xl">
+                        Most Popular
+                      </div>
+                    )}
+
+                    <div className="absolute bottom-4 left-4 right-4">
+                      <div className="flex items-center justify-between">
+                        <div className="bg-black/50 backdrop-blur-md rounded-xl px-3 py-1"> 
+                        </div>
+                        <div className="bg-black/50 backdrop-blur-md rounded-xl px-3 py-1">
+                          <div className="text-right">
+                            <div className="text-blue-400 font-bold">₱{camera.price1to3}</div>
+                            <div className="text-white/70 text-xs">1-3 days</div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <h3 className="text-lg font-semibold mb-2 text-white">{camera.name}</h3>
-                  <ul className="space-y-1 mb-4">
-                    {camera.features.map((feature, index) => (
-                      <li key={index} className="flex items-center text-sm text-gray-400">
-                        <CheckCircle className="h-3 w-3 text-blue-400 mr-2 flex-shrink-0" />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-2xl font-bold text-blue-400">${camera.price}</span>
-                      <span className="text-gray-500">/day</span>
+
+                  {/* body - modern card design */}
+                  <div className="p-5 flex flex-col flex-1">
+                    <div className="mb-3">
+                      <div className="text-xs text-blue-400 font-medium mb-1 uppercase tracking-wider">
+                        {camera.category}
+                      </div>
+                      <h3 className="text-xl font-bold text-white mb-2">{camera.name}</h3>
+                      <p className="text-slate-300 text-sm mb-4">{camera.description}</p>
                     </div>
-                    <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition-colors">
+
+                    <div className="bg-white/5 rounded-xl p-3 mb-4">
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="text-slate-300">1-3 days:</span>
+                        <span className="text-blue-400 font-bold">₱{camera.price1to3}/day</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-300">4+ days:</span>
+                        <span className="text-emerald-400 font-bold">₱{camera.price4plus}/day</span>
+                      </div>
+                    </div>
+
+                    <ul className="space-y-1.5 mb-5">
+                      {camera.features.slice(0, 3).map((feature, i) => (
+                        <li key={i} className="flex items-center text-slate-300 text-sm">
+                          <CheckCircle className="h-3 w-3 text-emerald-400 mr-2 flex-shrink-0" />
+                          <span className="truncate">{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <button className="mt-auto w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-semibold py-2.5 rounded-lg shadow-xl hover:shadow-blue-500/25 transition-all duration-300 flex items-center justify-center group">
+                      <Calendar className="mr-2 h-4 w-4 group-hover:scale-110 transition-transform" />
                       Rent Now
                     </button>
                   </div>
@@ -297,88 +489,129 @@ export default function Landing() {
               </div>
             ))}
           </div>
+
+          {/* Offer banner (unchanged) */}
+          <div className="mt-12 text-center">
+            <div className="bg-gradient-to-r from-violet-500/20 to-purple-500/20 backdrop-blur-xl rounded-2xl p-6 border border-violet-500/20 max-w-2xl mx-auto">
+              <div className="flex items-center justify-center space-x-2 text-violet-400 mb-3">
+                <Share2 className="h-5 w-5" />
+                <span className="font-bold text-lg">Special Offer</span>
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-2">₱50 OFF PER DAY</h3>
+              <p className="text-slate-300">When you share your amazing photos with us on social media!</p>
+            </div>
+          </div>
         </div>
       </section>
 
+      {/* -------------------------------------------------------------------- */}
+      {/*  TESTIMONIALS, CTA, FOOTER (unchanged)                                */}
+      {/* -------------------------------------------------------------------- */}
       {/* Testimonials */}
-      <section className="py-20 px-6 bg-gray-950/50">
+      <section className="py-20 px-6">
         <div className="container mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4">What Our Customers Say</h2>
-            <p className="text-xl text-gray-400">Trusted by photographers and creators worldwide</p>
+            <div className="inline-flex items-center bg-rose-500/10 border border-rose-500/20 px-4 py-2 rounded-full text-rose-400 font-medium backdrop-blur-sm mb-6">
+              <Quote className="w-4 h-4 mr-2" />
+              What Our Customers Say
+            </div>
+            <h2 className="text-4xl font-bold mb-6">
+              <span className="block text-white/90">Real Stories</span>
+              <span className="block bg-gradient-to-r from-rose-400 to-pink-400 bg-clip-text text-transparent">
+                Real Moments
+              </span>
+            </h2>
           </div>
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            {testimonials.map((testimonial, index) => (
-              <div key={index} className="bg-gray-900 border border-gray-800 rounded-lg p-6">
+
+          <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+            {testimonials.map((test, i) => (
+              <div
+                key={i}
+                className="group bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl border border-white/20 hover:border-white/30 transition-all duration-500 hover:scale-105 rounded-2xl p-6 shadow-2xl"
+              >
                 <div className="flex items-center mb-4">
-                  {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star key={i} className="h-4 w-4 text-yellow-400 fill-current" />
+                  {[...Array(test.rating)].map((_, j) => (
+                    <Star key={j} className="h-4 w-4 text-yellow-400 fill-current" />
                   ))}
                 </div>
-                <p className="text-gray-400 mb-4 italic">"{testimonial.content}"</p>
-                <div className="flex items-center">
-                  <img
-                    src={testimonial.avatar || "/placeholder.svg"}
-                    alt={testimonial.name}
-                    className="w-10 h-10 rounded-full mr-3"
-                  />
-                  <div>
-                    <p className="font-semibold text-white">{testimonial.name}</p>
-                    <p className="text-sm text-gray-500">{testimonial.role}</p>
-                  </div>
-                </div>
+                <blockquote className="text-slate-300 mb-4 leading-relaxed italic text-sm">
+                  "{test.content}"
+                </blockquote>
+                <div className="text-blue-400 font-medium text-sm">— {test.role}</div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-20 px-6 bg-gradient-to-r from-blue-900/10 to-black">
-        <div className="container mx-auto text-center">
-          <h2 className="text-4xl font-bold mb-4">Ready to Start Creating?</h2>
-          <p className="text-xl text-gray-400 mb-8 max-w-2xl mx-auto">
-            Join thousands of creators who trust Rawlens for their professional camera needs
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg rounded-lg transition-colors"
-              onClick={() => (window.location.href = "/signup")}
-            >
-              Get Started Today
-            </button>
-            <button className="border border-gray-700 bg-gray-900 text-gray-400 hover:bg-gray-800 hover:text-white hover:border-blue-500 px-8 py-3 text-lg rounded-lg transition-colors">
-              Contact Sales
-            </button>
+      {/* CTA */}
+      <section className="py-20 px-6 relative overflow-hidden">
+        {/* … identical CTA … */}
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-900/20 via-cyan-900/20 to-blue-900/20"></div>
+        <div className="container mx-auto text-center relative z-10">
+          <div className="max-w-3xl mx-auto">
+            <div className="inline-flex items-center bg-blue-500/10 border border-blue-500/20 px-4 py-2 rounded-full text-blue-400 font-medium backdrop-blur-sm mb-6">
+              <MapPin className="w-4 h-4 mr-2" />
+              Ready to Capture Your Story?
+            </div>
+            <h2 className="text-4xl lg:text-5xl font-bold mb-6 leading-tight">
+              <span className="block text-white/90">Start Your</span>
+              <span className="block bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                Adventure Today
+              </span>
+            </h2>
+            <p className="text-lg text-slate-300 mb-8 max-w-xl mx-auto leading-relaxed">
+              Join hundreds of memory makers in Manila. Flexible rates, premium equipment, and hassle-free rentals.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-bold px-8 py-3 text-lg rounded-full shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 flex items-center justify-center group">
+                <Calendar className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
+                Book Your Rental
+              </button>
+              <button
+                onClick={() => (window.location.href = "/signup")}
+                className="border border-white/20 bg-white/5 text-white hover:bg-white/10 hover:border-white/30 backdrop-blur-sm px-8 py-3 text-lg rounded-full font-medium transition-all duration-300"
+              >
+                Create Account
+              </button>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-black border-t border-gray-900 py-12 px-6">
+      {/* Footer (unchanged) */}
+      <footer className="bg-black/40 backdrop-blur-xl border-t border-white/10 py-12 px-6">
         <div className="container mx-auto">
-          <div className="flex flex-col md:flex-row items-center justify-between">
-            <div className="flex items-center space-x-2 mb-4 md:mb-0">
-              <Camera className="h-6 w-6 text-blue-400" />
-              <span className="text-xl font-bold">Rawlens</span>
+          <div className="flex flex-col md:flex-row items-center justify-between mb-8">
+            <div className="flex items-center space-x-3 mb-6 md:mb-0">
+              <div className="relative">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center shadow-2xl">
+                  <Camera className="h-5 w-5 text-white" />
+                </div>
+                <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-br from-pink-400 to-rose-500 rounded-full"></div>
+              </div>
+              <div>
+                <span className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                  RawLens PH
+                </span>
+                <div className="text-xs text-blue-400/80 font-light tracking-wider">CAMERA RENTALS</div>
+              </div>
             </div>
-            <div className="flex space-x-6 text-gray-500">
-              <a href="#" className="hover:text-blue-400 transition-colors">
-                Privacy
-              </a>
-              <a href="#" className="hover:text-blue-400 transition-colors">
-                Terms
-              </a>
-              <a href="#" className="hover:text-blue-400 transition-colors">
-                Support
-              </a>
-              <a href="#" className="hover:text-blue-400 transition-colors">
-                Contact
-              </a>
+            <div className="flex items-center space-x-6">
+              <div className="flex items-center space-x-2 text-slate-400">
+                <MapPin className="h-4 w-4" />
+                <span>España, Manila</span>
+              </div>
+              <div className="flex items-center space-x-2 text-slate-400">
+                <Clock className="h-4 w-4" />
+                <span>Available 24/7</span>
+              </div>
             </div>
           </div>
-          <div className="mt-8 pt-8 border-t border-gray-900 text-center text-gray-600">
-            <p>© 2025 Rawlens. All rights reserved.</p>
+          <div className="pt-6 border-t border-white/10 text-center">
+            <p className="text-slate-500">
+              © 2025 RawLens PH. All rights reserved. Making memories accessible, one camera at a time.
+            </p>
           </div>
         </div>
       </footer>
