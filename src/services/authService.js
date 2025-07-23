@@ -34,7 +34,8 @@ const toDbRow = (uid, userData, natKey, selfieKey) => ({
   contact_number:  userData.contactNumber,
   national_id_key: natKey,
   selfie_id_key:   selfieKey,
-  // role, created_at are optional and can be defaulted in the DB
+  role: "user",
+  verification_status: "pending",
 })
 
 /* ---------- exports ------------------------------------------------------ */
