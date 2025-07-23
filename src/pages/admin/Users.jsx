@@ -1,9 +1,10 @@
-"use client"
-
 import { useEffect, useState } from "react"
-import { supabase } from "../../lib/supabaseClient"
-import { signedUrl } from "../../lib/storage" // helper that signs + resizes
-import { Users, Eye, X, Search, Filter, MoreVertical, Shield, Mail, User, Calendar, ImageIcon, AlertCircle, CheckCircle, Clock, Download } from 'lucide-react'
+import { signedUrl } from "../../lib/storage"
+import { fetchUsers, updateVerificationStatus } from "../../services/userService"
+import {
+  Users, Eye, X, Search, Filter, MoreVertical, Shield, Mail, User, Calendar,
+  ImageIcon, AlertCircle, CheckCircle, Clock, Download
+} from 'lucide-react'
 
 // Skeleton component for loading states
 const UserRowSkeleton = () => (
@@ -42,118 +43,84 @@ const ImageSkeleton = () => (
 )
 
 export default function AdminUsers() {
-  /* ─────────────────────────────
-     Reactive state
-     ─────────────────────────────*/
-  const [users, setUsers] = useState([]) // full table list
-  const [filteredUsers, setFilteredUsers] = useState([]) // filtered list
-  const [modalUser, setModalUser] = useState(null) // row currently in modal
-  const [imgs, setImgs] = useState({ nat: "", selfie: "" }) // signed URLs
-  const [loadingImg, setLoadingImg] = useState(false) // spinner for modal
-  const [loadingUsers, setLoadingUsers] = useState(true) // loading state for users
+  const [users, setUsers] = useState([])
+  const [filteredUsers, setFilteredUsers] = useState([])
+  const [modalUser, setModalUser] = useState(null)
+  const [imgs, setImgs] = useState({ nat: "", selfie: "", natLoaded: false, selfieLoaded: false })
+  const [loadingImg, setLoadingImg] = useState(false)
+  const [loadingUsers, setLoadingUsers] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [roleFilter, setRoleFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
 
-  /* ─────────────────────────────
-     Fetch users once on mount
-     ─────────────────────────────*/
   useEffect(() => {
-    async function fetchUsers() {
+    async function loadUsers() {
       setLoadingUsers(true)
-      const { data, error } = await supabase
-        .from("users")
-        .select(
-          "id, first_name, last_name, email, role, national_id_key, selfie_id_key, created_at, contact_number, address",
-        )
-        .order("created_at", { ascending: false })
-
-      if (error) {
-        console.error(error)
-      } else {
-        setUsers(data || [])
-        setFilteredUsers(data || [])
+      try {
+        const data = await fetchUsers()
+        setUsers(data)
+        setFilteredUsers(data)
+      } catch (error) {
+        console.error("Failed to fetch users:", error)
       }
       setLoadingUsers(false)
     }
-    fetchUsers()
+
+    loadUsers()
   }, [])
 
-  /* ─────────────────────────────
-     Filter users based on search and filters
-     ─────────────────────────────*/
   useEffect(() => {
     let filtered = users
 
-    // Search filter
     if (searchTerm) {
-      filtered = filtered.filter(
-        (user) =>
-          `${user.first_name} ${user.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          user.email.toLowerCase().includes(searchTerm.toLowerCase()),
+      filtered = filtered.filter((user) =>
+        `${user.first_name} ${user.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
 
-    // Role filter
     if (roleFilter !== "all") {
       filtered = filtered.filter((user) => (user.role || "user") === roleFilter)
     }
 
-    // Status filter (based on whether they have uploaded IDs)
     if (statusFilter !== "all") {
-      if (statusFilter === "verified") {
-        filtered = filtered.filter((user) => user.national_id_key && user.selfie_id_key)
-      } else if (statusFilter === "pending") {
-        filtered = filtered.filter((user) => !user.national_id_key || !user.selfie_id_key)
-      }
+      filtered = filtered.filter((user) => user.verification_status === statusFilter)
     }
 
     setFilteredUsers(filtered)
   }, [users, searchTerm, roleFilter, statusFilter])
 
-  /* ─────────────────────────────
-     Modal open → download thumbnails in parallel
-     ─────────────────────────────*/
-  async function openModal(user) {
-    setModalUser(user) // show modal shell instantly
-    setImgs({ nat: "", selfie: "" }) // clear previous URLs
-    setLoadingImg(true)
+    async function openModal(user) {
+      setModalUser(user)
 
-    try {
-      /* run both signed-URL requests concurrently */
-      const promises = []
-      if (user.national_id_key) {
-        promises.push(signedUrl("national-ids", user.national_id_key, { width: 500 }))
-      } else {
-        promises.push(Promise.resolve(""))
+      setImgs({
+        nat: "", selfie: "", natLoaded: false, selfieLoaded: false
+      })
+
+      try {
+        const [nat, selfie] = await Promise.all([
+          user.national_id_key
+            ? signedUrl("national-ids", user.national_id_key, { width: 500 })
+            : "",
+          user.selfie_id_key
+            ? signedUrl("selfie-ids", user.selfie_id_key, { width: 500 })
+            : "",
+        ])
+
+        setImgs({
+          nat,
+          selfie,
+          natLoaded: false,
+          selfieLoaded: false,
+        })
+      } catch (err) {
+        console.error("Signed-URL error", err)
       }
-
-      if (user.selfie_id_key) {
-        promises.push(signedUrl("selfie-ids", user.selfie_id_key, { width: 500 }))
-      } else {
-        promises.push(Promise.resolve(""))
-      }
-
-      const [nat, selfie] = await Promise.all(promises)
-      setImgs({ nat, selfie })
-    } catch (err) {
-      console.error("Signed-URL error", err)
     }
-    setLoadingImg(false)
-  }
 
-  /* simply hide the modal */
+
+
   const closeModal = () => setModalUser(null)
-
-  const getUserStatus = (user) => {
-    if (user.national_id_key && user.selfie_id_key) {
-      return { status: "verified", label: "Verified", color: "green" }
-    }
-    if (user.national_id_key || user.selfie_id_key) {
-      return { status: "partial", label: "Partial", color: "yellow" }
-    }
-    return { status: "pending", label: "Pending", color: "red" }
-  }
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -162,6 +129,22 @@ export default function AdminUsers() {
       day: "numeric",
     })
   }
+
+  async function handleUpdateStatus(newStatus) {
+    try {
+      await updateVerificationStatus(modalUser.id, newStatus)
+      const updated = users.map((u) =>
+        u.id === modalUser.id ? { ...u, verification_status: newStatus } : u
+      )
+      setUsers(updated)
+      setModalUser(null)
+    } catch (err) {
+      console.error("Failed to update verification status:", err)
+      alert("Failed to update status.")
+    }
+  }
+
+
 
   /* ─────────────────────────────
      Render
@@ -194,7 +177,7 @@ export default function AdminUsers() {
             <div>
               <p className="text-gray-400 text-sm">Verified</p>
               <p className="text-2xl font-bold text-green-400">
-                {users.filter((u) => u.national_id_key && u.selfie_id_key).length}
+                {users.filter((u) => u.verification_status === "verified").length}
               </p>
             </div>
             <div className="bg-green-600/20 p-3 rounded-lg">
@@ -207,7 +190,7 @@ export default function AdminUsers() {
             <div>
               <p className="text-gray-400 text-sm">Pending</p>
               <p className="text-2xl font-bold text-yellow-400">
-                {users.filter((u) => !u.national_id_key || !u.selfie_id_key).length}
+                {users.filter((u) => u.verification_status === "pending").length}
               </p>
             </div>
             <div className="bg-yellow-600/20 p-3 rounded-lg">
@@ -265,6 +248,7 @@ export default function AdminUsers() {
               <option value="all">All Status</option>
               <option value="verified">Verified</option>
               <option value="pending">Pending</option>
+              <option value="rejected">Rejected</option>
             </select>
           </div>
         </div>
@@ -302,7 +286,11 @@ export default function AdminUsers() {
                 </tr>
               ) : (
                 filteredUsers.map((user) => {
-                  const userStatus = getUserStatus(user)
+                  const statusColor = {
+                    verified: "bg-green-600/20 text-green-400 border border-green-600/30",
+                    pending: "bg-yellow-600/20 text-yellow-400 border border-yellow-600/30",
+                    rejected: "bg-red-600/20 text-red-400 border border-red-600/30",
+                  }
                   return (
                     <tr key={user.id} className="border-t border-gray-800 hover:bg-gray-800/30 transition-colors">
                       <td className="p-4">
@@ -338,14 +326,10 @@ export default function AdminUsers() {
                       <td className="p-4">
                         <span
                           className={`px-3 py-1 rounded-full text-xs font-medium ${
-                            userStatus.color === "green"
-                              ? "bg-green-600/20 text-green-400 border border-green-600/30"
-                              : userStatus.color === "yellow"
-                                ? "bg-yellow-600/20 text-yellow-400 border border-yellow-600/30"
-                                : "bg-red-600/20 text-red-400 border border-red-600/30"
+                            statusColor[user.verification_status] || "bg-gray-700 text-gray-300 border border-gray-600/30"
                           }`}
                         >
-                          {userStatus.label}
+                          {user.verification_status?.charAt(0).toUpperCase() + user.verification_status?.slice(1) || "Unknown"}
                         </span>
                       </td>
                       <td className="p-4">
@@ -451,73 +435,81 @@ export default function AdminUsers() {
               {/* ID Documents */}
               <div>
                 <h4 className="text-lg font-semibold text-white mb-4">Identity Documents</h4>
-                {loadingImg ? (
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <ImageSkeleton />
-                    <ImageSkeleton />
-                  </div>
-                ) : (
-                  <div className="grid md:grid-cols-2 gap-6">
-                    {/* National ID */}
-                    <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
-                      <div className="flex items-center space-x-2 mb-3">
-                        <Shield className="h-4 w-4 text-blue-400" />
-                        <p className="font-medium text-white">National ID</p>
-                      </div>
-                      {imgs.nat ? (
-                        <div className="space-y-3">
-                          <img
-                            src={imgs.nat || "/placeholder.svg"}
-                            alt="National ID"
-                            className="w-full rounded-lg border border-gray-700 shadow-lg"
-                            loading="lazy"
-                          />
-                          <button className="w-full bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 py-2 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2">
-                            <Download className="h-4 w-4" />
-                            <span>Download</span>
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="aspect-[4/3] bg-gray-800 rounded-lg border-2 border-dashed border-gray-700 flex items-center justify-center">
-                          <div className="text-center">
-                            <AlertCircle className="h-8 w-8 text-gray-600 mx-auto mb-2" />
-                            <p className="text-gray-500 text-sm">No document uploaded</p>
-                          </div>
-                        </div>
-                      )}
+                <div className="grid md:grid-cols-2 gap-6">
+
+                  {/* National ID */}
+                  <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+                    <div className="flex items-center space-x-2 mb-3">
+                      <Shield className="h-4 w-4 text-blue-400" />
+                      <p className="font-medium text-white">National ID</p>
                     </div>
 
-                    {/* Selfie with ID */}
-                    <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
-                      <div className="flex items-center space-x-2 mb-3">
-                        <User className="h-4 w-4 text-blue-400" />
-                        <p className="font-medium text-white">Selfie with ID</p>
+                    {!imgs.nat ? (
+                      <div className="aspect-[4/3] bg-gray-800 rounded-lg border-2 border-dashed border-gray-700 flex items-center justify-center">
+                        <div className="text-center">
+                          <AlertCircle className="h-8 w-8 text-gray-600 mx-auto mb-2" />
+                          <p className="text-gray-500 text-sm">No document uploaded</p>
+                        </div>
                       </div>
-                      {imgs.selfie ? (
-                        <div className="space-y-3">
-                          <img
-                            src={imgs.selfie || "/placeholder.svg"}
-                            alt="Selfie with ID"
-                            className="w-full rounded-lg border border-gray-700 shadow-lg"
-                            loading="lazy"
-                          />
+                    ) : (
+                      <div className="space-y-3 relative">
+                        {!imgs.natLoaded && <ImageSkeleton />}
+                        <img
+                          src={imgs.nat}
+                          alt="National ID"
+                          className={`w-full rounded-lg border border-gray-700 shadow-lg transition-opacity duration-300 ${
+                            imgs.natLoaded ? "opacity-100" : "opacity-0 absolute top-0 left-0"
+                          }`}
+                          onLoad={() => setImgs((prev) => ({ ...prev, natLoaded: true }))}
+                        />
+                        {imgs.natLoaded && (
                           <button className="w-full bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 py-2 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2">
                             <Download className="h-4 w-4" />
                             <span>Download</span>
                           </button>
-                        </div>
-                      ) : (
-                        <div className="aspect-[4/3] bg-gray-800 rounded-lg border-2 border-dashed border-gray-700 flex items-center justify-center">
-                          <div className="text-center">
-                            <AlertCircle className="h-8 w-8 text-gray-600 mx-auto mb-2" />
-                            <p className="text-gray-500 text-sm">No document uploaded</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                )}
+
+                  {/* Selfie with ID */}
+                  <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+                    <div className="flex items-center space-x-2 mb-3">
+                      <User className="h-4 w-4 text-blue-400" />
+                      <p className="font-medium text-white">Selfie with ID</p>
+                    </div>
+
+                    {!imgs.selfie ? (
+                      <div className="aspect-[4/3] bg-gray-800 rounded-lg border-2 border-dashed border-gray-700 flex items-center justify-center">
+                        <div className="text-center">
+                          <AlertCircle className="h-8 w-8 text-gray-600 mx-auto mb-2" />
+                          <p className="text-gray-500 text-sm">No document uploaded</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-3 relative">
+                        {!imgs.selfieLoaded && <ImageSkeleton />}
+                        <img
+                          src={imgs.selfie}
+                          alt="Selfie with ID"
+                          className={`w-full rounded-lg border border-gray-700 shadow-lg transition-opacity duration-300 ${
+                            imgs.selfieLoaded ? "opacity-100" : "opacity-0 absolute top-0 left-0"
+                          }`}
+                          onLoad={() => setImgs((prev) => ({ ...prev, selfieLoaded: true }))}
+                        />
+                        {imgs.selfieLoaded && (
+                          <button className="w-full bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 py-2 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2">
+                            <Download className="h-4 w-4" />
+                            <span>Download</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                </div>
               </div>
+
             </div>
 
             {/* Modal Footer */}
@@ -528,11 +520,28 @@ export default function AdminUsers() {
               >
                 Close
               </button>
-              <button className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg transition-colors flex items-center space-x-2">
-                <CheckCircle className="h-4 w-4" />
-                <span>Approve User</span>
-              </button>
+
+              {modalUser?.verification_status !== "verified" && (
+                <>
+                  <button
+                    onClick={() => handleUpdateStatus("verified")}
+                    className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg transition-colors flex items-center space-x-2"
+                  >
+                    <CheckCircle className="h-4 w-4" />
+                    <span>Approve</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleUpdateStatus("rejected")}
+                    className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg transition-colors flex items-center space-x-2"
+                  >
+                    <X className="h-4 w-4" />
+                    <span>Reject</span>
+                  </button>
+                </>
+              )}
             </div>
+
           </div>
         </div>
       )}
