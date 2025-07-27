@@ -1,5 +1,4 @@
 "use client"
-
 import { useState, useEffect } from "react"
 import { Outlet, useNavigate, useLocation } from "react-router-dom"
 import useAuthStore from "../../stores/useAuthStore"
@@ -12,6 +11,7 @@ import {
   Settings,
   BarChart3,
   Package,
+  Tag,
   ChevronDown,
   Home,
   Calendar,
@@ -34,6 +34,7 @@ export default function AdminDashboard() {
     navigate("/login")
   }
 
+  // Main navigation items for desktop sidebar
   const navigationItems = [
     {
       name: "Dashboard",
@@ -47,6 +48,11 @@ export default function AdminDashboard() {
       icon: Camera,
     },
     {
+      name: "Inclusions",
+      path: "/admin/inclusions",
+      icon: Tag, 
+    },
+  {
       name: "Users",
       path: "/admin/users",
       icon: Users,
@@ -73,6 +79,7 @@ export default function AdminDashboard() {
     },
   ]
 
+  // Navigation items for mobile bottom bar (usually a subset)
   const mobileNavigationItems = [
     {
       name: "Home",
@@ -95,6 +102,13 @@ export default function AdminDashboard() {
       path: "/admin/rentals",
       icon: Package,
     },
+    // --- You might want to add Inclusions here too if space allows or replace an item ---
+    // {
+    //   name: "Inclusions",
+    //   path: "/admin/inclusions",
+    //   icon: Package,
+    // },
+    // --------------------------
   ]
 
   const isActiveRoute = (path, exact = false) => {
@@ -111,7 +125,6 @@ export default function AdminDashboard() {
         setSidebarOpen(false)
       }
     }
-
     document.addEventListener("mousedown", handleClickOutside)
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [sidebarOpen])
@@ -125,7 +138,6 @@ export default function AdminDashboard() {
         setSidebarCollapsed(false)
       }
     }
-
     handleResize()
     window.addEventListener("resize", handleResize)
     return () => window.removeEventListener("resize", handleResize)
@@ -159,7 +171,6 @@ export default function AdminDashboard() {
           </button>
         </div>
       </header>
-
       <div className="flex">
         {/* Desktop Sidebar */}
         <aside
@@ -204,7 +215,6 @@ export default function AdminDashboard() {
                 </>
               )}
             </div>
-
             {/* Navigation */}
             <nav className={`flex-1 py-6 space-y-2 overflow-hidden ${sidebarCollapsed ? "px-3" : "px-4"}`}>
               {navigationItems.map((item) => {
@@ -232,13 +242,11 @@ export default function AdminDashboard() {
                         } transition-colors`}
                       />
                       {!sidebarCollapsed && <span className="ml-3 font-medium">{item.name}</span>}
-
                       {/* Active indicator for collapsed state */}
                       {sidebarCollapsed && isActive && (
                         <div className="absolute -right-1 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-blue-400 rounded-l-full"></div>
                       )}
                     </button>
-
                     {/* Enhanced tooltip for collapsed state */}
                     {sidebarCollapsed && (
                       <div className="absolute left-full ml-3 top-1/2 transform -translate-y-1/2 bg-gray-800/95 backdrop-blur-xl text-white text-sm px-4 py-2 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none whitespace-nowrap z-50 border border-gray-700/50">
@@ -250,7 +258,6 @@ export default function AdminDashboard() {
                 )
               })}
             </nav>
-
             {/* User Profile */}
             <div className={`border-t border-gray-800/50 ${sidebarCollapsed ? "px-3 py-4" : "px-4 py-4"}`}>
               <div className="relative group">
@@ -281,7 +288,6 @@ export default function AdminDashboard() {
                     </>
                   )}
                 </button>
-
                 {/* Enhanced tooltip for collapsed user profile */}
                 {sidebarCollapsed && (
                   <div className="absolute left-full ml-3 top-1/2 transform -translate-y-1/2 bg-gray-800/95 backdrop-blur-xl text-white text-sm px-4 py-3 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none whitespace-nowrap z-50 border border-gray-700/50">
@@ -290,7 +296,6 @@ export default function AdminDashboard() {
                     <div className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1 w-2 h-2 bg-gray-800/95 rotate-45 border-l border-b border-gray-700/50"></div>
                   </div>
                 )}
-
                 {userMenuOpen && !sidebarCollapsed && (
                   <div className="absolute bottom-full left-0 right-0 mb-2 bg-gray-800/95 backdrop-blur-xl border border-gray-700/50 rounded-xl shadow-2xl overflow-hidden">
                     <button
@@ -306,7 +311,6 @@ export default function AdminDashboard() {
             </div>
           </div>
         </aside>
-
         {/* Mobile Sidebar Overlay */}
         {sidebarOpen && (
           <div className="lg:hidden fixed inset-0 z-40">
@@ -323,7 +327,6 @@ export default function AdminDashboard() {
                     <p className="text-xs text-blue-400 font-medium">Admin Dashboard</p>
                   </div>
                 </div>
-
                 {/* Mobile Navigation */}
                 <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
                   {navigationItems.map((item) => {
@@ -347,7 +350,6 @@ export default function AdminDashboard() {
                     )
                   })}
                 </nav>
-
                 {/* Mobile Help Section */}
                 <div className="px-4 py-4 border-t border-gray-800/50">
                   <div className="bg-gradient-to-r from-blue-600/10 to-purple-600/10 border border-blue-600/20 rounded-xl p-4">
@@ -362,7 +364,6 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                 </div>
-
                 {/* Mobile Logout */}
                 <div className="px-4 py-4 border-t border-gray-800/50">
                   <button
@@ -377,7 +378,6 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
-
         {/* Main Content Area */}
         <div
           className={`flex-1 transition-all duration-300 overflow-x-hidden ${sidebarCollapsed ? "lg:ml-20" : "lg:ml-72"}`}
@@ -396,7 +396,6 @@ export default function AdminDashboard() {
                   })}
                 </div>
               </div>
-
               <div className="flex items-center space-x-4">
                 {/* User Avatar */}
                 <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg cursor-pointer hover:shadow-xl transition-all duration-200">
@@ -405,7 +404,6 @@ export default function AdminDashboard() {
               </div>
             </div>
           </header>
-
           {/* Page Content */}
           <main className="p-6 min-h-screen overflow-x-hidden">
             <div className="max-w-7xl mx-auto">
@@ -414,7 +412,6 @@ export default function AdminDashboard() {
           </main>
         </div>
       </div>
-
       {/* Enhanced Mobile Bottom Navigation */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-gray-900/95 backdrop-blur-xl border-t border-gray-800/50 px-2 py-2 shadow-2xl">
         <div className="flex justify-around items-center">
