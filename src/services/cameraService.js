@@ -6,15 +6,14 @@
 import { supabase } from "../lib/supabaseClient";
 
 // --- Private Helper Functions ---
+
 const generateFileName = (cameraName) => `${cameraName.replace(/\s+/g, "-").toLowerCase()}-${Date.now()}.jpg`;
 
-//Uploads a camera image file to the Supabase Storage bucket.
 async function uploadCameraImage(file, cameraName) {
   if (!file) return { key: null, publicUrl: null };
 
   const fileName = generateFileName(cameraName);
 
-  // 1. Upload the file to the 'cameras' storage bucket
   const { error: uploadError } = await supabase.storage
     .from("cameras")
     .upload(fileName, file, { upsert: false });
@@ -24,8 +23,6 @@ async function uploadCameraImage(file, cameraName) {
     throw new Error(`Failed to upload image: ${uploadError.message}`);
   }
 
-  // 2. Get the public URL for the uploaded file
-  // Assumes the 'cameras' bucket is configured to allow public access for objects.
   const { data: urlData, error: urlError } = supabase.storage
     .from("cameras")
     .getPublicUrl(fileName);
@@ -40,16 +37,13 @@ async function uploadCameraImage(file, cameraName) {
 
 // --- Camera CRUD Operations ---
 
-//Inserts a new camera into the 'cameras' table and creates its initial pricing tiers.
 export async function insertCamera(cameraData, imageFile) {
   let imageUrl = null;
 
   try {
-    // 1. Upload the camera image
     const uploadResult = await uploadCameraImage(imageFile, cameraData.name);
     imageUrl = uploadResult.publicUrl;
 
-    // 2. Insert the main camera record into the 'cameras' table
     const { data: cameraInsertData, error: cameraInsertError } = await supabase
       .from("cameras")
       .insert({
@@ -58,7 +52,7 @@ export async function insertCamera(cameraData, imageFile) {
         image_url: imageUrl,
         available: true,
       })
-      .select(); // Select the inserted data to get the new camera's ID
+      .select();
 
     if (cameraInsertError) throw cameraInsertError;
 
@@ -67,11 +61,9 @@ export async function insertCamera(cameraData, imageFile) {
       throw new Error("Failed to retrieve ID of the newly created camera.");
     }
 
-    // 3. Create initial pricing tiers for the new camera
     const standardPrice = parseFloat(cameraData.pricePerDay) || 0;
     const discountedPrice = parseFloat(cameraData.discountedPricePerDay) || standardPrice;
 
-    // if want to change min_days and max_days, make sure to create a new input with admin/cameras.jsx
     const pricingTiers = [
       {
         camera_id: newCameraId,
@@ -102,27 +94,22 @@ export async function insertCamera(cameraData, imageFile) {
   }
 }
 
-//Fetches all cameras from the 'cameras' table.
 export async function getAllCameras() {
-  // Fetches cameras ordered by creation date (newest first)
   return await supabase
     .from("cameras")
     .select("*")
     .order("created_at", { ascending: false });
 }
 
-//Updates an existing camera's details and its associated pricing tiers.
 export async function updateCamera(id, cameraData, imageFile = null) {
   try {
     let imageUrl = cameraData.image_url;
 
-    // 1. Handle image update if a new file is provided
     if (imageFile) {
       const uploadResult = await uploadCameraImage(imageFile, cameraData.name);
       imageUrl = uploadResult.publicUrl;
     }
 
-    // 2. Update the main camera record in the 'cameras' table
     const { error: cameraUpdateError } = await supabase
       .from("cameras")
       .update({
@@ -135,8 +122,6 @@ export async function updateCamera(id, cameraData, imageFile = null) {
 
     if (cameraUpdateError) throw cameraUpdateError;
 
-    // 3. Update the associated pricing tiers
-    // Fetch current tiers to get their IDs for update
     const { data: existingTiers, error: fetchTiersError } = await supabase
       .from("camera_pricing_tiers")
       .select("id, min_days, max_days")
@@ -147,7 +132,6 @@ export async function updateCamera(id, cameraData, imageFile = null) {
     const standardPrice = parseFloat(cameraData.pricePerDay) || 0;
     const discountedPrice = parseFloat(cameraData.discountedPricePerDay) || standardPrice;
 
-    // Prepare updates for existing tiers
     const tierUpdates = [];
     const standardTier = existingTiers.find(t => t.min_days === 1 && t.max_days === 3);
     const discountedTier = existingTiers.find(t => t.min_days === 4 && t.max_days === null);
@@ -160,6 +144,7 @@ export async function updateCamera(id, cameraData, imageFile = null) {
           .eq("id", standardTier.id)
       );
     }
+
     if (discountedTier) {
       tierUpdates.push(
         supabase
@@ -169,15 +154,11 @@ export async function updateCamera(id, cameraData, imageFile = null) {
       );
     }
 
-    // Execute tier updates concurrently
     if (tierUpdates.length > 0) {
-        const tierResults = await Promise.all(tierUpdates);
-        // Check for errors in any of the tier updates
-        const tierError = tierResults.find(res => res.error);
-        if (tierError) throw tierError.error;
+      const tierResults = await Promise.all(tierUpdates);
+      const tierError = tierResults.find(res => res.error);
+      if (tierError) throw tierError.error;
     }
-    // TODO: Handle case where tiers don't exist (e.g., insert them if missing)
-    // This could happen if tiers were manually deleted from the DB.
 
     return { success: true };
   } catch (error) {
@@ -186,18 +167,61 @@ export async function updateCamera(id, cameraData, imageFile = null) {
   }
 }
 
-//Deletes a camera from the 'cameras' table.
+// Deletes a camera from the 'cameras' table and its associated image from storage.
 export async function deleteCamera(id) {
-  const { error } = await supabase.from("cameras").delete().eq("id", id);
-  return { error };
+  try {
+    const { data: camera, error: fetchError } = await supabase
+      .from("cameras")
+      .select("image_url")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (fetchError) throw fetchError;
+
+    if (!camera) {
+      console.warn(`Camera with ID ${id} not found for deletion.`);
+      return { error: null };
+    }
+
+    const { error: deleteError } = await supabase
+      .from("cameras")
+      .delete()
+      .eq("id", id);
+
+    if (deleteError) throw deleteError;
+
+    if (camera.image_url) {
+      try {
+        const urlParts = camera.image_url.split('/');
+        const fileName = urlParts[urlParts.length - 1];
+
+        if (fileName) {
+          const { error: storageError } = await supabase
+            .storage
+            .from("cameras")
+            .remove([fileName]);
+
+          if (storageError) {
+            console.error(`Failed to delete image ${fileName} from storage:`, storageError.message);
+          } else {
+            console.log(`Successfully deleted image ${fileName} from storage.`);
+          }
+        }
+      } catch (storageUrlError) {
+        console.error("Error parsing image URL for deletion:", storageUrlError);
+      }
+    }
+
+    return { error: null };
+  } catch (error) {
+    console.error("Error in deleteCamera:", error);
+    return { error };
+  }
 }
 
 // --- Camera Pricing Tier Operations ---
 
-// Fetches a single camera along with its associated pricing tiers.
-// Useful for displaying detailed camera information with dynamic pricing on the user side (e.g., rent.jsx).
 export async function getCameraWithPricing(cameraId) {
-  // Joins 'cameras' with 'camera_pricing_tiers' to get all data in one call.
   return await supabase
     .from("cameras")
     .select(`
@@ -217,7 +241,7 @@ export async function getCameraWithPricing(cameraId) {
       )
     `)
     .eq("id", cameraId)
-    .maybeSingle(); // Use maybeSingle if the camera might not exist
+    .maybeSingle();
 }
 
 export async function getAllCamerasWithPricing() {
@@ -242,25 +266,16 @@ export async function getAllCamerasWithPricing() {
     .order("created_at", { ascending: false });
 }
 
-
-// Fetches only the pricing tiers for a specific camera.
-// Useful for the admin panel to display and edit pricing tiers.
 export async function getCameraPricingTiers(cameraId) {
   return await supabase
     .from("camera_pricing_tiers")
     .select("*")
     .eq("camera_id", cameraId)
-    .order("min_days", { ascending: true }); // Order tiers logically
+    .order("min_days", { ascending: true });
 }
 
-
-
-
-// Updates the pricing tiers for a specific camera.
-// This function replaces the existing tiers for the camera with the provided data.
 export async function updateCameraPricingTiers(cameraId, tiersData) {
   try {
-    // 1. Fetch existing tier IDs for this camera
     const { data: existingTiers, error: fetchError } = await supabase
       .from("camera_pricing_tiers")
       .select("id")
@@ -269,25 +284,20 @@ export async function updateCameraPricingTiers(cameraId, tiersData) {
     if (fetchError) throw fetchError;
 
     const existingTierIds = existingTiers.map(t => t.id);
-    const providedTierIds = tiersData.map(t => t.id).filter(id => id); // Filter out undefined/null IDs
-
-    // 2. Determine tiers to delete (existing but not in provided data)
+    const providedTierIds = tiersData.map(t => t.id).filter(id => id);
     const tierIdsToDelete = existingTierIds.filter(id => !providedTierIds.includes(id));
 
-    // 3. Prepare upsert data (add camera_id and ensure IDs are present for updates)
     const upsertData = tiersData.map(tier => ({
       ...tier,
-      camera_id: cameraId // Ensure camera_id is set
+      camera_id: cameraId
     }));
 
-    // 4. Perform upsert (insert or update)
     const { error: upsertError } = await supabase
       .from("camera_pricing_tiers")
-      .upsert(upsertData, { onConflict: 'id' }); // Specify conflict resolution on 'id'
+      .upsert(upsertData, { onConflict: 'id' });
 
     if (upsertError) throw upsertError;
 
-    // 5. Delete tiers that are no longer present
     if (tierIdsToDelete.length > 0) {
       const { error: deleteError } = await supabase
         .from("camera_pricing_tiers")
@@ -303,7 +313,3 @@ export async function updateCameraPricingTiers(cameraId, tiersData) {
     return { error };
   }
 }
-
-// --- Future: Camera Inclusion Operations ---
-// Functions like getCameraInclusions, updateCameraInclusions can be added here
-// following a similar pattern to pricing tiers.
