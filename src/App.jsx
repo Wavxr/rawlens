@@ -14,6 +14,9 @@
   import AdminCameras from './pages/admin/Cameras';
   import AdminUsers from './pages/admin/Users';
   import AdminInclusions from './pages/admin/Inclusions';
+  import AdminCalendar from './pages/admin/Calendar';
+  import AdminRentals from './pages/admin/Rental';
+  import AdminDelivery from './pages/admin/Delivery';
 
   // User
   import UserDashboard from './pages/user/UserDashboard';
@@ -41,6 +44,9 @@
             <Route path="cameras" element={<AdminCameras />} />
             <Route path="users" element={<AdminUsers />} />
             <Route path="inclusions" element ={<AdminInclusions/>} />
+            <Route path="calendar" element={<AdminCalendar />} />
+            <Route path="rentals" element={<AdminRentals />} />
+            <Route path="delivery" element={<AdminDelivery />} />
           </Route>
         </Route>
 
