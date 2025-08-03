@@ -1,10 +1,9 @@
 // src/pages/user/Rent.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { supabase } from '../../lib/supabaseClient'; // Assuming you have this
-import { getAvailableCamerasForDates } from '../../services/calendarService';
 import { getCamera } from '../../services/cameraService';
 import { getCameraWithInclusions } from '../../services/inclusionService';
+import { getAvailableCamerasForDates } from '../../services/calendarService';
 import { checkCameraAvailability, createUserRentalRequest } from '../../services/rentalService';
 
 const UserRent = () => {
@@ -12,7 +11,7 @@ const UserRent = () => {
   const navigate = useNavigate();
 
   // State variables
-  const [step, setStep] = useState('select_dates'); // 'select_dates', 'select_camera', 'confirm_details', 'request_submitted'
+  const [step, setStep] = useState('select_dates')
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [preselectedCameraId, setPreselectedCameraId] = useState(null);
