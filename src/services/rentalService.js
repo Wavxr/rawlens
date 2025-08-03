@@ -1,10 +1,4 @@
-// src/services/rentalService.js
-// ===================================================================
-// Service functions for managing camera rentals, including user requests and admin temporary bookings.
-// ===================================================================
-
 import { supabase } from "../lib/supabaseClient";
-import { getCameraPricingTiers } from "./cameraService"; // For price calculation
 
 // --- Helper Functions ---
 
@@ -18,24 +12,37 @@ function calculateRentalDays(startDate, endDate) {
 }
 
 // Calculates the total price based on rental days and camera pricing tiers
+// Refactored to fetch pricing tiers directly
 async function calculateTotalPrice(cameraId, startDate, endDate) {
   const rentalDays = calculateRentalDays(startDate, endDate);
   if (rentalDays <= 0) {
     throw new Error("Invalid rental period: End date must be after start date.");
   }
 
-  const { data: tiers, error } = await getCameraPricingTiers(cameraId);
+  // --- Direct Supabase Fetch ---
+  const { data: tiers, error } = await supabase
+    .from('camera_pricing_tiers')
+    .select('id, camera_id, min_days, max_days, price_per_day, description')
+    .eq('camera_id', cameraId)
+    .order('min_days', { ascending: true });
+
   if (error) {
-    console.error("Error fetching pricing tiers:", error);
+    console.error("Error fetching pricing tiers from Supabase:", error);
     throw new Error("Failed to fetch camera pricing information.");
   }
+  // --- End Direct Fetch ---
 
+  if (!tiers || tiers.length === 0) {
+      throw new Error(`No pricing tiers found for camera ID ${cameraId}.`);
+  }
+
+  // Find the applicable tier based on rental days
   const applicableTier = tiers.find(tier =>
     rentalDays >= tier.min_days && (tier.max_days === null || rentalDays <= tier.max_days)
   );
 
   if (!applicableTier) {
-    throw new Error(`No pricing tier found for a rental of ${rentalDays} days.`);
+    throw new Error(`No pricing tier found for a rental of ${rentalDays} days for camera ID ${cameraId}.`);
   }
 
   return rentalDays * applicableTier.price_per_day;
@@ -47,7 +54,6 @@ async function calculateTotalPrice(cameraId, startDate, endDate) {
 export async function createUserRentalRequest(bookingData) {
   try {
     const { cameraId, startDate, endDate } = bookingData;
-
     // 1. Validate dates
     if (!startDate || !endDate) {
       throw new Error("Start date and end date are required.");
@@ -57,22 +63,18 @@ export async function createUserRentalRequest(bookingData) {
     if (end <= start) {
       throw new Error("End date must be after start date.");
     }
-
     // 2. Check camera availability
     const isAvailable = await checkCameraAvailability(cameraId, startDate, endDate);
     if (!isAvailable.isAvailable) {
       throw new Error("Selected camera is not available for the chosen dates.");
     }
-
     // 3. Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       throw new Error("Authentication error. Please log in.");
     }
-
-    // 4. Calculate price
+    // 4. Calculate price (now uses refactored function)
     const totalPrice = await calculateTotalPrice(cameraId, startDate, endDate);
-
     // 5. Insert rental request
     const { data, error: insertError } = await supabase
       .from('rentals')
@@ -87,9 +89,7 @@ export async function createUserRentalRequest(bookingData) {
         // Other statuses (contract_status, shipping_status, rental_status) will be NULL initially
       })
       .select();
-
     if (insertError) throw insertError;
-
     return { success: true, data: data[0] };
   } catch (error) {
     console.error("Error in createUserRentalRequest:", error);
@@ -101,7 +101,6 @@ export async function createUserRentalRequest(bookingData) {
 export async function createAdminTemporaryBooking(bookingData, adminId) {
   try {
     const { cameraId, startDate, endDate, customerName, customerContact, customerEmail } = bookingData;
-
     // 1. Validate required admin and customer data
     if (!adminId) {
       throw new Error("Admin ID is required.");
@@ -109,7 +108,6 @@ export async function createAdminTemporaryBooking(bookingData, adminId) {
     if (!customerName || !customerContact) {
       throw new Error("Customer name and contact information are required for temporary bookings.");
     }
-
     // 2. Validate dates
     if (!startDate || !endDate) {
       throw new Error("Start date and end date are required.");
@@ -119,16 +117,13 @@ export async function createAdminTemporaryBooking(bookingData, adminId) {
     if (end <= start) {
       throw new Error("End date must be after start date.");
     }
-
     // 3. Check camera availability
     const isAvailable = await checkCameraAvailability(cameraId, startDate, endDate);
     if (!isAvailable.isAvailable) {
       throw new Error("Selected camera is not available for the chosen dates.");
     }
-
-    // 4. Calculate price
+    // 4. Calculate price (now uses refactored function)
     const totalPrice = await calculateTotalPrice(cameraId, startDate, endDate);
-
     // 5. Insert temporary rental
     const { data, error: insertError } = await supabase
       .from('rentals')
@@ -147,9 +142,7 @@ export async function createAdminTemporaryBooking(bookingData, adminId) {
         // Other statuses can be set as needed
       })
       .select();
-
     if (insertError) throw insertError;
-
     return { success: true, data: data[0] };
   } catch (error) {
     console.error("Error in createAdminTemporaryBooking:", error);

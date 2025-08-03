@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient'; // Assuming you have this
 import { getAvailableCamerasForDates } from '../../services/calendarService';
-import { getCameraWithPricing } from '../../services/cameraService';
+import { getCamera } from '../../services/cameraService';
 import { getCameraWithInclusions } from '../../services/inclusionService';
 import { checkCameraAvailability, createUserRentalRequest } from '../../services/rentalService';
 
@@ -41,7 +41,7 @@ const UserRent = () => {
   const fetchCameraDetails = async (cameraId) => {
     try {
       const [pricingRes, inclusionRes] = await Promise.all([
-        getCameraWithPricing(cameraId),
+        getCamera(cameraId),
         getCameraWithInclusions(cameraId)
       ]);
 
@@ -150,7 +150,7 @@ const handleDateChange = (e, dateType) => {
 
      try {
          // Get pricing tiers
-         const { data: tiers, error: tierError } = await getCameraWithPricing(cameraId);
+         const { data: tiers, error: tierError } = await getCamera(cameraId);
          if (tierError) throw new Error(tierError.message);
 
          const applicableTier = tiers.camera_pricing_tiers.find(tier =>

@@ -1,7 +1,7 @@
 // src/pages/user/Cameras.jsx
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom'; // Import useNavigate for navigation
-import { getAllCamerasWithPricing } from '../../services/cameraService';
+import { getAllCameras } from '../../services/cameraService';
 import { getCameraWithInclusions } from '../../services/inclusionService'; // Import for inclusion items
 
 export default function UserCameras() {
@@ -16,7 +16,7 @@ export default function UserCameras() {
         setLoading(true);
         
         // First get all cameras with pricing
-        const { data: camerasWithPricing, error: pricingError } = await getAllCamerasWithPricing();
+        const { data: camerasWithPricing, error: pricingError } = await getAllCameras ();
         
         if (pricingError) {
           throw new Error(pricingError.message);

@@ -1,14 +1,16 @@
 "use client"
-
 import { useState, useEffect } from "react"
 import {
   insertCamera,
-  getAllCamerasWithPricing,
+  getAllCameras, 
   updateCamera,
   deleteCamera,
-  getCameraPricingTiers,
 } from "../../services/cameraService"
-import { getAllInclusionItems, getInclusionsForCamera, updateCameraInclusions } from "../../services/inclusionService"
+import { 
+  getAllInclusionItems, 
+  getInclusionsForCamera, 
+  updateCameraInclusions 
+} from "../../services/inclusionService"
 import {
   Camera,
   Plus,
@@ -50,7 +52,6 @@ export default function Cameras() {
   const [viewMode, setViewMode] = useState("grid")
   const [showForm, setShowForm] = useState(false)
   const [imagePreview, setImagePreview] = useState(null)
-
   // Inclusion state
   const [allInclusionItems, setAllInclusionItems] = useState([])
   const [selectedInclusionIds, setSelectedInclusionIds] = useState([])
@@ -60,11 +61,9 @@ export default function Cameras() {
 
   // Form handlers
   const handleChange = (e) => setCamera({ ...camera, [e.target.name]: e.target.value })
-
   const handleImageChange = (e) => {
     const file = e.target.files[0]
     setImage(file)
-
     if (file) {
       const reader = new FileReader()
       reader.onloadend = () => {
@@ -94,7 +93,6 @@ export default function Cameras() {
       }
     })
   }
-
   const handleQuantityChange = (itemId, quantity) => {
     setSelectedInclusionQuantities((prev) => ({
       ...prev,
@@ -132,7 +130,8 @@ export default function Cameras() {
   async function fetchCameras() {
     setLoading(true)
     try {
-      const { data, error } = await getAllCamerasWithPricing()
+      // getAllCameras now includes camera_pricing_tiers
+      const { data, error } = await getAllCameras()
       if (error) throw error
       setCameras(data || [])
     } catch (err) {
@@ -205,7 +204,6 @@ export default function Cameras() {
           inclusion_item_id: id,
           quantity: selectedInclusionQuantities[id] || 1,
         }))
-
         const inclusionResult = await updateCameraInclusions(cameraIdToUse, inclusionDataWithQuantities)
         if (inclusionResult.error) {
           throw new Error(`Failed to update inclusions: ${inclusionResult.error.message}`)
@@ -229,43 +227,28 @@ export default function Cameras() {
 
   // Edit/Delete handlers
   async function handleEdit(cam) {
+    // Extract pricing data directly from the camera object (which now includes camera_pricing_tiers)
+    const standardTier = cam.camera_pricing_tiers?.find((t) => t.min_days === 1 && t.max_days === 3);
+    const discountedTier = cam.camera_pricing_tiers?.find((t) => t.min_days === 4 && t.max_days === null);
+
     const cameraData = {
       id: cam.id,
       name: cam.name,
       description: cam.description,
-      pricePerDay: cam.price_per_day || "",
-      discountedPricePerDay: "",
+      pricePerDay: standardTier ? standardTier.price_per_day : "",
+      discountedPricePerDay: discountedTier ? discountedTier.price_per_day : "",
       available: cam.available,
       image_url: cam.image_url,
     }
 
+    // Handle potential errors in fetching inclusions (separate from pricing)
     try {
-      const { data: tiers, error: tiersError } = await getCameraPricingTiers(cam.id)
-      if (tiersError) {
-        console.error("Error fetching pricing tiers:", tiersError)
-      } else if (tiers && tiers.length > 0) {
-        const standardTier = tiers.find((t) => t.min_days === 1 && t.max_days === 3)
-        if (standardTier) {
-          cameraData.pricePerDay = standardTier.price_per_day
-        } else {
-          console.warn("Standard pricing tier (1-3 days) not found for camera ID:", cam.id)
-        }
-
-        const discountedTier = tiers.find((t) => t.min_days === 4 && t.max_days === null)
-        if (discountedTier) {
-          cameraData.discountedPricePerDay = discountedTier.price_per_day
-        } else {
-          console.warn("Discounted pricing tier (4+ days) not found for camera ID:", cam.id)
-        }
-      } else {
-        console.warn("No pricing tiers found for camera ID:", cam.id)
-      }
-
-      // Fetch current inclusions
+      // Reset inclusion states
       setSelectedInclusionIds([])
       setSelectedInclusionQuantities({})
       setInclusionsError("")
 
+      // Fetch current inclusions
       if (cam.id) {
         const { data: currentInclusionData, error: inclusionsFetchError } = await getInclusionsForCamera(cam.id)
         if (inclusionsFetchError) {
@@ -281,13 +264,9 @@ export default function Cameras() {
           setSelectedInclusionQuantities(inclusionQuantities)
         } else {
           console.warn("Unexpected response format from getInclusionsForCamera:", currentInclusionData)
-          setSelectedInclusionIds([])
-          setSelectedInclusionQuantities({})
         }
       } else {
         console.warn("Camera ID is missing when trying to fetch inclusions for editing.")
-        setSelectedInclusionIds([])
-        setSelectedInclusionQuantities({})
       }
     } catch (err) {
       console.error("Unexpected error in handleEdit while fetching inclusions:", err)
@@ -396,7 +375,6 @@ export default function Cameras() {
               </button>
             )}
           </div>
-
           {/* View Controls */}
           <div className="flex items-center space-x-2">
             <div className="flex items-center bg-gray-800/50 rounded-lg p-1 border border-gray-600/50">
@@ -423,7 +401,6 @@ export default function Cameras() {
             </div>
           </div>
         </div>
-
         {/* Search Results Info */}
         {searchTerm && (
           <div className="mt-3 pt-3 border-t border-gray-700/50">
@@ -461,7 +438,6 @@ export default function Cameras() {
                 </button>
               </div>
             </div>
-
             {/* Compact Modal Content */}
             <div className="p-4 overflow-y-auto max-h-[calc(90vh-100px)]">
               {/* Compact Feedback Messages */}
@@ -471,21 +447,18 @@ export default function Cameras() {
                   <span>{error}</span>
                 </div>
               )}
-
               {inclusionsError && (
                 <div className="bg-red-500/10 border border-red-500/30 text-red-400 px-3 py-2 rounded-lg mb-4 flex items-center space-x-2 text-sm">
                   <AlertCircle className="h-4 w-4 flex-shrink-0" />
                   <span>{inclusionsError}</span>
                 </div>
               )}
-
               {success && (
                 <div className="bg-green-500/10 border border-green-500/30 text-green-400 px-3 py-2 rounded-lg mb-4 flex items-center space-x-2 text-sm">
                   <Check className="h-4 w-4 flex-shrink-0" />
                   <span>Camera saved successfully!</span>
                 </div>
               )}
-
               {/* Compact Form */}
               <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Basic Info & Pricing in Grid */}
@@ -497,7 +470,6 @@ export default function Cameras() {
                         <FileText className="h-4 w-4 text-blue-400" />
                         Basic Information
                       </h3>
-
                       <div className="space-y-3">
                         <div>
                           <label className="text-xs font-medium text-gray-300 mb-1 block">Camera Name *</label>
@@ -509,7 +481,6 @@ export default function Cameras() {
                             className="w-full px-3 py-2 bg-gray-800/60 border border-gray-600/40 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500/50 text-sm"
                           />
                         </div>
-
                         <div>
                           <label className="text-xs font-medium text-gray-300 mb-1 block">Description *</label>
                           <textarea
@@ -524,7 +495,6 @@ export default function Cameras() {
                       </div>
                     </div>
                   </div>
-
                   {/* Right Column - Pricing */}
                   <div className="space-y-4">
                     <div className="bg-gray-800/30 border border-gray-700/40 rounded-xl p-4">
@@ -532,7 +502,6 @@ export default function Cameras() {
                         <DollarSign className="h-4 w-4 text-green-400" />
                         Pricing Tiers
                       </h3>
-
                       <div className="space-y-3">
                         <div>
                           <label className="text-xs font-medium text-gray-300 mb-1 block flex items-center gap-1">
@@ -554,7 +523,6 @@ export default function Cameras() {
                             />
                           </div>
                         </div>
-
                         <div>
                           <label className="text-xs font-medium text-gray-300 mb-1 block flex items-center gap-1">
                             <div className="w-2 h-2 bg-green-500 rounded-full"></div>
@@ -591,7 +559,6 @@ export default function Cameras() {
                       </span>
                     )}
                   </h3>
-
                   {inclusionsLoading ? (
                     <div className="flex justify-center items-center py-4">
                       <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
@@ -657,7 +624,6 @@ export default function Cameras() {
                     <ImageIcon className="h-4 w-4 text-orange-400" />
                     Camera Image {!editMode && "*"}
                   </h3>
-
                   <div className="relative">
                     <input
                       type="file"
@@ -750,11 +716,11 @@ export default function Cameras() {
           }`}
         >
           {filteredCameras.map((cam) => {
+            // Extract pricing directly from the included camera_pricing_tiers array
             const standardPriceTier = cam.camera_pricing_tiers?.find(
               (tier) => tier.min_days === 1 && tier.max_days === 3,
             )
-            const displayPrice = standardPriceTier ? standardPriceTier.price_per_day : cam.price_per_day || "N/A"
-
+            const displayPrice = standardPriceTier ? standardPriceTier.price_per_day : "N/A"
             return (
               <div
                 key={cam.id}
