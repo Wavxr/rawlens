@@ -45,11 +45,12 @@ async function calculateTotalPrice(cameraId, startDate, endDate) {
 // Check if a specific camera is available for a given date range.
 export async function checkCameraAvailability(cameraId, startDate, endDate) {
   try {
+    // Check against confirmed rentals (not pending or rejected)
     const { data, error } = await supabase
       .from('rentals')
-      .select('id, start_date, end_date, application_status')
+      .select('id, start_date, end_date, rental_status')
       .eq('camera_id', cameraId)
-      .in('application_status', ['confirmed', 'active'])
+      .in('rental_status', ['confirmed', 'active'])
       .lt('start_date', endDate)
       .gt('end_date', startDate);
 
@@ -69,14 +70,15 @@ export async function checkCameraAvailability(cameraId, startDate, endDate) {
   }
 }
 
-// Allows a registered user to initiate a rental request.
+// Allows a registered user to initiate a rental request with contract
 export async function createUserRentalRequest(bookingData) {
   try {
-    const { cameraId, startDate, endDate } = bookingData;
+    const { cameraId, startDate, endDate, contractPdfUrl, customerInfo } = bookingData;
 
-    if (!startDate || !endDate) {
-      throw new Error("Start date and end date are required.");
+    if (!startDate || !endDate || !contractPdfUrl) {
+      throw new Error("Start date, end date, and contract are required.");
     }
+    
     const start = new Date(startDate);
     const end = new Date(endDate);
     if (end <= start) {
@@ -104,7 +106,11 @@ export async function createUserRentalRequest(bookingData) {
         end_date: endDate,
         total_price: totalPrice,
         booking_type: 'registered_user',
-        application_status: 'pending'
+        rental_status: 'pending',
+        contract_pdf_url: contractPdfUrl,
+        customer_name: customerInfo?.name || null,
+        customer_contact: customerInfo?.contact || null,
+        customer_email: customerInfo?.email || null
       })
       .select();
 
@@ -114,5 +120,152 @@ export async function createUserRentalRequest(bookingData) {
   } catch (error) {
     console.error("Error in createUserRentalRequest:", error);
     return { error: error.message || "Failed to create rental request." };
+  }
+}
+
+// Generic function to update rental status
+export async function updateRentalStatus(rentalId, statusUpdates) {
+  try {
+    const { data, error } = await supabase
+      .from('rentals')
+      .update(statusUpdates)
+      .eq('id', rentalId)
+      .select(); 
+
+    if (error) throw error;
+    return { success: true, data: data[0] };
+  } catch (error) {
+    console.error("Error in updateRentalStatus:", error);
+    return { error: error.message || "Failed to update rental status." };
+  }
+}
+
+// --- Simplified Workflow Functions using single rental_status ---
+export async function getRentalsByStatus(status = null) {
+  try {
+    let query = supabase.from('rentals').select(`
+        *,
+        cameras (id, name, image_url),
+        users!rentals_user_id_fkey (id, first_name, last_name, email, contact_number)
+      `);
+
+    // Filter by rental status if provided
+    if (status) {
+      query = query.eq('rental_status', status);
+    }
+
+    query = query.order('created_at', { ascending: false });
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    return { data, error: null };
+  } catch (error) {
+    console.error("Error in getRentalsByStatus:", error);
+    return { data: null, error: error.message || "Failed to fetch rentals by status." };
+  }
+}
+
+// Get pending applications for admin review
+export async function getPendingApplications() {
+  return await getRentalsByStatus('pending');
+}
+
+// Get rejected applications
+export async function getRejectedApplications() {
+  return await getRentalsByStatus('rejected');
+}
+
+// Get confirmed rentals
+export async function getConfirmedRentals() {
+  return await getRentalsByStatus('confirmed');
+}
+
+// ------------------------------------------
+//   --  Admin Status Management Functions --
+// ------------------------------------------
+
+// Admin confirms application (contract valid, ready for logistics)
+export async function adminConfirmApplication(rentalId) {
+  return await updateRentalStatus(rentalId, {
+    rental_status: 'confirmed'
+  });
+}
+
+// Admin rejects application (contract becomes void)
+export async function adminRejectApplication(rentalId) {
+  return await updateRentalStatus(rentalId, {
+    rental_status: 'rejected'
+  });
+}
+
+// Admin marks rental as active (camera in use by customer)
+export async function adminStartRental(rentalId) {
+  return await updateRentalStatus(rentalId, {
+    rental_status: 'active'
+  });
+}
+
+// Admin marks rental as completed (camera returned)
+export async function adminCompleteRental(rentalId) {
+  return await updateRentalStatus(rentalId, {
+    rental_status: 'completed',
+    completed_at: new Date().toISOString()
+  });
+}
+
+// Admin cancels rental at any point
+export async function adminCancelRental(rentalId) {
+  return await updateRentalStatus(rentalId, {
+    rental_status: 'cancelled'
+  });
+}
+
+// Update shipping status
+export async function updateShippingStatus(rentalId, shippingStatus, timestampField = null) {
+  const updates = {
+    shipping_status: shippingStatus
+  };
+  
+  if (timestampField) {
+    updates[timestampField] = new Date().toISOString();
+  }
+  
+  return await updateRentalStatus(rentalId, updates);
+}
+
+// Admin deletes a rental record row entirely
+export async function adminDeleteRental(rentalId) {
+  try {
+    const { error } = await supabase
+      .from('rentals')
+      .delete()
+      .eq('id', rentalId);
+
+    if (error) throw error;
+    return { success: true, error: null };
+  } catch (error) {
+    console.error("Error in adminDeleteRental:", error);
+    return { success: false, error: error.message || "Failed to delete rental." };
+  }
+}
+
+// Get user's rental history
+export async function getUserRentals(userId) {
+  try {
+    const { data, error } = await supabase
+      .from('rentals')
+      .select(`
+        *,
+        cameras (id, name, image_url, brand, model)
+      `)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    console.error("Error in getUserRentals:", error);
+    return { data: null, error: error.message || "Failed to fetch user rentals." };
   }
 }
