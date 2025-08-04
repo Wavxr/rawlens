@@ -1,13 +1,14 @@
 import { supabase } from "../lib/supabaseClient";
 
-// helper - Check if a specific camera is available for a given date range.
-async function checkCameraAvailability(cameraId, startDate, endDate) {
+// Check if a specific camera is available for a given date range.
+export async function checkCameraAvailability(cameraId, startDate, endDate) {
   try {
+    // Check against confirmed rentals (not pending or rejected)
     const { data, error } = await supabase
       .from('rentals')
-      .select('id, start_date, end_date, application_status')
+      .select('id, start_date, end_date, rental_status')
       .eq('camera_id', cameraId)
-      .in('application_status', ['confirmed', 'active'])
+      .in('rental_status', ['confirmed', 'active'])
       .lt('start_date', endDate)
       .gt('end_date', startDate);
 

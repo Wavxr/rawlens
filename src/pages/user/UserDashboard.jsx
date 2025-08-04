@@ -64,21 +64,6 @@ export default function UserDashboard() {
 
             {/* Right Side Actions */}
             <div className="flex items-center space-x-3">
-              {/* Notifications */}
-              <button className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-all duration-200">
-                <Bell className="h-5 w-5" />
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
-              </button>
-
-              {/* Favorites */}
-              <button className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-all duration-200">
-                <Heart className="h-5 w-5" />
-              </button>
-
-              {/* Cart/Bag */}
-              <button className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-all duration-200">
-                <ShoppingBag className="h-5 w-5" />
-              </button>
 
               {/* Profile Dropdown */}
               <div className="relative">
