@@ -75,28 +75,34 @@ export async function createUserRentalRequest(bookingData) {
   try {
     const { cameraId, startDate, endDate, contractPdfUrl, customerInfo } = bookingData;
 
+    // --- VALIDATION ---
+    // Ensure start date, end date, and the contract FILE PATH are provided
     if (!startDate || !endDate || !contractPdfUrl) {
-      throw new Error("Start date, end date, and contract are required.");
+      throw new Error("Start date, end date, and contract file path are required.");
     }
     
     const start = new Date(startDate);
     const end = new Date(endDate);
-    if (end <= start) {
-      throw new Error("End date must be after start date.");
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) {
+      throw new Error("Please select valid dates. End date must be after start date.");
     }
 
+    // --- AVAILABILITY CHECK ---
     const isAvailableResult = await checkCameraAvailability(cameraId, startDate, endDate);
     if (!isAvailableResult.isAvailable) {
       throw new Error("Selected camera is not available for the chosen dates.");
     }
 
+    // --- USER AUTHENTICATION ---
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       throw new Error("Authentication error. Please log in.");
     }
 
+    // --- PRICE CALCULATION ---
     const totalPrice = await calculateTotalPrice(cameraId, startDate, endDate);
 
+    // --- DATABASE INSERTION ---
     const { data, error: insertError } = await supabase
       .from('rentals')
       .insert({
@@ -107,19 +113,24 @@ export async function createUserRentalRequest(bookingData) {
         total_price: totalPrice,
         booking_type: 'registered_user',
         rental_status: 'pending',
-        contract_pdf_url: contractPdfUrl,
+        contract_pdf_url: contractPdfUrl, 
         customer_name: customerInfo?.name || null,
         customer_contact: customerInfo?.contact || null,
         customer_email: customerInfo?.email || null
       })
-      .select();
+      .select(); 
 
-    if (insertError) throw insertError;
+    if (insertError) {
+        console.error("Supabase insert error:", insertError);
+        throw insertError;
+    }
 
+    // Return success and the newly created rental data
     return { success: true, data: data[0] };
   } catch (error) {
     console.error("Error in createUserRentalRequest:", error);
-    return { error: error.message || "Failed to create rental request." };
+    // Return a user-friendly error message
+    return { error: error.message || "Failed to create rental request. Please try again." };
   }
 }
 
