@@ -15,7 +15,7 @@ import {
   ChevronDown,
   Home,
   Calendar,
-  MessageSquare,
+  Truck,
   HelpCircle,
   ChevronLeft,
   ChevronRight,
@@ -35,81 +35,25 @@ export default function AdminDashboard() {
   }
 
   // Main navigation items for desktop sidebar
-  const navigationItems = [
-    {
-      name: "Dashboard",
-      path: "/admin",
-      icon: BarChart3,
-      exact: true,
-    },
-    {
-      name: "Cameras",
-      path: "/admin/cameras",
-      icon: Camera,
-    },
-    {
-      name: "Inclusions",
-      path: "/admin/inclusions",
-      icon: Tag, 
-    },
-  {
-      name: "Users",
-      path: "/admin/users",
-      icon: Users,
-    },
-    {
-      name: "Rentals",
-      path: "/admin/rentals",
-      icon: Package,
-    },
-    {
-      name: "Messages",
-      path: "/admin/messages",
-      icon: MessageSquare,
-    },
-    {
-      name: "Calendar",
-      path: "/admin/calendar",
-      icon: Calendar,
-    },
-    {
-      name: "Settings",
-      path: "/admin/settings",
-      icon: Settings,
-    },
-  ]
+const navigationItems = [
+  { name: "Dashboard", path: "/admin", icon: BarChart3, exact: true },
+  { name: "Cameras", path: "/admin/cameras", icon: Camera },
+  { name: "Inclusions", path: "/admin/inclusions", icon: Tag },
+  { name: "Users", path: "/admin/users", icon: Users },
+  { name: "Rentals", path: "/admin/rentals", icon: Package },
+  { name: "Delivery", path: "/admin/delivery", icon: Truck },
+  { name: "Calendar", path: "/admin/calendar", icon: Calendar },
+  { name: "Settings", path: "/admin/settings", icon: Settings }
+];
 
-  // Navigation items for mobile bottom bar (usually a subset)
-  const mobileNavigationItems = [
-    {
-      name: "Home",
-      path: "/admin",
-      icon: Home,
-      exact: true,
-    },
-    {
-      name: "Cameras",
-      path: "/admin/cameras",
-      icon: Camera,
-    },
-    {
-      name: "Users",
-      path: "/admin/users",
-      icon: Users,
-    },
-    {
-      name: "Rentals",
-      path: "/admin/rentals",
-      icon: Package,
-    },
-    // --- You might want to add Inclusions here too if space allows or replace an item ---
-    // {
-    //   name: "Inclusions",
-    //   path: "/admin/inclusions",
-    //   icon: Package,
-    // },
-    // --------------------------
-  ]
+// Navigation items for mobile bottom bar (usually a subset)
+const mobileNavigationItems = [
+  { name: "Home", path: "/admin", icon: Home, exact: true },
+  { name: "Cameras", path: "/admin/cameras", icon: Camera },
+  { name: "Rentals", path: "/admin/rentals", icon: Package },
+  { name: "Delivery", path: "/admin/delivery", icon: Truck },
+  { name: "Calendar", path: "/admin/calendar", icon: Calendar }
+];
 
   const isActiveRoute = (path, exact = false) => {
     if (exact) {
@@ -405,7 +349,7 @@ export default function AdminDashboard() {
             </div>
           </header>
           {/* Page Content */}
-          <main className="p-6 min-h-screen overflow-x-hidden">
+          <main className="w-full h-full p-4 overflow-auto">
             <div className="max-w-7xl mx-auto">
               <Outlet />
             </div>
