@@ -1,20 +1,22 @@
 import { supabase } from "../lib/supabaseClient";
 
-// Calculates the number of rental days between two dates.
-function calculateRentalDays(startDate, endDate) {
-  const start = new Date(startDate);
-  const end = new Date(endDate);
+export function calculateRentalDays(startDateStr, endDateStr) {
+  const start = new Date(startDateStr);
+  const end = new Date(endDateStr);
+
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+
   const timeDiff = end.getTime() - start.getTime();
-  const daysDiff = timeDiff / (1000 * 3600 * 24);
-  return Math.ceil(daysDiff);
+
+  if (timeDiff < 0) {
+    throw new Error("Invalid rental period: End date is before start date.");
+  }
+  return Math.floor(timeDiff / (1000 * 3600 * 24)) + 1;
 }
 
-// Calculates the total price for a rental based on the camera's pricing tiers.
-async function calculateTotalPrice(cameraId, startDate, endDate) {
+export async function calculateTotalPrice(cameraId, startDate, endDate) {
   const rentalDays = calculateRentalDays(startDate, endDate);
-  if (rentalDays <= 0) {
-    throw new Error("Invalid rental period: End date must be after start date.");
-  }
 
   const { data: tiers, error } = await supabase
     .from('camera_pricing_tiers')
@@ -23,7 +25,7 @@ async function calculateTotalPrice(cameraId, startDate, endDate) {
     .order('min_days', { ascending: true });
 
   if (error) {
-    console.error("Error fetching pricing tiers from Supabase:", error);
+    console.error("Error fetching pricing tiers from Supabase:", error); // Good for debugging
     throw new Error("Failed to fetch camera pricing information.");
   }
 
@@ -39,8 +41,11 @@ async function calculateTotalPrice(cameraId, startDate, endDate) {
     throw new Error(`No pricing tier found for a rental of ${rentalDays} days for camera ID ${cameraId}.`);
   }
 
-  return rentalDays * applicableTier.price_per_day;
+  const totalPrice = rentalDays * applicableTier.price_per_day;
+
+  return totalPrice;
 }
+
 
 // Check if a specific camera is available for a given date range.
 export async function checkCameraAvailability(cameraId, startDate, endDate) {
@@ -81,10 +86,11 @@ export async function createUserRentalRequest(bookingData) {
       throw new Error("Start date, end date, and contract file path are required.");
     }
     
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) {
-      throw new Error("Please select valid dates. End date must be after start date.");
+    const start = new Date(new Date(startDate).setHours(0, 0, 0, 0));
+    const end = new Date(new Date(endDate).setHours(0, 0, 0, 0));
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) {
+      throw new Error("Please select valid dates. End date must be on or after start date.");
     }
 
     // --- AVAILABILITY CHECK ---

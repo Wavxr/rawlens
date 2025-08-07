@@ -2,7 +2,7 @@
 import React from 'react';
 import { Filter, Search, X, Calendar, Camera } from 'lucide-react';
 import DateFilterInput from './DateFilterInput';
-import CameraCard from './CameraCard'; // Assuming CameraCard.jsx also exists
+import CameraCard from './CameraCard';
 
 const CameraBrowserSection = ({
   startDate,
@@ -10,13 +10,12 @@ const CameraBrowserSection = ({
   isFilterActive,
   displayedCameras,
   filterLoading,
-  filterError, // Pass error state from parent
-  onDateChange, // Handler for date changes: (event, dateType) => void
-  onApplyFilter, // Handler for applying filter
-  onClearFilter, // Handler for clearing filter
-  onRentClick, // Handler for rent button click on a card
+  filterError, 
+  onDateChange, 
+  onApplyFilter, 
+  onClearFilter,
+  onRentClick, 
 }) => {
-  // Wrapper handler to match the expected signature for DateFilterInput
   const handleStartDateChange = (e) => onDateChange(e, 'start');
   const handleEndDateChange = (e) => onDateChange(e, 'end');
 
@@ -101,7 +100,6 @@ const CameraBrowserSection = ({
         ) : displayedCameras.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {displayedCameras.map((camera) => (
-              // Assuming CameraCard.jsx exists and is correctly implemented
               <CameraCard key={camera.id} camera={camera} onRentClick={onRentClick} />
             ))}
           </div>

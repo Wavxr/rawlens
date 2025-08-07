@@ -8,13 +8,18 @@ const DateFilterInput = ({
   onStartDateChange,
   onEndDateChange,
   minStartDate = new Date().toISOString().split('T')[0],
-  minEndDate, // Should be calculated based on startDate if needed
+  // minEndDate is generally not needed as a prop anymore with the new logic,
+  // but we can keep it for potential override if explicitly passed.
+  minEndDate = null, 
   disabled = false,
   label = "Rental Period",
   idPrefix = "date-filter" // To ensure unique IDs if used multiple times
 }) => {
-  // If minEndDate is not provided, calculate it based on startDate
-  const calculatedMinEndDate = minEndDate || (startDate ? new Date(new Date(startDate).getTime() + 86400000).toISOString().split('T')[0] : minStartDate);
+  // Calculate the minimum allowed end date.
+  // If a specific minEndDate is passed as a prop, use it.
+  // Otherwise, the minimum end date should be the selected start date,
+  // allowing the same day rental. If no start date, use minStartDate.
+  const calculatedMinEndDate = minEndDate || startDate || minStartDate;
 
   return (
     <div className="lg:col-span-2">
@@ -41,8 +46,8 @@ const DateFilterInput = ({
           value={endDate}
           onChange={onEndDateChange}
           className="flex-1 min-w-0 p-3 border border-l-0 border-gray-300 rounded-r-lg focus:ring-blue-500 focus:border-blue-500"
-          min={calculatedMinEndDate}
-          disabled={disabled || !startDate} // Disable end date if start date is not selected
+          min={calculatedMinEndDate} 
+          disabled={disabled} // Only disable based on the main 'disabled' prop, not startDate
         />
       </div>
     </div>
