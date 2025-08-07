@@ -14,21 +14,26 @@ import {
   Check,
   X,
   FileText,
-  Trash2
+  Trash2,
+  Loader2 // Import Loader2 for loading states
 } from 'lucide-react';
 import * as rentalService from '../../services/rentalService';
+// Import the service function to generate signed URLs
+import { getSignedContractUrl } from '../../services/pdfService'; 
 
 export default function Rentals() {
   const [rentals, setRentals] = useState([]);
-  const [allRentals, setAllRentals] = useState([]); // Store all rentals
-  const [loading, setLoading] = useState(true); // Only for initial load
-  const [actionLoading, setActionLoading] = useState({}); // For individual actions
+  const [allRentals, setAllRentals] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState({});
+  // State for handling loading/errors during contract viewing
+  const [contractViewLoading, setContractViewLoading] = useState({}); 
+  const [contractViewError, setContractViewError] = useState({});
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRental, setSelectedRental] = useState(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(null); // For delete confirmation
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
 
-  // Fetch all rentals once
   useEffect(() => {
     fetchAllRentals();
   }, []);
@@ -39,7 +44,7 @@ export default function Rentals() {
       const result = await rentalService.getRentalsByStatus();
       if (result.data) {
         setAllRentals(result.data);
-        setRentals(result.data); // Initially show all rentals
+        setRentals(result.data);
       }
     } catch (error) {
       console.error('Error fetching rentals:', error);
@@ -48,13 +53,11 @@ export default function Rentals() {
     }
   };
 
-  // Refresh rentals data without showing loading spinner
   const refreshRentalsData = async () => {
     try {
       const result = await rentalService.getRentalsByStatus();
       if (result.data) {
         setAllRentals(result.data);
-        // Re-apply current filters
         let filtered = result.data;
         if (selectedStatus !== 'all') {
           filtered = filtered.filter(rental => rental.rental_status === selectedStatus);
@@ -77,16 +80,11 @@ export default function Rentals() {
     }
   };
 
-  // Filter rentals when status or search term changes
   useEffect(() => {
     let filtered = allRentals;
-    
-    // Filter by status
     if (selectedStatus !== 'all') {
       filtered = filtered.filter(rental => rental.rental_status === selectedStatus);
     }
-    
-    // Filter by search term
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       filtered = filtered.filter(rental => {
@@ -98,7 +96,6 @@ export default function Rentals() {
         );
       });
     }
-    
     setRentals(filtered);
   }, [selectedStatus, searchTerm, allRentals]);
 
@@ -138,7 +135,6 @@ export default function Rentals() {
     });
   };
 
-  // Calculate counts for each status (based on all rentals)
   const getStatusCounts = () => {
     const counts = {
       all: allRentals.length,
@@ -149,24 +145,21 @@ export default function Rentals() {
       cancelled: 0,
       rejected: 0
     };
-
     allRentals.forEach(rental => {
       if (counts.hasOwnProperty(rental.rental_status)) {
         counts[rental.rental_status]++;
       }
     });
-
     return counts;
   };
 
   const statusCounts = getStatusCounts();
 
-  // Admin Actions
   const handleApprove = async (rentalId) => {
     setActionLoading(prev => ({ ...prev, [rentalId]: 'approve' }));
     try {
       await rentalService.adminConfirmApplication(rentalId);
-      await refreshRentalsData(); // Refresh without loading spinner
+      await refreshRentalsData();
     } catch (error) {
       console.error('Error approving rental:', error);
     } finally {
@@ -182,7 +175,7 @@ export default function Rentals() {
     setActionLoading(prev => ({ ...prev, [rentalId]: 'reject' }));
     try {
       await rentalService.adminRejectApplication(rentalId);
-      await refreshRentalsData(); // Refresh without loading spinner
+      await refreshRentalsData();
     } catch (error) {
       console.error('Error rejecting rental:', error);
     } finally {
@@ -198,7 +191,7 @@ export default function Rentals() {
     setActionLoading(prev => ({ ...prev, [rentalId]: 'start' }));
     try {
       await rentalService.adminStartRental(rentalId);
-      await refreshRentalsData(); // Refresh without loading spinner
+      await refreshRentalsData();
     } catch (error) {
       console.error('Error starting rental:', error);
     } finally {
@@ -214,7 +207,7 @@ export default function Rentals() {
     setActionLoading(prev => ({ ...prev, [rentalId]: 'complete' }));
     try {
       await rentalService.adminCompleteRental(rentalId);
-      await refreshRentalsData(); // Refresh without loading spinner
+      await refreshRentalsData();
     } catch (error) {
       console.error('Error completing rental:', error);
     } finally {
@@ -230,7 +223,7 @@ export default function Rentals() {
     setActionLoading(prev => ({ ...prev, [rentalId]: 'cancel' }));
     try {
       await rentalService.adminCancelRental(rentalId);
-      await refreshRentalsData(); // Refresh without loading spinner
+      await refreshRentalsData();
     } catch (error) {
       console.error('Error cancelling rental:', error);
     } finally {
@@ -246,8 +239,8 @@ export default function Rentals() {
     setActionLoading(prev => ({ ...prev, [rentalId]: 'delete' }));
     try {
       await rentalService.adminDeleteRental(rentalId);
-      await refreshRentalsData(); // Refresh without loading spinner
-      setShowDeleteConfirm(null); // Close confirmation
+      await refreshRentalsData();
+      setShowDeleteConfirm(null);
     } catch (error) {
       console.error('Error deleting rental:', error);
     } finally {
@@ -259,15 +252,45 @@ export default function Rentals() {
     }
   };
 
-  const viewContract = (contractUrl) => {
-    if (contractUrl) {
-      window.open(contractUrl, '_blank');
+  // --- Modified viewContract function ---
+  const viewContract = async (rentalId, contractFilePath) => {
+    // Basic check
+    if (!contractFilePath) {
+      // Set error state for this specific rental
+      setContractViewError(prev => ({ ...prev, [rentalId]: "Contract file path is missing." }));
+      console.warn(`Contract file path is missing for rental ID: ${rentalId}`);
+      return;
+    }
+
+    // Set loading state for this specific rental
+    setContractViewLoading(prev => ({ ...prev, [rentalId]: true }));
+    // Clear previous error for this rental
+    setContractViewError(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[rentalId];
+      return newErrors;
+    });
+
+    try {
+      // --- Use the service function to get the signed URL ---
+      const signedUrl = await getSignedContractUrl(contractFilePath);
+
+      // Open the signed URL in a new tab
+      window.open(signedUrl, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      console.error(`Error generating signed URL for rental ${rentalId}:`, err);
+      // Set error state for this specific rental
+      setContractViewError(prev => ({ ...prev, [rentalId]: err.message || "Could not generate link to view contract." }));
+      // Optionally, display a user-friendly error message (e.g., using a toast notification)
+    } finally {
+      // Reset loading state for this specific rental
+      setContractViewLoading(prev => {
+        const newLoading = { ...prev };
+        delete newLoading[rentalId];
+        return newLoading;
+      });
     }
   };
-
-  /* -------------------------------------------------------------------------- */
-  /*                              Status Filter Tabs                            */
-  /* -------------------------------------------------------------------------- */
 
   const statusFilters = [
     { key: 'all', label: 'All Rentals', count: statusCounts.all },
@@ -279,13 +302,8 @@ export default function Rentals() {
     { key: 'rejected', label: 'Rejected', count: statusCounts.rejected }
   ];
 
-  /* -------------------------------------------------------------------------- */
-  /*                              Rental Card Component                         */
-  /* -------------------------------------------------------------------------- */
-
   const RentalCard = ({ rental }) => (
     <div className="bg-gray-800 border border-gray-700 rounded-lg hover:border-gray-600 transition-colors">
-      {/* Clickable card area for viewing details */}
       <div 
         className="p-4 cursor-pointer"
         onClick={() => setSelectedRental(rental)}
@@ -300,7 +318,6 @@ export default function Rentals() {
             </span>
           </div>
         </div>
-
         <div className="grid grid-cols-2 gap-3 mb-4">
           <div className="flex items-center gap-2">
             <User size={16} className="text-gray-400" />
@@ -311,7 +328,6 @@ export default function Rentals() {
               <p className="text-gray-400 text-xs">{rental.users?.email || 'No email'}</p>
             </div>
           </div>
-          
           <div className="flex items-center gap-2">
             <Calendar size={16} className="text-gray-400" />
             <div>
@@ -319,7 +335,6 @@ export default function Rentals() {
               <p className="text-gray-400 text-xs">to {formatDate(rental.end_date)}</p>
             </div>
           </div>
-
           <div className="flex items-center gap-2">
             <Package size={16} className="text-gray-400" />
             <div>
@@ -327,7 +342,6 @@ export default function Rentals() {
               <p className="text-gray-400 text-xs">Total Price</p>
             </div>
           </div>
-
           <div className="flex items-center gap-2">
             <Clock size={16} className="text-gray-400" />
             <div>
@@ -339,8 +353,6 @@ export default function Rentals() {
           </div>
         </div>
       </div>
-
-      {/* Action Buttons */}
       <div className="px-4 pb-4">
         <div className="flex flex-wrap gap-2 items-center">
           {rental.rental_status === 'pending' && (
@@ -354,7 +366,7 @@ export default function Rentals() {
                 className="flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm transition-colors disabled:opacity-50"
               >
                 {actionLoading[rental.id] === 'approve' ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Check size={14} />
                 )}
@@ -369,7 +381,7 @@ export default function Rentals() {
                 className="flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-colors disabled:opacity-50"
               >
                 {actionLoading[rental.id] === 'reject' ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <X size={14} />
                 )}
@@ -384,7 +396,7 @@ export default function Rentals() {
                 className="flex items-center gap-1 bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-sm transition-colors disabled:opacity-50"
               >
                 {actionLoading[rental.id] === 'cancel' ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <XCircle size={14} />
                 )}
@@ -394,17 +406,27 @@ export default function Rentals() {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    viewContract(rental.contract_pdf_url);
+                    // Pass rental ID and the file path
+                    viewContract(rental.id, rental.contract_pdf_url);
                   }}
-                  className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded text-sm transition-colors"
+                  disabled={contractViewLoading[rental.id]} // Disable while loading
+                  className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded text-sm transition-colors disabled:opacity-50"
                 >
-                  <FileText size={14} />
+                  {/* Show loading spinner or icon based on state */}
+                  {contractViewLoading[rental.id] ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <FileText size={14} />
+                  )}
                   View Contract
                 </button>
               )}
+              {/* Show error message below the button if there's an error for this rental */}
+              {contractViewError[rental.id] && (
+                <p className="text-red-500 text-xs mt-1 col-span-full">{contractViewError[rental.id]}</p>
+              )}
             </>
           )}
-
           {rental.rental_status === 'confirmed' && (
             <>
               <button
@@ -416,7 +438,7 @@ export default function Rentals() {
                 className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm transition-colors disabled:opacity-50"
               >
                 {actionLoading[rental.id] === 'start' ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <CheckCircle size={14} />
                 )}
@@ -431,7 +453,7 @@ export default function Rentals() {
                 className="flex items-center gap-1 bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-sm transition-colors disabled:opacity-50"
               >
                 {actionLoading[rental.id] === 'cancel' ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <XCircle size={14} />
                 )}
@@ -441,17 +463,24 @@ export default function Rentals() {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    viewContract(rental.contract_pdf_url);
+                    viewContract(rental.id, rental.contract_pdf_url);
                   }}
-                  className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded text-sm transition-colors"
+                  disabled={contractViewLoading[rental.id]}
+                  className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded text-sm transition-colors disabled:opacity-50"
                 >
-                  <FileText size={14} />
+                  {contractViewLoading[rental.id] ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <FileText size={14} />
+                  )}
                   View Contract
                 </button>
               )}
+              {contractViewError[rental.id] && (
+                <p className="text-red-500 text-xs mt-1 col-span-full">{contractViewError[rental.id]}</p>
+              )}
             </>
           )}
-
           {rental.rental_status === 'active' && (
             <>
               <button
@@ -463,7 +492,7 @@ export default function Rentals() {
                 className="flex items-center gap-1 bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-sm transition-colors disabled:opacity-50"
               >
                 {actionLoading[rental.id] === 'complete' ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <CheckCircle size={14} />
                 )}
@@ -478,7 +507,7 @@ export default function Rentals() {
                 className="flex items-center gap-1 bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-sm transition-colors disabled:opacity-50"
               >
                 {actionLoading[rental.id] === 'cancel' ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <XCircle size={14} />
                 )}
@@ -488,35 +517,48 @@ export default function Rentals() {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    viewContract(rental.contract_pdf_url);
+                    viewContract(rental.id, rental.contract_pdf_url);
                   }}
-                  className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded text-sm transition-colors"
+                  disabled={contractViewLoading[rental.id]}
+                  className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded text-sm transition-colors disabled:opacity-50"
                 >
-                  <FileText size={14} />
+                  {contractViewLoading[rental.id] ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <FileText size={14} />
+                  )}
                   View Contract
                 </button>
               )}
+              {contractViewError[rental.id] && (
+                <p className="text-red-500 text-xs mt-1 col-span-full">{contractViewError[rental.id]}</p>
+              )}
             </>
           )}
-
           {(rental.rental_status === 'completed' || rental.rental_status === 'cancelled' || rental.rental_status === 'rejected') && (
             <>
               {rental.contract_pdf_url && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    viewContract(rental.contract_pdf_url);
+                    viewContract(rental.id, rental.contract_pdf_url);
                   }}
-                  className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded text-sm transition-colors"
+                  disabled={contractViewLoading[rental.id]}
+                  className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded text-sm transition-colors disabled:opacity-50"
                 >
-                  <FileText size={14} />
+                  {contractViewLoading[rental.id] ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <FileText size={14} />
+                  )}
                   View Contract
                 </button>
               )}
+              {contractViewError[rental.id] && (
+                <p className="text-red-500 text-xs mt-1 col-span-full">{contractViewError[rental.id]}</p>
+              )}
             </>
           )}
-
-          {/* Delete Button  */}
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -526,7 +568,7 @@ export default function Rentals() {
             className="flex ml-auto items-center gap-1 bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm transition-colors disabled:opacity-50"
           >
             {actionLoading[rental.id] === 'delete' ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <Trash2 size={14} />
             )}
@@ -534,8 +576,6 @@ export default function Rentals() {
           </button>
         </div>
       </div>
-
-      {/* Delete Confirmation Overlay */}
       {showDeleteConfirm === rental.id && (
         <div 
           className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
@@ -565,7 +605,7 @@ export default function Rentals() {
                   disabled={actionLoading[rental.id] === 'delete'}
                 >
                   {actionLoading[rental.id] === 'delete' ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                    <Loader2 className="h-4 w-4 animate-spin" />
                   ) : null}
                   Delete Rental
                 </button>
@@ -576,10 +616,6 @@ export default function Rentals() {
       )}
     </div>
   );
-
-  /* -------------------------------------------------------------------------- */
-  /*                              Rental Detail Modal                           */
-  /* -------------------------------------------------------------------------- */
 
   const RentalDetailModal = ({ rental, onClose }) => (
     <div 
@@ -600,9 +636,7 @@ export default function Rentals() {
               <X size={24} />
             </button>
           </div>
-
           <div className="space-y-6">
-            {/* Basic Info */}
             <div>
               <h3 className="text-lg font-semibold text-white mb-3">Basic Information</h3>
               <div className="grid grid-cols-2 gap-4">
@@ -628,8 +662,6 @@ export default function Rentals() {
                 </div>
               </div>
             </div>
-
-            {/* Customer Info */}
             <div>
               <h3 className="text-lg font-semibold text-white mb-3">Customer Information</h3>
               <div className="grid grid-cols-2 gap-4">
@@ -657,8 +689,6 @@ export default function Rentals() {
                 </div>
               </div>
             </div>
-
-            {/* Camera Info */}
             <div>
               <h3 className="text-lg font-semibold text-white mb-3">Camera Information</h3>
               <div className="grid grid-cols-2 gap-4">
@@ -674,16 +704,24 @@ export default function Rentals() {
                 </div>
               </div>
             </div>
-
-            {/* Contract */}
             {rental.contract_pdf_url && (
               <div>
                 <h3 className="text-lg font-semibold text-white mb-3">Contract</h3>
+                {/* Show error message if present */}
+                {contractViewError[rental.id] && (
+                  <p className="text-red-500 text-sm mb-2">{contractViewError[rental.id]}</p>
+                )}
                 <button
-                  onClick={() => viewContract(rental.contract_pdf_url)}
-                  className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition-colors"
+                  onClick={() => viewContract(rental.id, rental.contract_pdf_url)} // Pass ID and path
+                  disabled={contractViewLoading[rental.id]} // Disable while loading
+                  className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition-colors disabled:opacity-50"
                 >
-                  <FileText size={16} />
+                  {/* Show loading spinner or icon */}
+                  {contractViewLoading[rental.id] ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                   ) : (
+                    <FileText size={16} />
+                   )}
                   View Signed Contract
                 </button>
               </div>
@@ -693,10 +731,6 @@ export default function Rentals() {
       </div>
     </div>
   );
-
-  /* -------------------------------------------------------------------------- */
-  /*                              Main Component                                */
-  /* -------------------------------------------------------------------------- */
 
   if (loading) {
     return (
@@ -715,8 +749,6 @@ export default function Rentals() {
           <h1 className="text-3xl font-bold mb-2">Rental Management</h1>
           <p className="text-gray-400">Manage all camera rental requests and applications</p>
         </div>
-
-        {/* Search and Filter */}
         <div className="mb-6 flex flex-col md:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
@@ -728,7 +760,6 @@ export default function Rentals() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          
           <div className="relative">
             <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
             <select
@@ -744,8 +775,6 @@ export default function Rentals() {
             </select>
           </div>
         </div>
-
-        {/* Status Tabs */}
         <div className="mb-6 overflow-x-auto">
           <div className="flex space-x-2 min-w-max">
             {statusFilters.map(filter => (
@@ -763,8 +792,6 @@ export default function Rentals() {
             ))}
           </div>
         </div>
-
-        {/* Rentals Grid */}
         {rentals.length === 0 ? (
           <div className="text-center py-12">
             <AlertCircle className="mx-auto text-gray-500 mb-4" size={48} />
@@ -780,8 +807,6 @@ export default function Rentals() {
             ))}
           </div>
         )}
-
-        {/* Rental Detail Modal */}
         {selectedRental && (
           <RentalDetailModal 
             rental={selectedRental} 
