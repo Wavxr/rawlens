@@ -2,7 +2,7 @@
 
 import { Outlet, useNavigate, useLocation } from "react-router-dom"
 import useAuthStore from "../../stores/useAuthStore"
-import { Camera, Calendar, BookOpen, User, LogOut, Menu, X, ShoppingBag, Heart, Bell } from "lucide-react"
+import { Camera, Calendar, BookOpen, User, LogOut, Menu, X} from "lucide-react"
 import { useState } from "react"
 
 export default function UserDashboard() {
@@ -18,7 +18,8 @@ export default function UserDashboard() {
 
   const navItems = [
     { path: "/user/cameras", label: "Browse Cameras", icon: Camera },
-    { path: "/user/rent", label: "My Rentals", icon: Calendar },
+    { path: "/user/rentals", label: "My Rentals", icon: Calendar },
+    { path: "/user/requests", label: "My Requests", icon: BookOpen },
     { path: "/user/educational", label: "Learn", icon: BookOpen },
     { path: "/user/profile", label: "Profile", icon: User },
   ]

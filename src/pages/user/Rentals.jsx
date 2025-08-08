@@ -1,4 +1,4 @@
-// src/pages/user/Rent.jsx
+// src/pages/user/Rentals.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getCamera } from '../../services/cameraService';

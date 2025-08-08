@@ -21,7 +21,8 @@
   // User
   import UserDashboard from './pages/user/UserDashboard';
   import UserCameras from './pages/user/Cameras';
-  import UserRent from './pages/user/Rent';
+  import UserRent from './pages/user/Rentals';
+  import UserRequests from './pages/user/Requests';
   import UserEducational from './pages/user/Educational';
   import UserProfile from './pages/user/Profile';
 
@@ -55,7 +56,8 @@
           <Route path="/user" element={<UserDashboard />}>
             <Route index element={<UserCameras />} />
             <Route path="cameras" element={<UserCameras />} />
-            <Route path="rent" element={<UserRent />} />
+            <Route path="rentals" element={<UserRent />} />
+            <Route path="requests" element={<UserRequests />} />
             <Route path="educational" element={<UserEducational />} />
             <Route path="profile" element={<UserProfile />} />
           </Route>
