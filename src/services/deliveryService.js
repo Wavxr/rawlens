@@ -66,36 +66,72 @@ export async function adminTransitToUser(rentalId, adminId) {
   }
 }
 
-// User: confirms they received the item
+// user: confirms they received the item
 export async function userConfirmDelivered(rentalId, userId) {
   try {
-    const currentUser = await assertCurrentUserMatches(userId);
+    const { data: currentRental, error: fetchError } = await supabase
+      .from('rentals')
+      .select('user_id, shipping_status, start_date, rental_status')
+      .eq('id', rentalId)
+      .single();
 
-    const { rental, error: fetchError } = await fetchRentalById(rentalId);
-    if (fetchError || !rental) {
-      throw new Error("Rental not found.");
+    if (fetchError) {
+      if (fetchError.code === 'PGRST116') {
+        throw new Error("Rental not found.");
+      }
+      throw new Error(`Failed to fetch rental details: ${fetchError.message}`);
     }
-    if (rental.user_id !== currentUser.id) {
+
+    if (currentRental.user_id !== userId) {
       throw new Error("Not authorized to confirm delivery for this rental.");
     }
 
-    const { data, error } = await supabase
-      .from("rentals")
-      .update({
-        shipping_status: "delivered",
-        rental_status: "active",
-      })
-      .eq("id", rentalId)
-      .select()
+    if (currentRental.shipping_status !== 'in_transit_to_user') {
+      throw new Error("Invalid action: Item is not currently in transit to you.");
+    }
+
+    const updates = { shipping_status: 'delivered' };
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const rentalStartDate = new Date(currentRental.start_date);
+    rentalStartDate.setHours(0, 0, 0, 0);
+
+    if (today >= rentalStartDate) {
+      updates.rental_status = 'active';
+    }
+
+    const { data, error: updateError } = await supabase
+      .from('rentals')
+      .update(updates)
+      .eq('id', rentalId)
+      .eq('user_id', userId)
+      .eq('shipping_status', 'in_transit_to_user')
+      .select();
+
+    if (updateError) throw updateError;
+
+    if (!data || data.length === 0) {
+      throw new Error("Failed to update status. The rental might not be in the correct state for this action, or you may not be authorized.");
+    }
+
+    const { data: updatedRental, error: fetchUpdatedError } = await supabase
+      .from('rentals')
+      .select(`*, cameras (name, image_url, description), users (first_name, last_name, email)`)
+      .eq('id', rentalId)
       .single();
 
-    if (error) throw error;
-    return { success: true, updatedRental: data };
+    if (fetchUpdatedError) throw fetchUpdatedError;
+
+    return { success: true, updatedRental };
+
   } catch (error) {
     console.error("Error in userConfirmDelivered:", error);
-    return { success: false, error: error.message || "Failed to confirm delivered." };
+    return { success: false, error: error.message || "Failed to confirm delivery." };
   }
 }
+
+
 
 // System: schedule return after end date has passed
 export async function scheduleAutomaticReturn(rentalId) {

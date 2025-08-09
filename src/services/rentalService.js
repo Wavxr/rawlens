@@ -267,14 +267,14 @@ export async function adminDeleteRental(rentalId) {
   }
 }
 
-// Get user's rental history
+// Get user's rental
 export async function getUserRentals(userId) {
   try {
     const { data, error } = await supabase
       .from('rentals')
       .select(`
         *,
-        cameras (id, name, image_url, brand, model)
+        cameras (id, name, description, image_url)
       `)
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
