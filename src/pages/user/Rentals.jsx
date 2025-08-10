@@ -82,7 +82,7 @@ export default function Rentals() {
     }
     if (activeFilter === "active") {
       return rentals.filter(
-        (r) => r.rental_status === "active" && (!r.shipping_status || r.shipping_status === "delivered"),
+        (r) => r.rental_status === "active" && (!r.shipping_status || r.shipping_status === "delivered" || r.shipping_status === "return_scheduled"),
       )
     }
     if (activeFilter === "returning") {
@@ -200,8 +200,34 @@ export default function Rentals() {
     }
   }
 
-  function useCountdown(targetIso, { dir = "down" } = {}) {
+  function useCountdown(targetIso, { dir = "down", startDate = null, endDate = null } = {}) {
     if (!targetIso) return null
+    
+    if (startDate && endDate && dir === "down") {
+      const start = new Date(startDate)
+      start.setHours(0, 0, 0, 0)
+      
+      const end = new Date(endDate)
+      end.setHours(0, 0, 0, 0)
+      end.setDate(end.getDate() + 1)
+      
+      const nowTime = new Date(now)
+      
+      const startMs = start.getTime()
+      const endMs = end.getTime()
+      const nowMs = nowTime.getTime()
+      
+      const totalRentalMs = endMs - startMs
+      const elapsedMs = nowMs - startMs
+      const remainingMs = Math.max(0, totalRentalMs - elapsedMs)
+      
+      const days = Math.floor(remainingMs / (24 * 3600 * 1000))
+      const hours = Math.floor((remainingMs % (24 * 3600 * 1000)) / (3600 * 1000))
+      const minutes = Math.floor((remainingMs % (3600 * 1000)) / (60 * 1000))
+      
+      return { days, hours, minutes, ms: remainingMs }
+    }
+    
     const target = new Date(targetIso).getTime()
     const diffMs = dir === "down" ? target - now : now - target
     const remaining = Math.max(diffMs, 0)
@@ -232,15 +258,27 @@ export default function Rentals() {
     const days = useMemo(() => {
       const start = new Date(rental.start_date)
       const end = new Date(rental.end_date)
-      const diff = Math.ceil((end - start) / (1000 * 3600 * 24))
-      return isNaN(diff) ? null : diff
+      
+      start.setHours(0, 0, 0, 0)
+      end.setHours(0, 0, 0, 0)
+      
+      end.setDate(end.getDate() + 1)
+      
+      const diff = (end - start) / (1000 * 3600 * 24)
+      return isNaN(diff) ? null : Math.floor(diff)
     }, [rental.start_date, rental.end_date])
 
     const [imgBroken, setImgBroken] = useState(false)
     const showCountdownToEnd =
-      rental.rental_status === "active" && (rental.shipping_status === "delivered" || !rental.shipping_status)
+      rental.rental_status === "active" && (rental.shipping_status === "delivered" || rental.shipping_status === "return_scheduled" || !rental.shipping_status)
     const showCountdownToStart = rental.rental_status === "confirmed" && new Date(rental.start_date) > new Date()
-    const countdownToEnd = showCountdownToEnd ? useCountdown(rental.end_date, { dir: "down" }) : null
+    const countdownToEnd = showCountdownToEnd 
+      ? useCountdown(rental.end_date, { 
+          dir: "down", 
+          startDate: rental.start_date, 
+          endDate: rental.end_date 
+        }) 
+      : null
     const countdownToStart = showCountdownToStart ? useCountdown(rental.start_date, { dir: "down" }) : null
     const soonEnd = showCountdownToEnd && daysUntil(rental.end_date) <= 3
     const soonStart = showCountdownToStart && daysUntil(rental.start_date) <= 2
@@ -251,7 +289,6 @@ export default function Rentals() {
           soonEnd || soonStart ? "border-amber-300 ring-2 ring-amber-200/50" : "border-gray-200"
         }`}
       >
-        {/* Header with Status */}
         <div className="bg-gradient-to-r from-gray-50 to-blue-50/30 px-6 py-4 border-b border-gray-100">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -273,9 +310,7 @@ export default function Rentals() {
           </div>
         </div>
 
-        {/* Main Content */}
         <div className="p-6">
-          {/* Camera Image and Description */}
           <div className="flex gap-4 mb-6">
             <div className="w-24 h-24 bg-gray-100 rounded-xl overflow-hidden flex-shrink-0">
               {!imgBroken && cameraImage ? (
@@ -314,7 +349,6 @@ export default function Rentals() {
             </div>
           </div>
 
-          {/* Rental Details */}
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div className="bg-gray-50 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
@@ -341,7 +375,7 @@ export default function Rentals() {
                 <div>
                   <div className="text-sm font-semibold text-gray-900">₱{Number(rental.total_price).toFixed(2)}</div>
                   {days && (
-                    <div className="text-xs text-gray-600">≈ ₱{(Number(rental.total_price) / days).toFixed(2)}/day</div>
+                    <div className="text-xs text-gray-600">≈ ₱{Number(rental.price_per_day).toFixed(2)}/day</div>
                   )}
                 </div>
               ) : (
@@ -350,7 +384,6 @@ export default function Rentals() {
             </div>
           </div>
 
-          {/* Countdown Timer */}
           {(showCountdownToEnd || showCountdownToStart) && (
             <div
               className={`rounded-xl border p-4 mb-6 ${
@@ -377,13 +410,14 @@ export default function Rentals() {
               </div>
               {(soonEnd || soonStart) && (
                 <p className="text-xs text-amber-700 mt-1">
-                  Reminder: Please prepare for {soonEnd ? "return" : "delivery/receipt"}.
+                  {showCountdownToEnd && countdownToEnd && countdownToEnd.ms <= 0
+                    ? "Rental period has ended. Please return the item soon."
+                    : `Reminder: Please prepare for ${soonEnd ? "return" : "delivery"}.`}
                 </p>
               )}
             </div>
           )}
 
-          {/* Shipping Progress */}
           <div className="mb-6">
             <h4 className="text-sm font-medium text-gray-700 mb-3">Shipping Progress</h4>
             <div className="relative">
@@ -427,7 +461,6 @@ export default function Rentals() {
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex flex-wrap gap-3">
             {rental.contract_pdf_url && (
               <button
@@ -499,7 +532,6 @@ export default function Rentals() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-blue-600 bg-clip-text text-transparent">
             My Rentals
@@ -507,7 +539,6 @@ export default function Rentals() {
           <p className="text-gray-600 mt-2">Track your camera rentals and manage deliveries</p>
         </div>
 
-        {/* Filters */}
         <div className="mb-8">
           <div className="inline-flex rounded-2xl border border-gray-200 bg-white/80 backdrop-blur-sm p-1 shadow-sm">
             {[
@@ -531,7 +562,6 @@ export default function Rentals() {
           </div>
         </div>
 
-        {/* Error Message */}
         {error && (
           <div className="mb-8 bg-red-50 border border-red-200 rounded-2xl p-4">
             <div className="flex items-start gap-3">
@@ -547,7 +577,6 @@ export default function Rentals() {
           </div>
         )}
 
-        {/* Rentals Grid */}
         {displayedRentals.length === 0 ? (
           <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-2xl p-12 text-center">
             <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
