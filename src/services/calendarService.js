@@ -56,3 +56,55 @@ export async function getAvailableCamerasForDates(startDate, endDate) {
   }
 }
 
+
+// Fetch rentals that overlap a given date range (inclusive) for all cameras
+// statusFilter defaults to pending/confirmed/active to focus on actionable bookings
+export async function getRentalsForDateRange(startDate, endDate, statusFilter = [
+  'pending', 'confirmed', 'active'
+]) {
+  try {
+    const { data, error } = await supabase
+      .from('rentals')
+      .select(`
+        id,
+        camera_id,
+        user_id,
+        start_date,
+        end_date,
+        rental_status,
+        total_price,
+        price_per_day,
+        created_at,
+        cameras ( id, name, image_url ),
+        users!rentals_user_id_fkey ( id, first_name, last_name, email, contact_number )
+      `)
+      .in('rental_status', statusFilter)
+      .lte('start_date', endDate)
+      .gte('end_date', startDate)
+      .order('start_date', { ascending: true });
+
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error in getRentalsForDateRange:', error);
+    return { data: null, error: error.message || 'Failed to fetch rentals.' };
+  }
+}
+
+// Utility to group rentals by camera_id for quick lookup
+export function groupRentalsByCamera(rentals = []) {
+  return rentals.reduce((acc, rental) => {
+    const key = rental.camera_id;
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(rental);
+    return acc;
+  }, {});
+}
+
+// Recommendation: create indexes in Supabase for faster calendar queries
+// Suggested (run in Supabase SQL editor):
+// CREATE INDEX IF NOT EXISTS rentals_camera_id_idx ON rentals(camera_id);
+// CREATE INDEX IF NOT EXISTS rentals_start_date_idx ON rentals(start_date);
+// CREATE INDEX IF NOT EXISTS rentals_end_date_idx ON rentals(end_date);
+// CREATE INDEX IF NOT EXISTS rentals_status_idx ON rentals(rental_status);
+// CREATE INDEX IF NOT EXISTS rentals_camera_date_idx ON rentals(camera_id, start_date, end_date);
