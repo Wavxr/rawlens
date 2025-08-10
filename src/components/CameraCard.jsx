@@ -32,7 +32,7 @@ const CameraCard = ({ camera, onRentClick }) => {
           </h4>
           {camera.camera_pricing_tiers && camera.camera_pricing_tiers.length > 0 ? (
             <p className="text-lg font-bold text-gray-900">
-              ₱{Math.min(...camera.camera_pricing_tiers.map(t => t.price_per_day)).toFixed(2)}/day
+              ₱{camera.camera_pricing_tiers[0].price_per_day.toFixed(2)}/day
             </p>
           ) : (
             <p className="text-gray-500 text-sm">Pricing not available</p>

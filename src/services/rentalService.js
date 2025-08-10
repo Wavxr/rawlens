@@ -25,7 +25,7 @@ export async function calculateTotalPrice(cameraId, startDate, endDate) {
     .order('min_days', { ascending: true });
 
   if (error) {
-    console.error("Error fetching pricing tiers from Supabase:", error); // Good for debugging
+    console.error("Error fetching pricing tiers from Supabase:", error);
     throw new Error("Failed to fetch camera pricing information.");
   }
 
@@ -41,9 +41,10 @@ export async function calculateTotalPrice(cameraId, startDate, endDate) {
     throw new Error(`No pricing tier found for a rental of ${rentalDays} days for camera ID ${cameraId}.`);
   }
 
-  const totalPrice = rentalDays * applicableTier.price_per_day;
+  const pricePerDay = applicableTier.price_per_day;
+  const totalPrice = rentalDays * pricePerDay;
 
-  return totalPrice;
+  return { totalPrice, pricePerDay, rentalDays };
 }
 
 
@@ -106,7 +107,7 @@ export async function createUserRentalRequest(bookingData) {
     }
 
     // --- PRICE CALCULATION ---
-    const totalPrice = await calculateTotalPrice(cameraId, startDate, endDate);
+    const { totalPrice, pricePerDay, rentalDays } = await calculateTotalPrice(cameraId, startDate, endDate);
 
     // --- DATABASE INSERTION ---
     const { data, error: insertError } = await supabase
@@ -117,6 +118,7 @@ export async function createUserRentalRequest(bookingData) {
         start_date: startDate,
         end_date: endDate,
         total_price: totalPrice,
+        price_per_day: pricePerDay,
         booking_type: 'registered_user',
         rental_status: 'pending',
         contract_pdf_url: contractPdfUrl, 

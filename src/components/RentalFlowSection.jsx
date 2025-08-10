@@ -65,29 +65,7 @@ const RentalFlowSection = ({ onBackToBrowse }) => {
     }
 
     try {
-      const totalPrice = await calculateTotalPrice(cameraId, start, end);
-      const rentalDays = calculateRentalDays(start, end);
-
-      let pricePerDay = 0;
-      if (rentalDays > 0) {
-        pricePerDay = totalPrice / rentalDays;
-      }
-
-      try {
-        const { data: cameraData, error: tierError } = await getCamera(cameraId);
-        if (!tierError) {
-          const tiers = cameraData.camera_pricing_tiers;
-          const applicableTier = tiers.find(tier =>
-            rentalDays >= tier.min_days && (tier.max_days === null || rentalDays <= tier.max_days)
-          );
-          if (applicableTier) {
-            pricePerDay = applicableTier.price_per_day;
-          }
-        }
-      } catch (tierFetchError) {
-        console.error("Error fetching tier for display:", tierFetchError);
-      }
-
+      const { totalPrice, pricePerDay, rentalDays } = await calculateTotalPrice(cameraId, start, end);
       setCalculatedPrice({
         days: rentalDays,
         pricePerDay: pricePerDay,

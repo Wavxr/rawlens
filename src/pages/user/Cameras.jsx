@@ -45,19 +45,32 @@ export default function UserCameras() {
       try {
         setLoading(true);
         setError(null); // Clear previous errors
+  
         const { data: camerasWithPricing, error: pricingError } = await getAllCameras();
         if (pricingError) {
           throw new Error(pricingError.message);
         }
+
+        const sortedCameras = (camerasWithPricing || []).map(camera => ({
+          ...camera,
+          camera_pricing_tiers: [...camera.camera_pricing_tiers].sort(
+            (a, b) => a.min_days - b.min_days
+          )
+        }));
+  
         const camerasWithFullData = await Promise.all(
-          (camerasWithPricing || []).map(async (camera) => {
+          sortedCameras.map(async (camera) => {
             const trimmedCamera = {
               ...camera,
               image_url: camera.image_url ? camera.image_url.trim() : null
             };
-            const { data: cameraWithInclusions, error: inclusionsError } = await getCameraWithInclusions(trimmedCamera.id);
+            const { data: cameraWithInclusions, error: inclusionsError } =
+              await getCameraWithInclusions(trimmedCamera.id);
             if (inclusionsError) {
-              console.warn(`Error fetching inclusions for camera ${trimmedCamera.id}:`, inclusionsError);
+              console.warn(
+                `Error fetching inclusions for camera ${trimmedCamera.id}:`,
+                inclusionsError
+              );
               return { ...trimmedCamera, inclusions: [] };
             }
             return {
@@ -66,24 +79,20 @@ export default function UserCameras() {
             };
           })
         );
-        setCameras(camerasWithFullData); // This also sets displayedCameras initially
-        // setDisplayedCameras(camerasWithFullData); // Handled by setCameras action
+  
+        setCameras(camerasWithFullData);
       } catch (err) {
         console.error("Failed to load cameras:", err);
-        setError('Failed to load cameras. Please try again later.');
-        setDisplayedCameras([]); // Ensure displayedCameras is cleared on error
+        setError("Failed to load cameras. Please try again later.");
+        setDisplayedCameras([]);
       } finally {
         setLoading(false);
       }
     };
-
+  
     fetchCameras();
-
-    // Optional: Cleanup/reset on unmount
-    // return () => {
-    //   resetStore();
-    // };
-  }, [setCameras, setDisplayedCameras, setLoading, setError]); // Add store actions as dependencies
+  }, [setCameras, setDisplayedCameras, setLoading, setError]);
+  
 
   // --- Handlers for CameraBrowserSection ---
   const handleApplyFilter = async () => {
