@@ -1,7 +1,9 @@
   // src/App.jsx
   import { Routes, Route } from 'react-router-dom';
+  import { useEffect } from 'react';
   import ProtectedRoute from './components/ProtectedRoute';
   import RedirectRoute from './components/RedirectRoute';
+  import useThemeStore from './stores/useThemeStore';
 
   // Pages
   import Landing from './pages/Landing';
@@ -27,6 +29,13 @@
   import UserProfile from './pages/user/Profile';
 
   function App() {
+    const { theme } = useThemeStore();
+
+    // Apply theme class to the root element
+    useEffect(() => {
+      document.documentElement.classList.toggle('dark', theme === 'dark');
+    }, [theme]);
+
     return (
       <Routes>
         {/* Public Page */}

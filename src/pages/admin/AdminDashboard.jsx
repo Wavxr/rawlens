@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react"
 import { Outlet, useNavigate, useLocation } from "react-router-dom"
 import useAuthStore from "../../stores/useAuthStore"
+import useThemeStore from '../../stores/useThemeStore'
 import {
   Camera,
   Users,
@@ -9,9 +10,7 @@ import {
   Menu,
   X,
   Settings,
-  BarChart3,
   Package,
-  Tag,
   ChevronDown,
   Home,
   Calendar,
@@ -19,6 +18,13 @@ import {
   HelpCircle,
   ChevronLeft,
   ChevronRight,
+  LayoutDashboard,
+  TrendingUp,
+  Map,
+  Layers,
+  PhilippinePeso,
+  Sun,
+  Moon
 } from "lucide-react"
 
 export default function AdminDashboard() {
@@ -35,16 +41,31 @@ export default function AdminDashboard() {
   }
 
   // Main navigation items for desktop sidebar
-const navigationItems = [
-  { name: "Dashboard", path: "/admin", icon: BarChart3, exact: true },
-  { name: "Cameras", path: "/admin/cameras", icon: Camera },
-  { name: "Inclusions", path: "/admin/inclusions", icon: Tag },
-  { name: "Users", path: "/admin/users", icon: Users },
-  { name: "Rentals", path: "/admin/rentals", icon: Package },
-  { name: "Delivery", path: "/admin/delivery", icon: Truck },
-  { name: "Calendar", path: "/admin/calendar", icon: Calendar },
-  { name: "Settings", path: "/admin/settings", icon: Settings }
+const navigationSections = [
+  {
+    title: "Statistics & Metrics",
+    items: [
+      { name: "Dashboard", path: "/admin", icon: LayoutDashboard, exact: true },
+      { name: "Booking Trends", path: "/admin/booking-trends", icon: TrendingUp },
+      { name: "Monthly Heatmaps", path: "/admin/heatmaps", icon: Map },
+      { name: "Revenue", path: "/admin/revenue", icon: PhilippinePeso }
+    ]
+  },
+  {
+    title: "Management",
+    items: [
+      { name: "Cameras", path: "/admin/cameras", icon: Camera },
+      { name: "Inclusions", path: "/admin/inclusions", icon: Layers },
+      { name: "Users", path: "/admin/users", icon: Users },
+      { name: "Rentals", path: "/admin/rentals", icon: Package },
+      { name: "Delivery", path: "/admin/delivery", icon: Truck },
+      { name: "Settings", path: "/admin/settings", icon: Settings }
+    ]
+  }
 ];
+
+// Flattened navigation items for mobile view
+const navigationItems = navigationSections.flatMap(section => section.items);
 
 // Navigation items for mobile bottom bar (usually a subset)
 const mobileNavigationItems = [
@@ -92,10 +113,13 @@ const mobileNavigationItems = [
     return currentItem?.name || "Dashboard"
   }
 
+  // Theme toggle
+  const { theme, toggleTheme } = useThemeStore()
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-gray-950 to-gray-900 text-white overflow-hidden">
-      {/* Mobile Header */}
-      <header className="lg:hidden bg-gray-900/95 backdrop-blur-md border-b border-gray-800/50 px-4 py-3 flex items-center justify-between sticky top-0 z-50 shadow-xl">
+      {/* Mobile Header - Sticky */}
+      <header className="lg:hidden bg-gray-900/95 backdrop-blur-md border-b border-gray-800/50 px-4 py-3 flex items-center justify-between fixed top-0 left-0 right-0 z-50 shadow-xl h-16">
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-lg">
             <Camera className="h-4 w-4 text-white" />
@@ -115,7 +139,7 @@ const mobileNavigationItems = [
           </button>
         </div>
       </header>
-      <div className="flex">
+      <div className="flex pt-16 lg:pt-0">
         {/* Desktop Sidebar */}
         <aside
           className={`hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 transition-all duration-300 ease-in-out z-40 ${
@@ -161,46 +185,57 @@ const mobileNavigationItems = [
             </div>
             {/* Navigation */}
             <nav className={`flex-1 py-6 space-y-2 overflow-hidden ${sidebarCollapsed ? "px-3" : "px-4"}`}>
-              {navigationItems.map((item) => {
-                const isActive = isActiveRoute(item.path, item.exact)
-                return (
-                  <div key={item.path} className="relative group">
-                    <button
-                      onClick={() => navigate(item.path)}
-                      className={`w-full flex items-center text-left rounded-xl transition-all duration-200 relative ${
-                        sidebarCollapsed ? "px-3 py-4 justify-center" : "px-4 py-3"
-                      } ${
-                        isActive
-                          ? sidebarCollapsed
-                            ? "bg-gradient-to-r from-blue-600/30 to-blue-500/20 text-blue-400 border border-blue-600/40 shadow-lg shadow-blue-500/20"
-                            : "bg-gradient-to-r from-blue-600/20 to-blue-500/10 text-blue-400 border border-blue-600/30 shadow-lg"
-                          : sidebarCollapsed
-                            ? "text-gray-400 hover:bg-gray-800/60 hover:text-white hover:border-gray-600/50 border border-transparent"
-                            : "text-gray-300 hover:bg-gray-800/50 hover:text-white"
-                      }`}
-                      title={sidebarCollapsed ? item.name : ""}
-                    >
-                      <item.icon
-                        className={`${sidebarCollapsed ? "h-6 w-6" : "h-5 w-5"} ${
-                          isActive ? "text-blue-400" : "text-gray-400"
-                        } transition-colors`}
-                      />
-                      {!sidebarCollapsed && <span className="ml-3 font-medium">{item.name}</span>}
-                      {/* Active indicator for collapsed state */}
-                      {sidebarCollapsed && isActive && (
-                        <div className="absolute -right-1 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-blue-400 rounded-l-full"></div>
-                      )}
-                    </button>
-                    {/* Enhanced tooltip for collapsed state */}
-                    {sidebarCollapsed && (
-                      <div className="absolute left-full ml-3 top-1/2 transform -translate-y-1/2 bg-gray-800/95 backdrop-blur-xl text-white text-sm px-4 py-2 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none whitespace-nowrap z-50 border border-gray-700/50">
-                        {item.name}
-                        <div className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1 w-2 h-2 bg-gray-800/95 rotate-45 border-l border-b border-gray-700/50"></div>
-                      </div>
-                    )}
+              {navigationSections.map((section, sectionIndex) => (
+                <div key={sectionIndex} className="mb-6">
+                  {!sidebarCollapsed && (
+                    <div className="px-4 mb-2">
+                      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        {section.title}
+                      </span>
+                    </div>
+                  )}
+                  <div className="space-y-1">
+                    {section.items.map((item) => {
+                      const isActive = isActiveRoute(item.path, item.exact)
+                      return (
+                        <div key={item.path} className="relative group">
+                          <button
+                            onClick={() => navigate(item.path)}
+                            className={`w-full flex items-center text-left rounded-xl transition-all duration-200 ${
+                              sidebarCollapsed ? "px-3 py-3 justify-center" : "px-4 py-2.5 mx-2"
+                            } ${
+                              isActive
+                                ? sidebarCollapsed
+                                  ? "bg-gradient-to-r from-blue-600/30 to-blue-500/20 text-blue-400 border border-blue-600/40 shadow-lg shadow-blue-500/20"
+                                  : "bg-gradient-to-r from-blue-600/20 to-blue-500/10 text-blue-400 border border-blue-600/30 shadow-lg"
+                                : sidebarCollapsed
+                                  ? "text-gray-400 hover:bg-gray-800/60 hover:text-white hover:border-gray-600/50 border border-transparent"
+                                  : "text-gray-300 hover:bg-gray-800/50 hover:text-white"
+                            }`}
+                            title={sidebarCollapsed ? item.name : ""}
+                          >
+                            <item.icon
+                              className={`${sidebarCollapsed ? "h-5 w-5" : "h-4 w-4"} ${
+                                isActive ? "text-blue-400" : "text-gray-400"
+                              } transition-colors`}
+                            />
+                            {!sidebarCollapsed && <span className="ml-3 text-sm font-medium">{item.name}</span>}
+                            {sidebarCollapsed && isActive && (
+                              <div className="absolute -right-1 top-1/2 transform -translate-y-1/2 w-1 h-6 bg-blue-400 rounded-l-full"></div>
+                            )}
+                          </button>
+                          {sidebarCollapsed && (
+                            <div className="absolute left-full ml-3 top-1/2 transform -translate-y-1/2 bg-gray-800/95 backdrop-blur-xl text-white text-sm px-4 py-2 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none whitespace-nowrap z-50 border border-gray-700/50">
+                              {item.name}
+                              <div className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1 w-2 h-2 bg-gray-800/95 rotate-45 border-l border-b border-gray-700/50"></div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                )
-              })}
+                </div>
+              ))}
             </nav>
             {/* User Profile */}
             <div className={`border-t border-gray-800/50 ${sidebarCollapsed ? "px-3 py-4" : "px-4 py-4"}`}>
@@ -326,8 +361,8 @@ const mobileNavigationItems = [
         <div
           className={`flex-1 transition-all duration-300 overflow-x-hidden ${sidebarCollapsed ? "lg:ml-20" : "lg:ml-72"}`}
         >
-          {/* Desktop Header Bar */}
-          <header className="hidden lg:block bg-gray-900/50 backdrop-blur-xl border-b border-gray-800/50 px-6 py-4 shadow-lg">
+          {/* Desktop Header Bar - Sticky */}
+          <header className="hidden lg:block bg-gray-900/50 backdrop-blur-xl border-b border-gray-800/50 px-6 py-4 shadow-lg sticky top-0 z-40">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <h1 className="text-2xl font-bold text-white">{getCurrentPageName()}</h1>
@@ -341,6 +376,19 @@ const mobileNavigationItems = [
                 </div>
               </div>
               <div className="flex items-center space-x-4">
+                {/* Theme Toggle */}
+                <button
+                  onClick={toggleTheme}
+                  className="p-2 rounded-full hover:bg-gray-700/50 transition-colors duration-200"
+                  aria-label="Toggle theme"
+                >
+                  {theme === 'dark' ? (
+                    <Sun className="h-5 w-5 text-yellow-400" />
+                  ) : (
+                    <Moon className="h-5 w-5 text-gray-700" />
+                  )}
+                </button>
+                
                 {/* User Avatar */}
                 <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg cursor-pointer hover:shadow-xl transition-all duration-200">
                   A
@@ -349,7 +397,7 @@ const mobileNavigationItems = [
             </div>
           </header>
           {/* Page Content */}
-          <main className="w-full h-full p-4 overflow-auto">
+          <main className="w-full h-[calc(100vh-4rem)] lg:h-[calc(100vh-4rem)] p-4 overflow-auto">
             <div className="max-w-7xl mx-auto">
               <Outlet />
             </div>
