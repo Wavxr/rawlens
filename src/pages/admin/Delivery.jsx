@@ -108,6 +108,14 @@ export default function Delivery() {
   const [allRentals, setAllRentals] = useState([])
   const [rentals, setRentals] = useState([])
   const [actionLoading, setActionLoading] = useState({})
+  const [filterCounts, setFilterCounts] = useState({
+    needs_action: 0,
+    outbound: 0,
+    delivered: 0,
+    returns: 0,
+    returned: 0,
+    none: 0
+  })
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedShippingFilter, setSelectedShippingFilter] = useState("needs_action")
   const cardRefs = useRef({})
@@ -193,7 +201,47 @@ export default function Delivery() {
     }
   }
 
+  // Calculate filter counts based on all rentals
+  const calculateFilterCounts = (rentals) => {
+    const counts = {
+      needs_action: 0,
+      outbound: 0,
+      delivered: 0,
+      returns: 0,
+      returned: 0,
+      none: 0
+    }
+
+    const needsAdminAction = (r) =>
+      (r.rental_status === "confirmed" && (!r.shipping_status || r.shipping_status === "ready_to_ship")) ||
+      r.shipping_status === "in_transit_to_owner"
+
+    rentals.forEach(rental => {
+      if (needsAdminAction(rental)) {
+        counts.needs_action++
+      } else if (["ready_to_ship", "in_transit_to_user"].includes(rental.shipping_status)) {
+        counts.outbound++
+      } else if (rental.shipping_status === "delivered") {
+        counts.delivered++
+      } else if (["return_scheduled", "in_transit_to_owner"].includes(rental.shipping_status)) {
+        counts.returns++
+      } else if (rental.shipping_status === "returned") {
+        counts.returned++
+      } else if (!rental.shipping_status) {
+        counts.none++
+      }
+    })
+
+    return counts
+  }
+
   useEffect(() => {
+    // Update filter counts whenever allRentals changes
+    if (allRentals.length > 0) {
+      const counts = calculateFilterCounts(allRentals)
+      setFilterCounts(counts)
+    }
+
     let filtered = allRentals
     const needsAdminAction = (r) =>
       (r.rental_status === "confirmed" && (!r.shipping_status || r.shipping_status === "ready_to_ship")) ||
@@ -546,6 +594,7 @@ export default function Delivery() {
                 onClick={() => setSelectedShippingFilter(filter.key)}
                 className={`
                   px-4 py-2 rounded-lg text-sm font-medium border transition-all duration-200
+                  flex items-center gap-2
                   ${
                     selectedShippingFilter === filter.key
                       ? "bg-blue-600 text-white border-blue-600 shadow-sm"
@@ -553,7 +602,16 @@ export default function Delivery() {
                   }
                 `}
               >
-                {filter.label}
+                <span>{filter.label}</span>
+                <span 
+                  className={`inline-flex items-center justify-center min-w-5 h-5 rounded-full text-xs font-medium ${
+                    selectedShippingFilter === filter.key 
+                      ? 'bg-white/20' 
+                      : 'bg-gray-600/50 text-gray-200'
+                  }`}
+                >
+                  {filterCounts[filter.key] || 0}
+                </span>
               </button>
             ))}
           </div>
