@@ -39,8 +39,12 @@ export default function Cameras() {
     description: "",
     pricePerDay: "",
     discountedPricePerDay: "",
-    available: true,
     image_url: "",
+    serial_number: "",
+    purchase_date: "",
+    cost: "",
+    camera_status: "available",
+    camera_condition: "good"
   })
   const [image, setImage] = useState(null)
   const [cameras, setCameras] = useState([])
@@ -150,8 +154,12 @@ export default function Cameras() {
       description: "",
       pricePerDay: "",
       discountedPricePerDay: "",
-      available: true,
       image_url: "",
+      serial_number: "",
+      purchase_date: "",
+      cost: "",
+      camera_status: "available",
+      camera_condition: "good"
     })
     setImage(null)
     setImagePreview(null)
@@ -237,8 +245,12 @@ export default function Cameras() {
       description: cam.description,
       pricePerDay: standardTier ? standardTier.price_per_day : "",
       discountedPricePerDay: discountedTier ? discountedTier.price_per_day : "",
-      available: cam.available,
       image_url: cam.image_url,
+      serial_number: cam.serial_number || "",
+      purchase_date: cam.purchase_date ? cam.purchase_date.split('T')[0] : "",
+      cost: cam.cost || "",
+      camera_status: cam.camera_status || "available",
+      camera_condition: cam.camera_condition || "good"
     }
 
     // Handle potential errors in fetching inclusions (separate from pricing)
@@ -312,7 +324,7 @@ export default function Cameras() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-gradient-to-br from-gray-900/80 to-gray-800/50 backdrop-blur-xl border border-gray-700/50 rounded-xl p-4 hover:border-gray-600/50 transition-all duration-200">
           <div className="flex items-center justify-between">
             <div className="space-y-1">
@@ -329,7 +341,7 @@ export default function Cameras() {
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-gray-400 text-xs font-medium">Available</p>
-              <p className="text-xl font-bold text-green-400">{cameras.filter((cam) => cam.available).length}</p>
+              <p className="text-xl font-bold text-green-400">{cameras.filter((cam) => cam.camera_status === 'available').length}</p>
               <p className="text-xs text-gray-500">Ready to rent</p>
             </div>
             <div className="bg-green-600/20 p-2 rounded-lg border border-green-600/30">
@@ -340,12 +352,37 @@ export default function Cameras() {
         <div className="bg-gradient-to-br from-gray-900/80 to-gray-800/50 backdrop-blur-xl border border-gray-700/50 rounded-xl p-4 hover:border-gray-600/50 transition-all duration-200">
           <div className="flex items-center justify-between">
             <div className="space-y-1">
-              <p className="text-gray-400 text-xs font-medium">Rented Out</p>
-              <p className="text-xl font-bold text-orange-400">{cameras.filter((cam) => !cam.available).length}</p>
-              <p className="text-xs text-gray-500">Currently in use</p>
+              <p className="text-gray-400 text-xs font-medium">In Use</p>
+              <p className="text-xl font-bold text-orange-400">
+                {cameras.filter((cam) => ['booked', 'out'].includes(cam.camera_status)).length}
+              </p>
+              <p className="text-xs text-gray-500">Booked or out</p>
             </div>
             <div className="bg-orange-600/20 p-2 rounded-lg border border-orange-600/30">
               <Star className="h-5 w-5 text-orange-400" />
+            </div>
+          </div>
+        </div>
+        <div className="bg-gradient-to-br from-gray-900/80 to-gray-800/50 backdrop-blur-xl border border-gray-700/50 rounded-xl p-4 hover:border-gray-600/50 transition-all duration-200">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-gray-400 text-xs font-medium">Maintenance</p>
+              <p className="text-xl font-bold text-yellow-400">
+                {cameras.filter((cam) => cam.camera_status === 'under_maintenance').length}
+              </p>
+              <p className="text-xs text-gray-500">Under service</p>
+            </div>
+            <div className="bg-yellow-600/20 p-2 rounded-lg border border-yellow-600/30">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-400">
+                <path d="M12 2v4"></path>
+                <path d="m16.2 7.8 2.9-2.9"></path>
+                <path d="M18 12h4"></path>
+                <path d="m16.2 16.2 2.9 2.9"></path>
+                <path d="M12 18v4"></path>
+                <path d="m4.9 19.1 2.9-2.9"></path>
+                <path d="M2 12h4"></path>
+                <path d="m4.9 4.9 2.9 2.9"></path>
+              </svg>
             </div>
           </div>
         </div>
@@ -481,6 +518,28 @@ export default function Cameras() {
                             className="w-full px-3 py-2 bg-gray-800/60 border border-gray-600/40 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500/50 text-sm"
                           />
                         </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-xs font-medium text-gray-300 mb-1 block">Serial Number</label>
+                            <input
+                              name="serial_number"
+                              value={camera.serial_number}
+                              onChange={handleChange}
+                              placeholder="e.g., SN12345678"
+                              className="w-full px-3 py-2 bg-gray-800/60 border border-gray-600/40 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500/50 text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium text-gray-300 mb-1 block">Purchase Date</label>
+                            <input
+                              type="date"
+                              name="purchase_date"
+                              value={camera.purchase_date}
+                              onChange={handleChange}
+                              className="w-full px-3 py-2 bg-gray-800/60 border border-gray-600/40 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500/50 text-sm"
+                            />
+                          </div>
+                        </div>
                         <div>
                           <label className="text-xs font-medium text-gray-300 mb-1 block">Description *</label>
                           <textarea
@@ -500,7 +559,7 @@ export default function Cameras() {
                     <div className="bg-gray-800/30 border border-gray-700/40 rounded-xl p-4">
                       <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
                         <DollarSign className="h-4 w-4 text-green-400" />
-                        Pricing Tiers
+                        Pricing & Status
                       </h3>
                       <div className="space-y-3">
                         <div>
@@ -542,6 +601,49 @@ export default function Cameras() {
                               className="w-full pl-7 pr-3 py-2 bg-gray-800/60 border border-gray-600/40 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-green-500/50 text-sm"
                             />
                           </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-xs font-medium text-gray-300 mb-1 block">Cost (₱)</label>
+                            <input
+                              type="number"
+                              name="cost"
+                              value={camera.cost}
+                              onChange={handleChange}
+                              step="0.01"
+                              placeholder="0.00"
+                              className="w-full px-3 py-2 bg-gray-800/60 border border-gray-600/40 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500/50 text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium text-gray-300 mb-1 block">Status</label>
+                            <select
+                              name="camera_status"
+                              value={camera.camera_status}
+                              onChange={handleChange}
+                              className="w-full px-3 py-2 bg-gray-800/60 border border-gray-600/40 rounded-lg text-white focus:outline-none focus:ring-1 focus:ring-blue-500/50 text-sm"
+                            >
+                              <option value="available">Available</option>
+                              <option value="booked">Booked</option>
+                              <option value="out">Out</option>
+                              <option value="under_maintenance">Under Maintenance</option>
+                              <option value="retired">Retired</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-gray-300 mb-1 block">Condition</label>
+                          <select
+                            name="camera_condition"
+                            value={camera.camera_condition}
+                            onChange={handleChange}
+                            className="w-full px-3 py-2 bg-gray-800/60 border border-gray-600/40 rounded-lg text-white focus:outline-none focus:ring-1 focus:ring-blue-500/50 text-sm"
+                          >
+                            <option value="excellent">Excellent</option>
+                            <option value="good">Good</option>
+                            <option value="fair">Fair</option>
+                            <option value="poor">Poor</option>
+                          </select>
                         </div>
                       </div>
                     </div>
@@ -740,12 +842,19 @@ export default function Cameras() {
                       <div className="absolute top-2 right-2">
                         <span
                           className={`px-2 py-1 rounded-full text-xs font-semibold border backdrop-blur-sm ${
-                            cam.available
+                            cam.camera_status === 'available'
                               ? "bg-green-500/90 text-white border-green-400/50 shadow-lg"
-                              : "bg-red-500/90 text-white border-red-400/50 shadow-lg"
+                              : cam.camera_status === 'under_maintenance'
+                              ? "bg-yellow-500/90 text-white border-yellow-400/50 shadow-lg"
+                              : cam.camera_status === 'retired'
+                              ? "bg-gray-500/90 text-white border-gray-400/50 shadow-lg"
+                              : "bg-blue-500/90 text-white border-blue-400/50 shadow-lg"
                           }`}
                         >
-                          {cam.available ? "Available" : "Rented"}
+                          {cam.camera_status === 'available' ? 'Available' : 
+                           cam.camera_status === 'booked' ? 'Booked' : 
+                           cam.camera_status === 'out' ? 'Out' : 
+                           cam.camera_status === 'under_maintenance' ? 'Maintenance' : 'Retired'}
                         </span>
                       </div>
                       <div className="absolute bottom-2 left-2 right-2">
@@ -807,12 +916,19 @@ export default function Cameras() {
                             <span className="text-blue-400 font-semibold text-sm">₱{displayPrice}/day</span>
                             <span
                               className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                                cam.available
+                                cam.camera_status === 'available'
                                   ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                                  : "bg-red-500/20 text-red-400 border border-red-500/30"
+                                  : cam.camera_status === 'under_maintenance'
+                                  ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
+                                  : cam.camera_status === 'retired'
+                                  ? "bg-gray-500/20 text-gray-400 border border-gray-500/30"
+                                  : "bg-blue-500/20 text-blue-400 border border-blue-500/30"
                               }`}
                             >
-                              {cam.available ? "Available" : "Rented"}
+                              {cam.camera_status === 'available' ? 'Available' : 
+                               cam.camera_status === 'booked' ? 'Booked' : 
+                               cam.camera_status === 'out' ? 'Out' : 
+                               cam.camera_status === 'under_maintenance' ? 'Maintenance' : 'Retired'}
                             </span>
                           </div>
                         </div>

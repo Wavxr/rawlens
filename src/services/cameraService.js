@@ -7,8 +7,12 @@ const CAMERA_SELECT_QUERY = `
   name,
   description,
   image_url,
-  available,
   created_at,
+  serial_number,
+  purchase_date,
+  cost,
+  camera_status,
+  camera_condition,
   camera_pricing_tiers (
     id,
     camera_id,
@@ -57,7 +61,11 @@ export async function insertCamera(cameraData, imageFile) {
         name: cameraData.name.trim(),
         description: cameraData.description.trim(),
         image_url: imageUrl,
-        available: true,
+        serial_number: cameraData.serial_number || null,
+        purchase_date: cameraData.purchase_date || null,
+        cost: cameraData.cost ? parseFloat(cameraData.cost) : null,
+        camera_status: cameraData.camera_status || 'available',
+        camera_condition: cameraData.camera_condition || null
       })
       .select();
 
@@ -133,7 +141,11 @@ export async function updateCamera(id, cameraData, imageFile = null) {
         name: cameraData.name.trim(),
         description: cameraData.description.trim(),
         image_url: imageUrl,
-        available: Boolean(cameraData.available),
+        serial_number: cameraData.serial_number || null,
+        purchase_date: cameraData.purchase_date || null,
+        cost: cameraData.cost ? parseFloat(cameraData.cost) : null,
+        camera_status: cameraData.camera_status || 'available',
+        camera_condition: cameraData.camera_condition || null
       })
       .eq("id", id);
 
