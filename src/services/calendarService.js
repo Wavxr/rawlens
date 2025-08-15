@@ -31,11 +31,11 @@ export async function checkCameraAvailability(cameraId, startDate, endDate) {
 // Find all cameras available for a specific date range.
 export async function getAvailableCamerasForDates(startDate, endDate) {
   try {
-    // 1. Get all available cameras
+    // 1. Get all cameras that are not marked as unavailable
     const { data: allCameras, error: cameraError } = await supabase
       .from('cameras')
-      .select('id, name, image_url, description')
-      .eq('available', true);
+      .select('id, name, image_url, description, camera_status')
+      .neq('camera_status', 'unavailable');
 
     if (cameraError) throw cameraError;
 

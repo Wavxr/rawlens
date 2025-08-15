@@ -151,8 +151,20 @@ export async function getCameraWithInclusions(cameraId) {
         name,
         description,
         image_url,
-        available,
         created_at,
+        serial_number,
+        purchase_date,
+        cost,
+        camera_status,
+        camera_condition,
+        camera_pricing_tiers (
+          id,
+          camera_id,
+          min_days,
+          max_days,
+          price_per_day,
+          description
+        ),
         camera_inclusions (
           quantity,
           inclusion_item_id,
