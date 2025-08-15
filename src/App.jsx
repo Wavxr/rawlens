@@ -13,6 +13,7 @@
 
   // Admin
   import AdminDashboard from './pages/admin/AdminDashboard';
+  import Dashboard from './pages/admin/Dashboard';
   import AdminCameras from './pages/admin/Cameras';
   import AdminUsers from './pages/admin/Users';
   import AdminInclusions from './pages/admin/Inclusions';
@@ -50,10 +51,10 @@
         {/* Admin Routes (only accessible to logged-in admin) */}
         <Route element={<ProtectedRoute requiredRole="admin" />}>
           <Route path="/admin" element={<AdminDashboard />}>
-            <Route index element={<AdminCameras />} />
+            <Route index element={<Dashboard />} />
             <Route path="cameras" element={<AdminCameras />} />
             <Route path="users" element={<AdminUsers />} />
-            <Route path="inclusions" element ={<AdminInclusions/>} />
+            <Route path="inclusions" element={<AdminInclusions/>} />
             <Route path="calendar" element={<AdminCalendar />} />
             <Route path="rentals" element={<AdminRentals />} />
             <Route path="delivery" element={<AdminDelivery />} />
