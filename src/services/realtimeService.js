@@ -9,47 +9,62 @@ import useRentalStore from '../stores/rentalStore';
  */
 export function subscribeToRentalUpdates(targetId, role = 'user') {
   if (!targetId && role === 'user') {
-    console.warn('No target ID provided for user realtime subscription.');
     return null;
   }
 
   const channel = supabase
-    .channel(`rentals_${role}_${targetId || 'all'}`)
-    .on(
-      'postgres_changes',
-      {
-        event: '*', // INSERT, UPDATE, DELETE
-        schema: 'public',
-        table: 'rentals'
-      },
-      async (payload) => {
-        console.log('[Realtime Update]', payload);
+  .channel(`rentals_${role}_${targetId || 'all'}`)
+  .on(
+    'postgres_changes',
+    {
+      event: '*',
+      schema: 'public',
+      table: 'rentals'
+    },
+    async (payload) => {
+      console.log('[Realtime Update]', payload);
 
-        const { new: newRow, old: oldRow, eventType } = payload;
-        const store = useRentalStore.getState();
+      const { new: newRow, old: oldRow, eventType } = payload;
+      const store = useRentalStore.getState();
 
-        // Filtering logic
+      // Handle DELETE events first (since they only have oldRow data)
+      if (eventType === 'DELETE') {
         if (role === 'user') {
-          if (newRow?.user_id !== targetId && oldRow?.user_id !== targetId) {
-            return; // Ignore other users' rentals
+          // Check if this was one of the user's rentals
+          if (store.isUserRental(oldRow.id)) {
+            store.removeRental(oldRow.id);
           }
-        }
-
-        // UPDATE or INSERT: merge or replace in store
-        if (eventType === 'INSERT') {
-          store.addOrUpdateRental(newRow);
-        } else if (eventType === 'UPDATE') {
-          store.addOrUpdateRental(newRow);
-        } else if (eventType === 'DELETE') {
+        } else {
           store.removeRental(oldRow.id);
         }
+        return;
       }
-    )
-    .subscribe((status) => {
-      console.log(`[Realtime] Subscription status for ${role}:`, status);
-    });
 
-  return channel;
+      // Handle INSERT and UPDATE events
+      if (role === 'user') {
+        // Only process rentals that belong to this user
+        if (newRow?.user_id !== targetId) {
+          return;
+        }
+      }
+
+      if (eventType === 'INSERT') {
+        store.addOrUpdateRental(newRow);
+      } else if (eventType === 'UPDATE') {
+        // Preserve existing enriched data like fullCamera
+        const existingRental = store.rentals.find(r => r.id === newRow.id);
+        const enrichedNewRow = existingRental 
+          ? { ...existingRental, ...newRow }
+          : newRow;
+        store.addOrUpdateRental(enrichedNewRow);
+      }
+    }
+  )
+  .subscribe((status) => {
+    console.log(`[Realtime] Subscription status for ${role}:`, status);
+  });
+
+return channel;
 }
 
 /**
@@ -59,6 +74,5 @@ export function subscribeToRentalUpdates(targetId, role = 'user') {
 export function unsubscribeFromRentalUpdates(channel) {
   if (channel) {
     supabase.removeChannel(channel);
-    console.log('[Realtime] Unsubscribed from channel');
   }
 }

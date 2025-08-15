@@ -1,10 +1,12 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, useRef } from "react"
 import useAuthStore from "../../stores/useAuthStore"
+import useRentalStore from "../../stores/rentalStore"
 import { getUserRentals } from "../../services/rentalService"
 import { userConfirmDelivered, userConfirmSentBack } from "../../services/deliveryService"
 import { getSignedContractUrl } from "../../services/pdfService"
+import { subscribeToRentalUpdates, unsubscribeFromRentalUpdates } from "../../services/realtimeService"
 import { getCameraWithInclusions } from "../../services/inclusionService"
 import {
   Package,
@@ -23,13 +25,14 @@ import {
 export default function Rentals() {
   const user = useAuthStore((s) => s.user)
   const authLoading = useAuthStore((s) => s.loading)
-  const [rentals, setRentals] = useState([])
+  const { rentals, setRentals, addOrUpdateRental, removeRental } = useRentalStore()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [actionLoading, setActionLoading] = useState({})
   const [contractViewLoading, setContractViewLoading] = useState({})
   const [contractViewError, setContractViewError] = useState({})
   const [activeFilter, setActiveFilter] = useState("all")
+  const subscriptionRef = useRef(null)
 
   const [now, setNow] = useState(Date.now())
 
@@ -40,9 +43,23 @@ export default function Rentals() {
 
   useEffect(() => {
     if (!authLoading && user?.id) {
+      // Initial data fetch
       refresh()
+      
+      // Subscribe to realtime updates
+      if (!subscriptionRef.current) {
+        subscriptionRef.current = subscribeToRentalUpdates(user.id, 'user')
+      }
+
+      // Cleanup on unmount
+      return () => {
+        if (subscriptionRef.current) {
+          unsubscribeFromRentalUpdates(subscriptionRef.current)
+          subscriptionRef.current = null
+        }
+      }
     }
-  }, [authLoading, user?.id])
+  }, [authLoading, user?.id, addOrUpdateRental, removeRental])
 
   async function refresh() {
     setLoading(true)
@@ -52,14 +69,24 @@ export default function Rentals() {
       if (fetchError) throw new Error(fetchError)
       const filtered = (data || []).filter((r) => !["pending", "rejected"].includes(r.rental_status))
 
+      // Get existing rentals to preserve any additional data like fullCamera
+      const existingRentals = useRentalStore.getState().rentals
+      
       const withDetails = await Promise.all(
         filtered.map(async (r) => {
+          // Find existing rental to preserve its data
+          const existingRental = existingRentals.find(er => er.id === r.id) || {}
+          
           try {
-            const { data: cam, error: camErr } = await getCameraWithInclusions(r.cameras?.id)
-            if (camErr) return r
-            return { ...r, fullCamera: cam }
+            // Only fetch camera details if we don't already have them
+            if (!existingRental.fullCamera) {
+              const { data: cam, error: camErr } = await getCameraWithInclusions(r.cameras?.id)
+              if (camErr) return { ...existingRental, ...r } // Merge with existing data
+              return { ...existingRental, ...r, fullCamera: cam } // Merge and add camera data
+            }
+            return { ...existingRental, ...r } // Just merge with existing data
           } catch {
-            return r
+            return { ...existingRental, ...r } // On error, still merge with existing data
           }
         }),
       )

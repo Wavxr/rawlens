@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import useAuthStore from '../../stores/useAuthStore';
-import { getUserRentals } from '../../services/rentalService';
+import useRentalStore from '../../stores/rentalStore';
+import { subscribeToRentalUpdates, unsubscribeFromRentalUpdates } from '../../services/realtimeService';
 import { Loader2, Calendar, Camera as CameraIcon, AlertCircle } from 'lucide-react';
 
 function formatDate(dateStr) {
@@ -87,33 +88,26 @@ const EmptyState = ({ title, subtitle }) => (
 
 const Requests = () => {
   const { user, loading: authLoading } = useAuthStore();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [rentals, setRentals] = useState([]);
+  const { rentals, loading, error, loadRentals } = useRentalStore();
+  const subscriptionRef = useRef(null);
 
+  // Load initial rentals and set up realtime subscription
   useEffect(() => {
-    let mounted = true;
-    async function load() {
-      if (!user) return;
-      setLoading(true);
-      setError('');
-      try {
-        const { data, error: fetchError } = await getUserRentals(user.id);
-        if (fetchError) throw new Error(fetchError);
-        if (!mounted) return;
-        setRentals(Array.isArray(data) ? data : []);
-      } catch (e) {
-        console.error(e);
-        if (mounted) setError(e.message || 'Failed to load your requests');
-      } finally {
-        if (mounted) setLoading(false);
+    if (!user?.id) return;
+    
+    // Load initial rentals
+    loadRentals(user.id);
+    
+    // Set up realtime subscription
+    subscriptionRef.current = subscribeToRentalUpdates(user.id, 'user');
+    
+    // Cleanup subscription on unmount or user change
+    return () => {
+      if (subscriptionRef.current) {
+        unsubscribeFromRentalUpdates(subscriptionRef.current);
       }
-    }
-    if (!authLoading) {
-      load();
-    }
-    return () => { mounted = false; };
-  }, [user, authLoading]);
+    };
+  }, [user?.id, loadRentals]);
 
   const { pending, confirmedUpcoming, rejected } = useMemo(() => {
     const groups = { pending: [], confirmedUpcoming: [], rejected: [] };
