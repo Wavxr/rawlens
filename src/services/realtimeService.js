@@ -23,8 +23,6 @@ export function subscribeToRentalUpdates(targetId, role = 'user') {
       table: 'rentals'
     },
     async (payload) => {
-      console.log('[Realtime Update]', payload);
-
       const { eventType } = payload;
       const rentalId = eventType === 'DELETE' ? payload.old.id : payload.new.id;
 
