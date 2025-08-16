@@ -49,7 +49,6 @@ export function subscribeToRentalUpdates(targetId, role = 'user') {
             return;
           }
           if (fullRental) {
-            console.log('[Realtime] Fetched full rental details:', fullRental);
             addOrUpdateRental(fullRental);
           }
           break;
@@ -63,7 +62,6 @@ export function subscribeToRentalUpdates(targetId, role = 'user') {
     }
   )
   .subscribe((status) => {
-    console.log(`[Realtime] Subscription status for ${role}:`, status);
   });
 
 return channel;

@@ -241,7 +241,6 @@ export default function Rentals() {
   }
 
   function RentalCard({ rental }) {
-    console.log('[RentalCard] Rendering with rental data:', rental);
     const currentStep = computeCurrentStep(rental)
     const steps = shippingSteps
     const cameraName = rental?.cameras?.name || "Camera"
