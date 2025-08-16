@@ -1,7 +1,9 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
-import { useSearchParams } from "react-router-dom"
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import useRentalStore from "../../stores/rentalStore";
+import { subscribeToRentalUpdates, unsubscribeFromRentalUpdates } from "../../services/realtimeService";
 import {
   Search,
   Package,
@@ -102,11 +104,10 @@ function formatDate(dateString) {
 }
 
 export default function Delivery() {
-  const { user } = useAuthStore()
-  const [searchParams] = useSearchParams()
-  const [loading, setLoading] = useState(true)
-  const [allRentals, setAllRentals] = useState([])
-  const [rentals, setRentals] = useState([])
+  const { user } = useAuthStore();
+  const [searchParams] = useSearchParams();
+  const { allRentals, loadAllRentals, loading } = useRentalStore();
+  const [rentals, setRentals] = useState([]);
   const [actionLoading, setActionLoading] = useState({})
   const [filterCounts, setFilterCounts] = useState({
     needs_action: 0,
@@ -124,8 +125,14 @@ export default function Delivery() {
   const [selectedUser, setSelectedUser] = useState(null)
 
   useEffect(() => {
-    fetchRentals()
-  }, [])
+    loadAllRentals();
+
+    const channel = subscribeToRentalUpdates(null, 'admin');
+
+    return () => {
+      unsubscribeFromRentalUpdates(channel);
+    };
+  }, [loadAllRentals]);
 
   // Handle deep linking from Rental page
   useEffect(() => {
@@ -174,21 +181,6 @@ export default function Delivery() {
       }
     }
   }, [searchParams, allRentals])
-
-  const fetchRentals = async () => {
-    setLoading(true)
-    try {
-      const result = await rentalService.getRentalsByStatus()
-      if (result.data) {
-        setAllRentals(result.data)
-        setRentals(result.data)
-      }
-    } catch (err) {
-      console.error("Error fetching rentals for delivery page:", err)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleViewDetails = async (rental) => {
     setSelectedRental(rental)
@@ -311,8 +303,7 @@ export default function Delivery() {
   const handleReadyToShip = async (rentalId) => {
     setBusy(rentalId, "ready")
     try {
-      await deliveryService.adminReadyCamera(rentalId, user?.id)
-      await fetchRentals()
+      await rentalService.updateShippingStatus(rentalId, "ready_to_ship");
     } catch (err) {
       console.error("Failed to mark ready_to_ship:", err)
     } finally {
@@ -323,8 +314,7 @@ export default function Delivery() {
   const handleTransitToUser = async (rentalId) => {
     setBusy(rentalId, "outbound")
     try {
-      await deliveryService.adminTransitToUser(rentalId, user?.id)
-      await fetchRentals()
+      await rentalService.updateShippingStatus(rentalId, "in_transit_to_user");
     } catch (err) {
       console.error("Failed to mark in_transit_to_user:", err)
     } finally {
@@ -335,8 +325,7 @@ export default function Delivery() {
   const handleConfirmReturned = async (rentalId) => {
     setBusy(rentalId, "returned")
     try {
-      await deliveryService.adminConfirmReturned(rentalId, user?.id)
-      await fetchRentals()
+      await rentalService.updateShippingStatus(rentalId, "returned", "returned_at");
     } catch (err) {
       console.error("Failed to confirm returned:", err)
     } finally {

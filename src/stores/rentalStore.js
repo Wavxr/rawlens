@@ -1,61 +1,75 @@
 import { create } from 'zustand';
-import { getUserRentals } from '../services/rentalService';
+import { getUserRentals, getRentalsByStatus } from '../services/rentalService';
 
 // Add this to your rentalStore
 const useRentalStore = create((set, get) => ({
   rentals: [],
+  allRentals: [],
   loading: false,
   error: null,
-  // Keep track of user rentals separately
-  userRentalIds: new Set(), 
-  
-  setRentals: (data) => set({ 
-    rentals: data,
-    userRentalIds: new Set(data.map(r => r.id))
-  }),
+
+  setRentals: (data) => set({ rentals: data }),
 
   addOrUpdateRental: (rental) =>
     set((state) => {
-      const exists = state.rentals.find((r) => r.id === rental.id);
-      let newRentals;
-      if (exists) {
-        newRentals = state.rentals.map((r) => (r.id === rental.id ? rental : r));
-      } else {
-        newRentals = [...state.rentals, rental];
-      }
+      const updateList = (list) => {
+        const index = list.findIndex((r) => r.id === rental.id);
+        if (index !== -1) {
+          const newList = [...list];
+          newList[index] = rental;
+          return newList;
+        } else {
+          return [...list, rental];
+        }
+      };
+
       return {
-        rentals: newRentals,
-        userRentalIds: new Set([...state.userRentalIds, rental.id])
+        rentals: updateList(state.rentals),
+        allRentals: updateList(state.allRentals),
       };
     }),
 
   removeRental: (id) =>
     set((state) => ({
       rentals: state.rentals.filter((r) => r.id !== id),
-      userRentalIds: new Set([...state.userRentalIds].filter(rentalId => rentalId !== id))
+      allRentals: state.allRentals.filter((r) => r.id !== id),
     })),
-    
-  // Add a method to check if a rental belongs to current user
-  isUserRental: (id) => get().userRentalIds.has(id),
-    
+
   loadRentals: async (userId) => {
     set({ loading: true, error: null });
     try {
       const { data, error } = await getUserRentals(userId);
       if (error) throw error;
-      set({ 
+      set({
         rentals: Array.isArray(data) ? data : [],
         loading: false,
-        userRentalIds: new Set(data.map(r => r.id))
       });
     } catch (error) {
       console.error('Failed to load rentals:', error);
-      set({ 
+      set({
         error: error.message || 'Failed to load rentals',
-        loading: false 
+        loading: false,
       });
     }
-  }
+  },
+
+  loadAllRentals: async () => {
+    set({ loading: true, error: null });
+    try {
+      const { data, error } = await getRentalsByStatus();
+      if (error) throw error;
+      set({
+        allRentals: Array.isArray(data) ? data : [],
+        loading: false,
+      });
+    } catch (error) {
+      console.error('Failed to load all rentals:', error);
+      set({
+        error: error.message || 'Failed to load all rentals',
+        loading: false,
+      });
+    }
+  },
 }));
 
 export default useRentalStore;

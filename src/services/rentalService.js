@@ -162,11 +162,7 @@ export async function updateRentalStatus(rentalId, statusUpdates) {
 // --- Simplified Workflow Functions using single rental_status ---
 export async function getRentalsByStatus(status = null) {
   try {
-    let query = supabase.from('rentals').select(`
-        *,
-        cameras (id, name, image_url),
-        users!rentals_user_id_fkey (id, first_name, last_name, email, contact_number)
-      `);
+    let query = supabase.from('rentals').select(DETAILED_RENTAL_QUERY);
 
     // Filter by rental status if provided
     if (status) {
@@ -269,15 +265,36 @@ export async function adminDeleteRental(rentalId) {
   }
 }
 
+// Reusable query for fetching detailed rental information
+const DETAILED_RENTAL_QUERY = `
+  *,
+  cameras (*, camera_inclusions (*, inclusion_items (*))),
+  users!rentals_user_id_fkey (id, first_name, last_name, email, contact_number)
+`;
+
+// Get a single rental by its ID with all details
+export async function getRentalById(rentalId) {
+  try {
+    const { data, error } = await supabase
+      .from('rentals')
+      .select(DETAILED_RENTAL_QUERY)
+      .eq('id', rentalId)
+      .single();
+
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    console.error(`Error fetching rental ${rentalId}:`, error);
+    return { data: null, error: error.message || "Failed to fetch rental." };
+  }
+}
+
 // Get user's rental
 export async function getUserRentals(userId) {
   try {
     const { data, error } = await supabase
       .from('rentals')
-      .select(`
-        *,
-        cameras (id, name, description, image_url)
-      `)
+      .select(DETAILED_RENTAL_QUERY)
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 

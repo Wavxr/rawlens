@@ -1,6 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect } from "react";
+import useRentalStore from "../../stores/rentalStore";
+import { subscribeToRentalUpdates, unsubscribeFromRentalUpdates } from "../../services/realtimeService";
 import { useNavigate } from "react-router-dom"
 import {
   Calendar,
@@ -23,10 +25,9 @@ import RentalStepper from "../../components/RentalStepper"
 import * as userService from "../../services/userService"
 
 export default function Rentals() {
-  const navigate = useNavigate()
-  const [rentals, setRentals] = useState([])
-  const [allRentals, setAllRentals] = useState([])
-  const [loading, setLoading] = useState(true)
+  const navigate = useNavigate();
+  const { allRentals, loadAllRentals, loading } = useRentalStore();
+  const [rentals, setRentals] = useState([]);
   const [actionLoading, setActionLoading] = useState({})
   const [contractViewLoading, setContractViewLoading] = useState({})
   const [contractViewError, setContractViewError] = useState({})
@@ -37,52 +38,16 @@ export default function Rentals() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null)
 
   useEffect(() => {
-    fetchAllRentals()
-  }, [])
+    loadAllRentals();
 
-  const fetchAllRentals = async () => {
-    setLoading(true)
-    try {
-      const result = await rentalService.getRentalsByStatus()
-      if (result.data) {
-        setAllRentals(result.data)
-        setRentals(result.data)
-      }
-    } catch (error) {
-      console.error("Error fetching rentals:", error)
-    } finally {
-      setLoading(false)
-    }
-  }
+    const channel = subscribeToRentalUpdates(null, 'admin');
 
-  const refreshRentalsData = async () => {
-    try {
-      const result = await rentalService.getRentalsByStatus()
-      if (result.data) {
-        setAllRentals(result.data)
-        let filtered = result.data
-        if (selectedStatus === "needs_action") {
-          filtered = filtered.filter(needsAdminAction)
-        } else {
-          filtered = filtered.filter((rental) => rental.rental_status === selectedStatus)
-        }
-        if (searchTerm) {
-          const searchLower = searchTerm.toLowerCase()
-          filtered = filtered.filter((rental) => {
-            const fullName = `${rental.users?.first_name || ""} ${rental.users?.last_name || ""}`.toLowerCase()
-            return (
-              fullName.includes(searchLower) ||
-              rental.users?.email?.toLowerCase().includes(searchLower) ||
-              rental.cameras?.name?.toLowerCase().includes(searchLower)
-            )
-          })
-        }
-        setRentals(filtered)
-      }
-    } catch (error) {
-      console.error("Error refreshing rentals:", error)
-    }
-  }
+    return () => {
+      unsubscribeFromRentalUpdates(channel);
+    };
+  }, [loadAllRentals]);
+
+
 
   const needsAdminAction = (rental) => {
     return (
@@ -243,8 +208,7 @@ export default function Rentals() {
   const handleApprove = async (rentalId) => {
     setActionLoading((prev) => ({ ...prev, [rentalId]: "approve" }))
     try {
-      await rentalService.adminConfirmApplication(rentalId)
-      await refreshRentalsData()
+      await rentalService.adminConfirmApplication(rentalId);
     } catch (error) {
       console.error("Error approving rental:", error)
     } finally {
@@ -259,8 +223,7 @@ export default function Rentals() {
   const handleReject = async (rentalId) => {
     setActionLoading((prev) => ({ ...prev, [rentalId]: "reject" }))
     try {
-      await rentalService.adminRejectApplication(rentalId)
-      await refreshRentalsData()
+      await rentalService.adminRejectApplication(rentalId);
     } catch (error) {
       console.error("Error rejecting rental:", error)
     } finally {
@@ -275,8 +238,7 @@ export default function Rentals() {
   const handleStartRental = async (rentalId) => {
     setActionLoading((prev) => ({ ...prev, [rentalId]: "start" }))
     try {
-      await rentalService.adminStartRental(rentalId)
-      await refreshRentalsData()
+      await rentalService.adminStartRental(rentalId);
     } catch (error) {
       console.error("Error starting rental:", error)
     } finally {
@@ -291,8 +253,7 @@ export default function Rentals() {
   const handleCompleteRental = async (rentalId) => {
     setActionLoading((prev) => ({ ...prev, [rentalId]: "complete" }))
     try {
-      await rentalService.adminCompleteRental(rentalId)
-      await refreshRentalsData()
+      await rentalService.adminCompleteRental(rentalId);
     } catch (error) {
       console.error("Error completing rental:", error)
     } finally {
@@ -307,8 +268,7 @@ export default function Rentals() {
   const handleCancelRental = async (rentalId) => {
     setActionLoading((prev) => ({ ...prev, [rentalId]: "cancel" }))
     try {
-      await rentalService.adminCancelRental(rentalId)
-      await refreshRentalsData()
+      await rentalService.adminCancelRental(rentalId);
     } catch (error) {
       console.error("Error cancelling rental:", error)
     } finally {
@@ -323,8 +283,7 @@ export default function Rentals() {
   const handleDeleteRental = async (rentalId) => {
     setActionLoading((prev) => ({ ...prev, [rentalId]: "delete" }))
     try {
-      await rentalService.adminDeleteRental(rentalId)
-      await refreshRentalsData()
+      await rentalService.adminDeleteRental(rentalId);
       setShowDeleteConfirm(null)
     } catch (error) {
       console.error("Error deleting rental:", error)

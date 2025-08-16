@@ -91,20 +91,19 @@ const Requests = () => {
   const { rentals, loading, error, loadRentals } = useRentalStore();
   const subscriptionRef = useRef(null);
 
-  // Load initial rentals and set up realtime subscription
   useEffect(() => {
-    if (!user?.id) return;
-    
-    // Load initial rentals
-    loadRentals(user.id);
-    
-    // Set up realtime subscription
-    subscriptionRef.current = subscribeToRentalUpdates(user.id, 'user');
-    
-    // Cleanup subscription on unmount or user change
+    if (user?.id) {
+      loadRentals(user.id);
+
+      if (!subscriptionRef.current) {
+        subscriptionRef.current = subscribeToRentalUpdates(user.id, 'user');
+      }
+    }
+
     return () => {
       if (subscriptionRef.current) {
         unsubscribeFromRentalUpdates(subscriptionRef.current);
+        subscriptionRef.current = null;
       }
     };
   }, [user?.id, loadRentals]);

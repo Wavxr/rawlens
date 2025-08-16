@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabaseClient';
 import useRentalStore from '../stores/rentalStore';
+import { getRentalById } from './rentalService';
 
 /**
  * Subscribe to rental updates in real-time.
@@ -24,39 +25,40 @@ export function subscribeToRentalUpdates(targetId, role = 'user') {
     async (payload) => {
       console.log('[Realtime Update]', payload);
 
-      const { new: newRow, old: oldRow, eventType } = payload;
-      const store = useRentalStore.getState();
+      const { eventType } = payload;
+      const rentalId = eventType === 'DELETE' ? payload.old.id : payload.new.id;
 
-      // Handle DELETE events first (since they only have oldRow data)
-      if (eventType === 'DELETE') {
-        if (role === 'user') {
-          // Check if this was one of the user's rentals
-          if (store.isUserRental(oldRow.id)) {
-            store.removeRental(oldRow.id);
+      // For user role, ensure the update belongs to them.
+      if (role === 'user' && eventType !== 'DELETE') {
+        const userId = payload.new.user_id;
+        if (userId !== targetId) {
+          return; // Not for this user
+        }
+      }
+
+      const { addOrUpdateRental, removeRental } = useRentalStore.getState();
+
+      switch (eventType) {
+        case 'INSERT':
+        case 'UPDATE': {
+          // Fetch the full rental details to ensure data consistency
+          const { data, error } = await getRentalById(rentalId);
+          const fullRental = data;
+          if (error) {
+            console.error(`[Realtime] Failed to fetch details for rental ${rentalId}:`, error);
+            return;
           }
-        } else {
-          store.removeRental(oldRow.id);
+          if (fullRental) {
+            console.log('[Realtime] Fetched full rental details:', fullRental);
+            addOrUpdateRental(fullRental);
+          }
+          break;
         }
-        return;
-      }
-
-      // Handle INSERT and UPDATE events
-      if (role === 'user') {
-        // Only process rentals that belong to this user
-        if (newRow?.user_id !== targetId) {
-          return;
-        }
-      }
-
-      if (eventType === 'INSERT') {
-        store.addOrUpdateRental(newRow);
-      } else if (eventType === 'UPDATE') {
-        // Preserve existing enriched data like fullCamera
-        const existingRental = store.rentals.find(r => r.id === newRow.id);
-        const enrichedNewRow = existingRental 
-          ? { ...existingRental, ...newRow }
-          : newRow;
-        store.addOrUpdateRental(enrichedNewRow);
+        case 'DELETE':
+          removeRental(rentalId);
+          break;
+        default:
+          break;
       }
     }
   )

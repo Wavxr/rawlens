@@ -3,11 +3,9 @@
 import { useEffect, useMemo, useState, useRef } from "react"
 import useAuthStore from "../../stores/useAuthStore"
 import useRentalStore from "../../stores/rentalStore"
-import { getUserRentals } from "../../services/rentalService"
 import { userConfirmDelivered, userConfirmSentBack } from "../../services/deliveryService"
 import { getSignedContractUrl } from "../../services/pdfService"
 import { subscribeToRentalUpdates, unsubscribeFromRentalUpdates } from "../../services/realtimeService"
-import { getCameraWithInclusions } from "../../services/inclusionService"
 import {
   Package,
   Truck,
@@ -25,9 +23,12 @@ import {
 export default function Rentals() {
   const user = useAuthStore((s) => s.user)
   const authLoading = useAuthStore((s) => s.loading)
-  const { rentals, setRentals, addOrUpdateRental, removeRental } = useRentalStore()
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState("")
+  const {
+    rentals: allRentals,
+    loading,
+    error,
+    loadRentals,
+  } = useRentalStore();
   const [actionLoading, setActionLoading] = useState({})
   const [contractViewLoading, setContractViewLoading] = useState({})
   const [contractViewError, setContractViewError] = useState({})
@@ -43,60 +44,29 @@ export default function Rentals() {
 
   useEffect(() => {
     if (!authLoading && user?.id) {
-      // Initial data fetch
-      refresh()
-      
-      // Subscribe to realtime updates
+      loadRentals(user.id);
+
       if (!subscriptionRef.current) {
-        subscriptionRef.current = subscribeToRentalUpdates(user.id, 'user')
+        subscriptionRef.current = subscribeToRentalUpdates(user.id, 'user');
       }
 
-      // Cleanup on unmount
       return () => {
         if (subscriptionRef.current) {
-          unsubscribeFromRentalUpdates(subscriptionRef.current)
-          subscriptionRef.current = null
+          unsubscribeFromRentalUpdates(subscriptionRef.current);
+          subscriptionRef.current = null;
         }
-      }
+      };
     }
-  }, [authLoading, user?.id, addOrUpdateRental, removeRental])
+  }, [authLoading, user?.id, loadRentals]);
+
+  const rentals = useMemo(() => 
+    allRentals.filter((r) => !["pending", "rejected"].includes(r.rental_status)), 
+    [allRentals]
+  );
 
   async function refresh() {
-    setLoading(true)
-    setError("")
-    try {
-      const { data, error: fetchError } = await getUserRentals(user.id)
-      if (fetchError) throw new Error(fetchError)
-      const filtered = (data || []).filter((r) => !["pending", "rejected"].includes(r.rental_status))
-
-      // Get existing rentals to preserve any additional data like fullCamera
-      const existingRentals = useRentalStore.getState().rentals
-      
-      const withDetails = await Promise.all(
-        filtered.map(async (r) => {
-          // Find existing rental to preserve its data
-          const existingRental = existingRentals.find(er => er.id === r.id) || {}
-          
-          try {
-            // Only fetch camera details if we don't already have them
-            if (!existingRental.fullCamera) {
-              const { data: cam, error: camErr } = await getCameraWithInclusions(r.cameras?.id)
-              if (camErr) return { ...existingRental, ...r } // Merge with existing data
-              return { ...existingRental, ...r, fullCamera: cam } // Merge and add camera data
-            }
-            return { ...existingRental, ...r } // Just merge with existing data
-          } catch {
-            return { ...existingRental, ...r } // On error, still merge with existing data
-          }
-        }),
-      )
-      setRentals(withDetails)
-    } catch (e) {
-      console.error("Failed to load rentals:", e)
-      setError("Failed to load your rentals. Please try again later.")
-      setRentals([])
-    } finally {
-      setLoading(false)
+    if (user?.id) {
+      await loadRentals(user.id);
     }
   }
 
@@ -170,7 +140,6 @@ export default function Rentals() {
     try {
       const res = await userConfirmDelivered(rentalId, user.id)
       if (!res?.success) throw new Error(res?.error || "Failed to confirm delivery")
-      await refresh()
     } catch (e) {
       console.error(e)
       setError("Could not confirm delivery. Please try again.")
@@ -188,7 +157,6 @@ export default function Rentals() {
     try {
       const res = await userConfirmSentBack(rentalId, user.id)
       if (!res?.success) throw new Error(res?.error || "Failed to confirm return shipment")
-      await refresh()
     } catch (e) {
       console.error(e)
       setError("Could not confirm the return shipment. Please try again.")
@@ -273,12 +241,13 @@ export default function Rentals() {
   }
 
   function RentalCard({ rental }) {
+    console.log('[RentalCard] Rendering with rental data:', rental);
     const currentStep = computeCurrentStep(rental)
     const steps = shippingSteps
     const cameraName = rental?.cameras?.name || "Camera"
     const cameraImage = rental?.cameras?.image_url || ""
-    const cameraDesc = rental?.fullCamera?.description || ""
-    const inclusions = rental?.fullCamera?.camera_inclusions || []
+    const cameraDesc = rental?.cameras?.description || ""
+    const inclusions = rental?.cameras?.camera_inclusions || []
     const canConfirmDelivered = rental.shipping_status === "in_transit_to_user"
     const canConfirmSentBack = rental.shipping_status === "return_scheduled"
 
