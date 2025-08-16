@@ -9,8 +9,8 @@ export async function checkCameraAvailability(cameraId, startDate, endDate) {
       .select('id, start_date, end_date, rental_status')
       .eq('camera_id', cameraId)
       .in('rental_status', ['confirmed', 'active'])
-      .lt('start_date', endDate)
-      .gt('end_date', startDate);
+      .lte('start_date', endDate)
+      .gte('end_date', startDate);
 
     if (error) {
       console.error("Availability check error:", error);
