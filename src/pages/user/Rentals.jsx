@@ -1,5 +1,3 @@
-"use client"
-
 import { useEffect, useMemo, useState, useRef } from "react"
 import useAuthStore from "../../stores/useAuthStore"
 import useRentalStore from "../../stores/rentalStore"
@@ -18,6 +16,7 @@ import {
   Calendar,
   Timer,
   PhilippinePeso,
+  ArrowRight,
 } from "lucide-react"
 
 export default function Rentals() {
@@ -28,11 +27,13 @@ export default function Rentals() {
     loading,
     error,
     loadRentals,
+    setError,
   } = useRentalStore();
   const [actionLoading, setActionLoading] = useState({})
   const [contractViewLoading, setContractViewLoading] = useState({})
   const [contractViewError, setContractViewError] = useState({})
-  const [activeFilter, setActiveFilter] = useState("all")
+  const [activeFilter, setActiveFilter] = useState("awaiting")
+  const [selectedRental, setSelectedRental] = useState(null)
   const subscriptionRef = useRef(null)
 
   const [now, setNow] = useState(Date.now())
@@ -59,6 +60,15 @@ export default function Rentals() {
     }
   }, [authLoading, user?.id, loadRentals]);
 
+  useEffect(() => {
+    if (selectedRental && allRentals.length > 0) {
+      const updatedRental = allRentals.find(r => r.id === selectedRental.id)
+      if (updatedRental && JSON.stringify(updatedRental) !== JSON.stringify(selectedRental)) {
+        setSelectedRental(updatedRental)
+      }
+    }
+  }, [allRentals, selectedRental])
+
   const rentals = useMemo(() => 
     allRentals.filter((r) => !["pending", "rejected"].includes(r.rental_status)), 
     [allRentals]
@@ -71,7 +81,6 @@ export default function Rentals() {
   }
 
   const displayedRentals = useMemo(() => {
-    if (activeFilter === "all") return rentals
     if (activeFilter === "awaiting") {
       return rentals.filter(
         (r) => r.rental_status === "confirmed" || ["ready_to_ship", "in_transit_to_user"].includes(r.shipping_status),
@@ -85,7 +94,7 @@ export default function Rentals() {
     if (activeFilter === "returning") {
       return rentals.filter((r) => ["return_scheduled", "in_transit_to_owner", "returned"].includes(r.shipping_status))
     }
-    return rentals
+    return []
   }, [activeFilter, rentals])
 
   function formatDate(dateStr) {
@@ -123,15 +132,15 @@ export default function Rentals() {
   function getStatusBadgeClasses(status) {
     switch (status) {
       case "confirmed":
-        return "bg-blue-500/15 text-blue-600 border border-blue-200"
+        return "bg-blue-100 text-blue-800"
       case "active":
-        return "bg-green-500/15 text-green-600 border border-green-200"
+        return "bg-green-100 text-green-800"
       case "completed":
-        return "bg-purple-500/15 text-purple-600 border border-purple-200"
+        return "bg-purple-100 text-purple-800"
       case "cancelled":
-        return "bg-gray-500/15 text-gray-600 border border-gray-200"
+        return "bg-gray-100 text-gray-800"
       default:
-        return "bg-gray-500/15 text-gray-600 border border-gray-200"
+        return "bg-gray-100 text-gray-800"
     }
   }
 
@@ -140,6 +149,7 @@ export default function Rentals() {
     try {
       const res = await userConfirmDelivered(rentalId, user.id)
       if (!res?.success) throw new Error(res?.error || "Failed to confirm delivery")
+      await refresh()
     } catch (e) {
       console.error(e)
       setError("Could not confirm delivery. Please try again.")
@@ -157,6 +167,7 @@ export default function Rentals() {
     try {
       const res = await userConfirmSentBack(rentalId, user.id)
       if (!res?.success) throw new Error(res?.error || "Failed to confirm return shipment")
+      await refresh()
     } catch (e) {
       console.error(e)
       setError("Could not confirm the return shipment. Please try again.")
@@ -240,9 +251,81 @@ export default function Rentals() {
     return Math.ceil(ms / (24 * 3600 * 1000))
   }
 
-  function RentalCard({ rental }) {
-    const currentStep = computeCurrentStep(rental)
-    const steps = shippingSteps
+  function RentalSidebarCard({ rental, isSelected, onClick }) {
+    const cameraName = rental?.cameras?.name || "Camera"
+    const cameraImage = rental?.cameras?.image_url || ""
+    const [imgBroken, setImgBroken] = useState(false)
+
+    const days = useMemo(() => {
+      const start = new Date(rental.start_date)
+      const end = new Date(rental.end_date)
+
+      start.setHours(0, 0, 0, 0)
+      end.setHours(0, 0, 0, 0)
+
+      end.setDate(end.getDate() + 1)
+
+      const diff = (end - start) / (1000 * 3600 * 24)
+      return isNaN(diff) ? null : Math.floor(diff)
+    }, [rental.start_date, rental.end_date])
+
+    return (
+      <div
+        onClick={onClick}
+        className={`p-4 rounded-lg border cursor-pointer transition-all ${
+          isSelected
+            ? "bg-blue-50 border-blue-200 shadow-sm"
+            : "bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300"
+        }`}
+      >
+        <div className="flex items-start space-x-3">
+          <div className="w-12 h-12 bg-gray-100 rounded-md overflow-hidden flex-shrink-0">
+            {!imgBroken && cameraImage ? (
+              <img
+                src={cameraImage || "/placeholder.svg"}
+                alt={cameraName}
+                className="object-cover w-full h-full"
+                onError={() => setImgBroken(true)}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-400">
+                <CameraIcon className="h-5 w-5" />
+              </div>
+            )}
+          </div>
+          
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between">
+              <h3 className="font-medium text-gray-900 truncate text-sm">{cameraName}</h3>
+              {isSelected && <ArrowRight className="h-4 w-4 text-blue-500 flex-shrink-0" />}
+            </div>
+            
+            <div className="flex items-center space-x-2 mt-1">
+              <span className="text-xs text-gray-500 font-mono">#{rental.id.slice(0, 8)}</span>
+              {days && <span className="text-xs text-gray-600">{days} days</span>}
+            </div>
+            
+            <span
+              className={`inline-block px-2 py-0.5 rounded text-xs font-medium mt-2 ${getStatusBadgeClasses(rental.rental_status)}`}
+            >
+              {rental.rental_status.charAt(0).toUpperCase() + rental.rental_status.slice(1)}
+            </span>
+            
+            <div className="text-xs text-gray-500 mt-1">
+              {formatDate(rental.start_date)} — {formatDate(rental.end_date)}
+            </div>
+            
+            {typeof rental.total_price === "number" && (
+              <div className="text-sm font-semibold text-gray-900 mt-1">₱ {Number(rental.total_price).toFixed(2)}</div>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  function RentalDetailView({ rental }) {
+    if (!rental) return null
     const cameraName = rental?.cameras?.name || "Camera"
     const cameraImage = rental?.cameras?.image_url || ""
     const cameraDesc = rental?.cameras?.description || ""
@@ -250,148 +333,185 @@ export default function Rentals() {
     const canConfirmDelivered = rental.shipping_status === "in_transit_to_user"
     const canConfirmSentBack = rental.shipping_status === "return_scheduled"
 
+    const [imgBroken, setImgBroken] = useState(false)
+    const showCountdownToEnd =
+      rental.rental_status === "active" &&
+      (rental.shipping_status === "delivered" ||
+        rental.shipping_status === "return_scheduled" ||
+        !rental.shipping_status)
+    const showCountdownToStart = rental.rental_status === "confirmed" && new Date(rental.start_date) > new Date()
+
+    const countdownToEndResult = useCountdown(rental.end_date, {
+      dir: "down",
+      startDate: rental.start_date,
+      endDate: rental.end_date,
+    })
+    const countdownToStartResult = useCountdown(rental.start_date, { dir: "down" })
+
+    const countdownToEnd = showCountdownToEnd ? countdownToEndResult : null
+    const countdownToStart = showCountdownToStart ? countdownToStartResult : null
+
+    const soonEnd = showCountdownToEnd && daysUntil(rental.end_date) <= 3
+    const soonStart = showCountdownToStart && daysUntil(rental.start_date) <= 2
+
     const days = useMemo(() => {
       const start = new Date(rental.start_date)
       const end = new Date(rental.end_date)
-      
+
       start.setHours(0, 0, 0, 0)
       end.setHours(0, 0, 0, 0)
-      
+
       end.setDate(end.getDate() + 1)
-      
+
       const diff = (end - start) / (1000 * 3600 * 24)
       return isNaN(diff) ? null : Math.floor(diff)
     }, [rental.start_date, rental.end_date])
 
-    const [imgBroken, setImgBroken] = useState(false)
-    const showCountdownToEnd =
-      rental.rental_status === "active" && (rental.shipping_status === "delivered" || rental.shipping_status === "return_scheduled" || !rental.shipping_status)
-    const showCountdownToStart = rental.rental_status === "confirmed" && new Date(rental.start_date) > new Date()
-    const countdownToEnd = showCountdownToEnd 
-      ? useCountdown(rental.end_date, { 
-          dir: "down", 
-          startDate: rental.start_date, 
-          endDate: rental.end_date 
-        }) 
-      : null
-    const countdownToStart = showCountdownToStart ? useCountdown(rental.start_date, { dir: "down" }) : null
-    const soonEnd = showCountdownToEnd && daysUntil(rental.end_date) <= 3
-    const soonStart = showCountdownToStart && daysUntil(rental.start_date) <= 2
+    const steps = shippingSteps
+    const currentStep = computeCurrentStep(rental)
 
     return (
-      <div
-        className={`bg-white border rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 ${
-          soonEnd || soonStart ? "border-amber-300 ring-2 ring-amber-200/50" : "border-gray-200"
-        }`}
-      >
-        <div className="bg-gradient-to-r from-gray-50 to-blue-50/30 px-6 py-4 border-b border-gray-100">
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        {/* Header Section */}
+        <div className="bg-gradient-to-r from-gray-900 to-gray-800 px-6 py-4 text-white">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                <CameraIcon className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">{cameraName}</h3>
-                <p className="text-sm text-gray-600">Rental #{rental.id.slice(0, 8)}</p>
+            <div>
+              <h1 className="text-xl font-bold">{cameraName}</h1>
+              <div className="flex items-center space-x-3 mt-2">
+                <span className="text-xs font-mono bg-white/20 px-2 py-1 rounded">
+                  #{rental.id.slice(0, 8)}
+                </span>
+                <span className="px-2 py-1 rounded text-xs font-medium bg-white/20">
+                  {rental.rental_status.charAt(0).toUpperCase() + rental.rental_status.slice(1)}
+                </span>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span
-                className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadgeClasses(rental.rental_status)}`}
-              >
-                {rental.rental_status.charAt(0).toUpperCase() + rental.rental_status.slice(1)}
-              </span>
+            <div className="text-right">
+              {typeof rental.total_price === "number" && (
+                <div className="text-2xl font-bold">₱ {Number(rental.total_price).toFixed(2)}</div>
+              )}
+              {days && (
+                <div className="text-sm text-gray-300">
+                  ₱ {Number(rental.price_per_day).toFixed(2)}/day • {days} days
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        <div className="p-6">
-          <div className="flex gap-4 mb-6">
-            <div className="w-24 h-24 bg-gray-100 rounded-xl overflow-hidden flex-shrink-0">
-              {!imgBroken && cameraImage ? (
-                <img
-                  src={cameraImage || "/placeholder.svg"}
-                  alt={cameraName}
-                  className="object-cover w-full h-full"
-                  onError={() => setImgBroken(true)}
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-400">
-                  <CameraIcon className="h-8 w-8" />
-                </div>
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-gray-600 line-clamp-3 mb-3">{cameraDesc || "No description available."}</p>
-              {inclusions && inclusions.length > 0 && (
-                <div>
-                  <p className="text-xs font-medium text-gray-700 mb-1">Included Items</p>
-                  <div className="flex flex-wrap gap-1">
-                    {inclusions.slice(0, 3).map((inc, idx) => (
-                      <span key={idx} className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-md">
-                        {inc?.inclusion_items?.name || "Item"}
-                        {inc?.quantity > 1 ? ` ×${inc.quantity}` : ""}
-                      </span>
-                    ))}
-                    {inclusions.length > 3 && (
-                      <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-md">
-                        +{inclusions.length - 3} more
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <div className="bg-gray-50 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Calendar className="h-4 w-4 text-gray-500" />
-                <span className="text-sm font-medium text-gray-700">Rental Period</span>
-              </div>
-              <div className="text-sm text-gray-900">
-                <div>
-                  {formatDate(rental.start_date)} — {formatDate(rental.end_date)}
-                </div>
-                {days != null && (
-                  <div className="text-xs text-gray-600 mt-1">
-                    {days} day{days === 1 ? "" : "s"}
+        <div className="p-6 space-y-6">
+          {/* Equipment Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-1">
+              <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                {!imgBroken && cameraImage ? (
+                  <img
+                    src={cameraImage || "/placeholder.svg"}
+                    alt={cameraName}
+                    className="object-cover w-full h-full"
+                    onError={() => setImgBroken(true)}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-400">
+                    <CameraIcon className="h-16 w-16" />
                   </div>
                 )}
               </div>
             </div>
-            <div className="bg-gray-50 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <PhilippinePeso className="h-4 w-4 text-gray-500" />
-                <span className="text-sm font-medium text-gray-700">Total Cost</span>
+
+            <div className="lg:col-span-2 space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Equipment Details</h3>
+                <p className="text-gray-600 text-sm leading-relaxed">
+                  {cameraDesc || "No description available."}
+                </p>
               </div>
-              {typeof rental.total_price === "number" ? (
+
+              {inclusions && inclusions.length > 0 && (
                 <div>
-                  <div className="text-sm font-semibold text-gray-900">₱{Number(rental.total_price).toFixed(2)}</div>
-                  {days && (
-                    <div className="text-xs text-gray-600">≈ ₱{Number(rental.price_per_day).toFixed(2)}/day</div>
-                  )}
+                  <h4 className="font-medium text-gray-900 mb-3">Package Includes</h4>
+                  <div className="bg-blue-50 rounded-lg p-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-32 overflow-y-auto">
+                      {inclusions.map((inc, idx) => (
+                        <div key={idx} className="flex items-center space-x-2 text-sm">
+                          <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+                          <span className="text-gray-700">
+                            {inc?.inclusion_items?.name || "Item"}
+                            {inc?.quantity > 1 && <span className="text-gray-500 ml-1">×{inc.quantity}</span>}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              ) : (
-                <div className="text-sm text-gray-500">Price not available</div>
               )}
             </div>
           </div>
 
+          {/* Info Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-blue-50 rounded-lg p-4">
+              <div className="flex items-center space-x-2 mb-3">
+                <Calendar className="h-5 w-5 text-blue-600" />
+                <h4 className="font-medium text-gray-900">Rental Period</h4>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Start Date</span>
+                  <span className="font-medium text-gray-900">{formatDate(rental.start_date)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">End Date</span>
+                  <span className="font-medium text-gray-900">{formatDate(rental.end_date)}</span>
+                </div>
+                {days != null && (
+                  <div className="flex justify-between text-sm pt-2 border-t border-blue-200">
+                    <span className="text-gray-600">Duration</span>
+                    <span className="font-semibold text-blue-700">
+                      {days} day{days === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-green-50 rounded-lg p-4">
+              <div className="flex items-center space-x-2 mb-3">
+                <PhilippinePeso className="h-5 w-5 text-green-600" />
+                <h4 className="font-medium text-gray-900">Pricing Details</h4>
+              </div>
+              <div className="space-y-2">
+                {days && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Daily Rate</span>
+                    <span className="font-medium text-gray-900">₱ {Number(rental.price_per_day).toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm pt-2 border-t border-green-200">
+                  <span className="text-gray-600">Total Amount</span>
+                  <span className="font-semibold text-green-700">₱ {Number(rental.total_price).toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Countdown Section */}
           {(showCountdownToEnd || showCountdownToStart) && (
             <div
-              className={`rounded-xl border p-4 mb-6 ${
-                soonEnd || soonStart ? "border-amber-300 bg-amber-50" : "border-blue-200 bg-blue-50"
+              className={`rounded-lg p-4 ${
+                soonEnd || soonStart
+                  ? "bg-amber-50 border border-amber-200"
+                  : "bg-blue-50 border border-blue-200"
               }`}
             >
-              <div className="flex items-center gap-2 mb-2">
-                <Timer className={`h-4 w-4 ${soonEnd || soonStart ? "text-amber-600" : "text-blue-600"}`} />
-                <span className={`text-sm font-medium ${soonEnd || soonStart ? "text-amber-800" : "text-blue-800"}`}>
+              <div className="flex items-center space-x-2 mb-3">
+                <Timer className={`h-5 w-5 ${soonEnd || soonStart ? "text-amber-600" : "text-blue-600"}`} />
+                <h4 className={`font-medium ${soonEnd || soonStart ? "text-amber-900" : "text-blue-900"}`}>
                   {showCountdownToEnd ? "Time Remaining" : "Starts In"}
-                </span>
+                </h4>
               </div>
-              <div className={`text-lg font-semibold ${soonEnd || soonStart ? "text-amber-900" : "text-blue-900"}`}>
+              
+              <div className={`text-2xl font-bold mb-2 ${soonEnd || soonStart ? "text-amber-900" : "text-blue-900"}`}>
                 {showCountdownToEnd && countdownToEnd && (
                   <span>
                     {countdownToEnd.days}d {countdownToEnd.hours}h {countdownToEnd.minutes}m
@@ -403,33 +523,35 @@ export default function Rentals() {
                   </span>
                 )}
               </div>
+              
               {(soonEnd || soonStart) && (
-                <p className="text-xs text-amber-700 mt-1">
+                <p className={`text-xs ${soonEnd || soonStart ? "text-amber-700" : "text-blue-700"}`}>
                   {showCountdownToEnd && countdownToEnd && countdownToEnd.ms <= 0
-                    ? "Rental period has ended. Please return the item soon."
-                    : `Reminder: Please prepare for ${soonEnd ? "return" : "delivery"}.`}
+                    ? "⚠️ Rental period has ended. Please return the item soon."
+                    : `📅 Reminder: Please prepare for ${soonEnd ? "return" : "delivery"}.`}
                 </p>
               )}
             </div>
           )}
 
-          <div className="mb-6">
-            <h4 className="text-sm font-medium text-gray-700 mb-3">Shipping Progress</h4>
-            <div className="relative">
+          {/* Delivery Progress */}
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-4">Delivery Progress</h4>
+            <div className="bg-gray-50 rounded-lg p-4">
               <div className="flex items-center justify-between">
                 {steps.map((step, idx) => {
                   const Icon = step.icon
                   const reached = idx <= currentStep
                   const isActive = idx === currentStep
                   return (
-                    <div key={step.key} className="flex flex-col items-center relative">
+                    <div key={step.key} className="flex flex-col items-center">
                       <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
+                        className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
                           reached
                             ? isActive
-                              ? "bg-blue-600 border-blue-600 text-white shadow-lg"
-                              : "bg-green-100 border-green-500 text-green-600"
-                            : "bg-gray-100 border-gray-300 text-gray-400"
+                              ? "bg-blue-500 border-blue-500 text-white"
+                              : "bg-green-500 border-green-500 text-white"
+                            : "bg-white border-gray-300 text-gray-400"
                         }`}
                       >
                         <Icon className="h-4 w-4" />
@@ -441,14 +563,6 @@ export default function Rentals() {
                       >
                         {step.label}
                       </span>
-                      {idx < steps.length - 1 && (
-                        <div
-                          className={`absolute top-4 left-8 w-full h-0.5 -z-10 transition-all duration-300 ${
-                            idx < currentStep ? "bg-green-500" : "bg-gray-200"
-                          }`}
-                          style={{ width: "calc(100% + 2rem)" }}
-                        />
-                      )}
                     </div>
                   )
                 })}
@@ -456,53 +570,78 @@ export default function Rentals() {
             </div>
           </div>
 
+          {/* Status Messages */}
+          {(rental.shipping_status === 'in_transit_to_owner' || rental.shipping_status === 'returned') ? (
+            <div className="p-3 bg-green-50 border border-green-200 rounded-lg flex items-center space-x-3">
+              <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+              <div>
+                <p className="font-medium text-green-800 text-sm">Shipment Confirmed</p>
+                <p className="text-xs text-green-600">You've successfully confirmed the shipment back</p>
+              </div>
+            </div>
+          ) : rental.shipping_status === 'return_scheduled' && actionLoading[rental.id] === "confirmSentBack" ? (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center space-x-3">
+              <Loader2 className="h-5 w-5 text-blue-600 flex-shrink-0 animate-spin" />
+              <div>
+                <p className="font-medium text-blue-800 text-sm">Processing Return Shipment</p>
+                <p className="text-xs text-blue-600">Please wait while we process your return...</p>
+              </div>
+            </div>
+          ) : null}
+
+          {/* Action Buttons */}
           <div className="flex flex-wrap gap-3">
             {rental.contract_pdf_url && (
               <button
                 onClick={() => viewContract(rental.id, rental.contract_pdf_url)}
                 disabled={!!contractViewLoading[rental.id]}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-60 transition-colors text-sm font-medium"
+                className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 text-sm font-medium"
               >
                 {contractViewLoading[rental.id] ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <FileText className="h-4 w-4" />
                 )}
-                View Contract
+                <span>View Contract</span>
               </button>
             )}
             {canConfirmDelivered && (
               <button
                 onClick={() => handleConfirmDelivered(rental.id)}
                 disabled={actionLoading[rental.id] === "confirmDelivered"}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-60 transition-colors text-sm font-medium"
+                className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 text-sm font-medium"
               >
                 {actionLoading[rental.id] === "confirmDelivered" ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <CheckCircle className="h-4 w-4" />
                 )}
-                Confirm Received
+                <span>Confirm Received</span>
               </button>
             )}
             {canConfirmSentBack && (
               <button
                 onClick={() => handleConfirmSentBack(rental.id)}
                 disabled={actionLoading[rental.id] === "confirmSentBack"}
-                className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-60 transition-colors text-sm font-medium"
+                className="flex items-center space-x-2 px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 disabled:opacity-50 text-sm font-medium"
               >
                 {actionLoading[rental.id] === "confirmSentBack" ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Processing...</span>
+                  </>
                 ) : (
-                  <Truck className="h-4 w-4" />
+                  <>
+                    <Truck className="h-4 w-4" />
+                    <span>Confirm Shipped Back</span>
+                  </>
                 )}
-                Confirm Shipped Back
               </button>
             )}
           </div>
 
           {contractViewError[rental.id] && (
-            <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-sm text-red-600">{contractViewError[rental.id]}</p>
             </div>
           )}
@@ -511,13 +650,24 @@ export default function Rentals() {
     )
   }
 
+  useEffect(() => {
+    if (displayedRentals.length > 0 && !selectedRental) {
+      setSelectedRental(displayedRentals[0])
+    } else if (displayedRentals.length > 0 && selectedRental) {
+      const stillExists = displayedRentals.find((r) => r.id === selectedRental.id)
+      if (!stillExists) setSelectedRental(displayedRentals[0])
+    } else if (displayedRentals.length === 0) {
+      setSelectedRental(null)
+    }
+  }, [displayedRentals, selectedRental])
+
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      <div className="min-h-screen bg-gray-50">
         <div className="flex items-center justify-center h-64">
-          <div className="flex items-center gap-3">
-            <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
-            <span className="text-gray-600 font-medium">Loading your rentals...</span>
+          <div className="flex items-center space-x-3">
+            <Loader2 className="h-6 w-6 text-blue-600 animate-spin" />
+            <span className="text-gray-600">Loading your rentals...</span>
           </div>
         </div>
       </div>
@@ -525,19 +675,12 @@ export default function Rentals() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-blue-600 bg-clip-text text-transparent">
-            My Rentals
-          </h1>
-          <p className="text-gray-600 mt-2">Track your camera rentals and manage deliveries</p>
-        </div>
-
-        <div className="mb-8">
-          <div className="inline-flex rounded-2xl border border-gray-200 bg-white/80 backdrop-blur-sm p-1 shadow-sm">
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        {/* Filter Tabs */}
+        <div className="mb-6">
+          <div className="inline-flex rounded-lg border border-gray-200 bg-white p-1">
             {[
-              { key: "all", label: "All Rentals" },
               { key: "awaiting", label: "Awaiting Delivery" },
               { key: "active", label: "Active" },
               { key: "returning", label: "Returning" },
@@ -545,9 +688,9 @@ export default function Rentals() {
               <button
                 key={f.key}
                 onClick={() => setActiveFilter(f.key)}
-                className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 ${
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
                   activeFilter === f.key
-                    ? "bg-blue-600 text-white shadow-lg shadow-blue-600/25"
+                    ? "bg-blue-600 text-white shadow-sm"
                     : "text-gray-700 hover:bg-gray-50"
                 }`}
               >
@@ -557,14 +700,15 @@ export default function Rentals() {
           </div>
         </div>
 
+        {/* Error Message */}
         {error && (
-          <div className="mb-8 bg-red-50 border border-red-200 rounded-2xl p-4">
-            <div className="flex items-start gap-3">
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-start space-x-3">
               <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
               <div className="flex-1">
                 <p className="text-red-800 font-medium">Something went wrong</p>
                 <p className="text-red-600 text-sm mt-1">{error}</p>
-                <button onClick={refresh} className="mt-3 text-sm text-red-700 underline hover:no-underline">
+                <button onClick={refresh} className="mt-2 text-sm text-red-700 underline hover:no-underline">
                   Try again
                 </button>
               </div>
@@ -572,23 +716,38 @@ export default function Rentals() {
           </div>
         )}
 
+        {/* Main Content */}
         {displayedRentals.length === 0 ? (
-          <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-2xl p-12 text-center">
-            <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
+            <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-4">
               <CameraIcon className="h-8 w-8 text-gray-400" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">No rentals found</h3>
-            <p className="text-gray-600 max-w-md mx-auto">
-              {activeFilter === "all"
-                ? "You haven't made any rentals yet. Browse our camera collection to get started!"
-                : `No rentals match the "${activeFilter}" filter. Try selecting a different filter.`}
+            <p className="text-gray-600">
+              {`No rentals match the "${activeFilter}" filter. Try selecting a different filter.`}
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-            {displayedRentals.map((rental) => (
-              <RentalCard key={rental.id} rental={rental} />
-            ))}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* Sidebar */}
+            <div className="lg:col-span-1">
+              <h3 className="font-semibold text-gray-900 mb-4">Your Rentals</h3>
+              <div className="space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto">
+                {displayedRentals.map((rental) => (
+                  <RentalSidebarCard
+                    key={rental.id}
+                    rental={rental}
+                    isSelected={selectedRental?.id === rental.id}
+                    onClick={() => setSelectedRental(rental)}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Detail View */}
+            <div className="lg:col-span-3">
+              <RentalDetailView rental={selectedRental} />
+            </div>
           </div>
         )}
       </div>
