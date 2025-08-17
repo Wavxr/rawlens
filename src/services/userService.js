@@ -7,7 +7,7 @@ export async function fetchUsers() {
   const { data, error } = await supabase
     .from("users")
     .select(
-      "id, first_name, last_name, email, role, national_id_key, selfie_id_key, created_at, contact_number, address, verification_status"
+      "id, first_name, last_name, email, role, government_id_key, selfie_id_key, verification_video_key, created_at, contact_number, address, verification_status"
     )
     .order("created_at", { ascending: false })
 

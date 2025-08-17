@@ -10,7 +10,7 @@ import { supabase } from "../lib/supabaseClient.js"
 
 /* ---------- helpers ------------------------------------------------------ */
 
-const objectPath = (uid, type) => `${uid}/${type}-${Date.now()}.jpg`
+const objectPath = (uid, type, ext) => `${uid}/${type}-${Date.now()}.${ext}`
 
 const uploadPrivate = async (bucket, file, path) => {
   if (!file) throw new Error("File missing")
@@ -24,7 +24,7 @@ const uploadPrivate = async (bucket, file, path) => {
 }
 
 /** Convert camelCase userData ➜ snake_case for DB insert */
-const toDbRow = (uid, userData, natKey, selfieKey) => ({
+const toDbRow = (uid, userData, govKey, selfieKey, videoKey) => ({
   id: uid,
   first_name:      userData.firstName,
   last_name:       userData.lastName,
@@ -32,8 +32,9 @@ const toDbRow = (uid, userData, natKey, selfieKey) => ({
   email:           userData.email,
   address:         userData.address,
   contact_number:  userData.contactNumber,
-  national_id_key: natKey,
+  government_id_key: govKey,
   selfie_id_key:   selfieKey,
+  verification_video_key: videoKey,
   role: "user",
   verification_status: "pending",
 })
@@ -45,8 +46,9 @@ export const signUp = async (
   email,
   password,
   userData,       // camel-case keys from the form
-  nationalIDFile,
-  selfieFile
+  governmentIdFile,
+  selfieFile,
+  verificationVideoFile
 ) => {
   /* 1. Create auth account */
   const { data: auth, error: authErr } = await supabase.auth.signUp({
@@ -59,21 +61,26 @@ export const signUp = async (
 
   try {
     /* 2. Upload KYC files to private buckets */
-    const natKey   = await uploadPrivate(
-      "national-ids",
-      nationalIDFile,
-      objectPath(uid, "nat")
+    const govKey = await uploadPrivate(
+      "government-ids",
+      governmentIdFile,
+      objectPath(uid, "gov-id", "jpg")
     )
     const selfieKey = await uploadPrivate(
       "selfie-ids",
       selfieFile,
-      objectPath(uid, "selfie")
+      objectPath(uid, "selfie", "jpg")
+    )
+    const videoKey = await uploadPrivate(
+      "verification-videos",
+      verificationVideoFile,
+      objectPath(uid, "verification", "webm")
     )
 
     /* 3. Insert profile row with correct column names */
     const { error: dbErr } = await supabase
       .from("users")
-      .insert(toDbRow(uid, userData, natKey, selfieKey))
+      .insert(toDbRow(uid, userData, govKey, selfieKey, videoKey))
 
     if (dbErr) throw dbErr
 
