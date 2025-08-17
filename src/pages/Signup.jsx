@@ -24,7 +24,7 @@ import {
   Eye, EyeOff,
   Mail, Lock, User, Phone, MapPin,
   Upload, ArrowRight,
-  Shield, CheckCircle, X
+  Shield, CheckCircle, X, Video, Info
 } from "lucide-react"
 import { signUp } from "../services/authService"
 
@@ -36,16 +36,27 @@ export default function Signup() {
   const [currentStep, setCurrentStep] = useState(1)
 
   // store chosen files so we can preview them and send to signUp()
-  const [uploadedFiles, setUploadedFiles] = useState({ nationalID: null, selfieID: null })
+  const [uploadedFiles, setUploadedFiles] = useState({ governmentID: null, selfieID: null, verificationVideo: null })
 
   // camera modal state
   const [showCamera, setShowCamera] = useState(false)
-  const [currentCameraField, setCurrentCameraField] = useState(null) // "nationalID" | "selfieID"
+  const [currentCameraField, setCurrentCameraField] = useState(null) // "governmentID" | "selfieID" | "verificationVideo"
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordedVideoUrl, setRecordedVideoUrl] = useState(null)
   const [stream, setStream] = useState(null)
 
   // refs for video preview + off-screen canvas
   const videoRef  = useRef(null)
   const canvasRef = useRef(null)
+  const mediaRecorderRef = useRef(null)
+  const recordedChunksRef = useRef([])
+  const recordingTimeoutRef = useRef(null)
+  const recordedBlobRef = useRef(null)
+  // countdown and timers
+  const [preCountdown, setPreCountdown] = useState(0)
+  const [timeLeft, setTimeLeft] = useState(0)
+  const preCountdownRef = useRef(null)
+  const recordingIntervalRef = useRef(null)
 
   const navigate = useNavigate()
 
@@ -62,17 +73,103 @@ export default function Signup() {
     setCurrentCameraField(field)
     setShowCamera(true)
     try {
+      const isVideo = field === "verificationVideo"
       const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: field === "selfieID" ? "user" : "environment" }
+        video: { facingMode: isVideo || field === "selfieID" ? "user" : "environment" },
+        audio: isVideo,
       })
       setStream(mediaStream)
-      if (videoRef.current) videoRef.current.srcObject = mediaStream
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream
+        videoRef.current.muted = !isVideo // Mute audio preview unless recording
+      }
+
+      if (isVideo) {
+        mediaRecorderRef.current = new MediaRecorder(mediaStream)
+        mediaRecorderRef.current.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            recordedChunksRef.current.push(event.data)
+          }
+        }
+        mediaRecorderRef.current.onstop = () => {
+          const videoBlob = new Blob(recordedChunksRef.current, { type: "video/webm" })
+          recordedBlobRef.current = videoBlob
+          const videoUrl = URL.createObjectURL(videoBlob)
+          // Detach and stop camera so preview is shown clearly
+          if (videoRef.current) {
+            try { videoRef.current.srcObject = null } catch {}
+          }
+          if (stream) {
+            try { stream.getTracks().forEach(t => t.stop()) } catch {}
+          }
+          setStream(null)
+          setRecordedVideoUrl(videoUrl)
+        }
+      }
     } catch (err) {
       console.error("getUserMedia failed:", err)
-      setError("Unable to access camera. Please check permissions.")
+      setError("Unable to access camera/mic. Please check permissions.")
       setShowCamera(false)
     }
   }
+
+  /* ---------- video recording controls ---------- */
+  const startRecording = () => {
+    if (!mediaRecorderRef.current) return
+    // Pre-record 3..2..1 countdown
+    setPreCountdown(3)
+    if (preCountdownRef.current) clearInterval(preCountdownRef.current)
+    preCountdownRef.current = setInterval(() => {
+      setPreCountdown(prev => {
+        const next = prev - 1
+        if (next <= 0) {
+          clearInterval(preCountdownRef.current)
+          // Start actual recording
+          recordedChunksRef.current = []
+          mediaRecorderRef.current.start()
+          setIsRecording(true)
+          setTimeLeft(10)
+          // Update remaining seconds while recording
+          if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current)
+          recordingIntervalRef.current = setInterval(() => {
+            setTimeLeft(t => {
+              const nt = t - 1
+              return nt >= 0 ? nt : 0
+            })
+          }, 1000)
+          // Auto-stop after 10s
+          recordingTimeoutRef.current = setTimeout(() => {
+            if (mediaRecorderRef.current?.state === "recording") {
+              stopRecording()
+            }
+          }, 10000)
+          return 0
+        }
+        return next
+      })
+    }, 1000)
+  };
+
+  const stopRecording = () => {
+    if (recordingTimeoutRef.current) {
+      clearTimeout(recordingTimeoutRef.current);
+      recordingTimeoutRef.current = null;
+    }
+    if (preCountdownRef.current) {
+      clearInterval(preCountdownRef.current)
+      preCountdownRef.current = null
+    }
+    if (recordingIntervalRef.current) {
+      clearInterval(recordingIntervalRef.current)
+      recordingIntervalRef.current = null
+    }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+    setPreCountdown(0)
+    setTimeLeft(0)
+  };
 
   /* ---------- capture snapshot from video ---------- */
   const capturePhoto = () => {
@@ -92,11 +189,31 @@ export default function Signup() {
   /* ---------- close camera and clean up tracks ---------- */
   const closeCamera = () => {
     if (stream) {
-      stream.getTracks().forEach(t => t.stop())
-      setStream(null)
+      stream.getTracks().forEach(track => track.stop())
+    }
+    if (recordingTimeoutRef.current) {
+      clearTimeout(recordingTimeoutRef.current)
+    }
+    if (preCountdownRef.current) {
+      clearInterval(preCountdownRef.current)
+      preCountdownRef.current = null
+    }
+    if (recordingIntervalRef.current) {
+      clearInterval(recordingIntervalRef.current)
+      recordingIntervalRef.current = null
+    }
+    if (recordedVideoUrl) {
+      try { URL.revokeObjectURL(recordedVideoUrl) } catch {}
     }
     setShowCamera(false)
     setCurrentCameraField(null)
+    setStream(null)
+    setIsRecording(false)
+    setRecordedVideoUrl(null)
+    setPreCountdown(0)
+    setTimeLeft(0)
+    recordedChunksRef.current = []
+    recordedBlobRef.current = null;
   }
 
   /* ---------- main submit ---------- */
@@ -114,18 +231,25 @@ export default function Signup() {
     const address        = fd.get("address")?.trim()
     const contactNumber  = fd.get("contactNumber")?.trim()
     const password       = fd.get("password")
-    const { nationalID, selfieID } = uploadedFiles
+    const { governmentID, selfieID, verificationVideo } = uploadedFiles
 
     // basic client-side validation
     if (!firstName || !lastName || !email || !address || !contactNumber
-        || !password || !nationalID || !selfieID) {
-      setError("All required fields must be filled")
+        || !password || !governmentID || !selfieID || !verificationVideo) {
+      setError("Please upload your Government ID, Selfie with ID, and the Verification Video.")
       setLoading(false)
       return
     }
 
     const userData = { firstName, lastName, middleInitial, email, address, contactNumber }
-    const { error: supaErr } = await signUp(email, password, userData, nationalID, selfieID)
+    const { error: supaErr } = await signUp(
+      email,
+      password,
+      userData,
+      uploadedFiles.governmentID,
+      uploadedFiles.selfieID,
+      uploadedFiles.verificationVideo
+    )
 
     if (supaErr) setError(supaErr.message)
     else navigate("/login")
@@ -139,28 +263,119 @@ export default function Signup() {
       {/* camera modal overlay */}
       {showCamera && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-md">
+          <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-2xl relative">
             <header className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-white">Take Photo</h3>
+              <h3 className="text-lg font-semibold text-white">
+                {currentCameraField === 'verificationVideo' ? (recordedVideoUrl ? 'Review Video' : 'Record Video') : 'Take Photo'}
+              </h3>
               <button onClick={closeCamera} className="text-gray-400 hover:text-white"><X /></button>
             </header>
-            <video ref={videoRef} autoPlay playsInline className="w-full h-64 object-cover rounded mb-4" />
 
-            <div className="flex space-x-3">
-              <button onClick={capturePhoto}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg flex items-center justify-center space-x-2">
-                <Camera className="h-5 w-5"/><span>Capture</span>
-              </button>
-              <button onClick={closeCamera}
-                className="px-6 py-3 border border-gray-700 bg-gray-800/50 text-gray-300 hover:text-white rounded-lg">
-                Cancel
-              </button>
+            <div className="bg-black rounded-lg overflow-hidden relative w-full aspect-video flex items-center justify-center">
+              {recordedVideoUrl ? (
+                <video
+                  src={recordedVideoUrl}
+                  controls
+                  playsInline
+                  className="w-full h-full object-contain"
+                />
+              ) : (
+                <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+              )}
+
+              {/* Countdown and recording timer overlays */}
+              {!recordedVideoUrl && preCountdown > 0 && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="text-white text-6xl font-bold bg-black/40 rounded-full w-24 h-24 flex items-center justify-center border border-white/30">
+                    {preCountdown}
+                  </div>
+                </div>
+              )}
+              {!recordedVideoUrl && isRecording && (
+                <div className="absolute top-3 right-3 flex items-center space-x-2 bg-black/60 text-white px-3 py-1 rounded-full text-sm">
+                  <span className="inline-block w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                  <span>{timeLeft}s</span>
+                </div>
+              )}
+
+              {currentCameraField === "verificationVideo" && !recordedVideoUrl && (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-full px-4">
+                  {isRecording ? (
+                    <button onClick={stopRecording} className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg flex items-center justify-center space-x-2 transition-colors">
+                      <div className="w-3 h-3 bg-white rounded-sm"/><span>Stop Recording</span>
+                    </button>
+                  ) : (
+                    <button onClick={startRecording} className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg flex items-center justify-center space-x-2 transition-colors">
+                      <div className="w-3 h-3 bg-white rounded-full animate-pulse"/><span>Start Recording</span>
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 flex justify-end space-x-4">
+              {recordedVideoUrl ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => { // Retake
+                      if (recordedVideoUrl) {
+                        try { URL.revokeObjectURL(recordedVideoUrl) } catch {}
+                      }
+                      setRecordedVideoUrl(null)
+                      recordedBlobRef.current = null
+                      recordedChunksRef.current = []
+                      setPreCountdown(0)
+                      setTimeLeft(0)
+                      // Re-open camera fresh for a new recording
+                      openCamera("verificationVideo")
+                    }}
+                    className="px-6 py-2 border border-gray-700 bg-gray-800/50 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-colors"
+                  >
+                    Retake
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { // Confirm
+                      if (recordedBlobRef.current) {
+                        const videoFile = new File([recordedBlobRef.current], "verification-video.webm", { type: "video/webm" });
+                        handleFile(currentCameraField, videoFile);
+                      }
+                      closeCamera();
+                    }}
+                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+                  >
+                    <CheckCircle className="h-5 w-5" />
+                    <span>Confirm & Use Video</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={closeCamera}
+                    className="px-6 py-2 border border-gray-700 bg-gray-800/50 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  {currentCameraField !== "verificationVideo" && (
+                    <button
+                      type="button"
+                      onClick={capturePhoto}
+                      className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                    >
+                      <Camera className="h-5 w-5" />
+                      <span>Take Picture</span>
+                    </button>
+                  )}
+                </>
+              )}
             </div>
           </div>
         </div>
       )}
       {/* hidden canvas used to generate File from snapshot */}
-      <canvas ref={canvasRef} style={{ display: "none" }} />
+      <canvas ref={canvasRef} className="hidden"></canvas>
 
       {/* decorative background blobs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -387,26 +602,26 @@ export default function Signup() {
               <div className="space-y-4">
 
 
-              {/* ------------ National ID upload ------------ */}
+              {/* ------------ Government ID upload ------------ */}
               <div className="space-y-3">
                 <label className="text-sm font-medium text-gray-300 flex items-center space-x-2">
-                  <Shield className="h-4 w-4 text-blue-400"/><span>National ID (Front & Back) *</span>
+                  <Shield className="h-4 w-4 text-blue-400"/><span>Government ID (Front & Back) *</span>
                 </label>
                 <div className="relative">
                   <input
-                    name="nationalID" type="file" accept="image/*"
-                    onChange={e=>handleFile("nationalID", e.target.files[0])}
+                    name="governmentID" type="file" accept="image/*"
+                    onChange={e=>handleFile("governmentID", e.target.files[0])}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"/>
                   <div className={`border-2 border-dashed rounded-lg p-4 text-center transition-all
-                                   ${uploadedFiles.nationalID
+                                   ${uploadedFiles.governmentID
                                      ? "border-green-500 bg-green-500/5 shadow-lg shadow-green-500/20"
                                      : "border-gray-700 hover:border-blue-500"}`}>
-                    {uploadedFiles.nationalID ? (
+                    {uploadedFiles.governmentID ? (
                       <div className="space-y-3">
-                        <img src={URL.createObjectURL(uploadedFiles.nationalID)} alt="preview"
+                        <img src={URL.createObjectURL(uploadedFiles.governmentID)} alt="preview"
                              className="w-20 h-16 object-cover rounded mx-auto"/>
                         <p className="text-green-400 text-sm font-medium truncate">
-                          ✓ {uploadedFiles.nationalID.name}
+                          ✓ {uploadedFiles.governmentID.name}
                         </p>
                       </div>
                     ) : (
@@ -419,7 +634,7 @@ export default function Signup() {
                   </div>
                 </div>
                 <div className="flex justify-center">
-                  <button type="button" onClick={()=>openCamera("nationalID")}
+                  <button type="button" onClick={()=>openCamera("governmentID")}
                           className="flex items-center space-x-2 px-4 py-2 bg-gray-800/50 border border-gray-700 text-gray-300 hover:text-white rounded-lg text-sm">
                     <Camera className="h-4 w-4"/><span>Take Photo</span>
                   </button>
@@ -464,6 +679,43 @@ export default function Signup() {
                     <Camera className="h-4 w-4"/><span>Take Selfie</span>
                   </button>
                 </div>
+              </div>
+
+              {/* ------------ Verification Video (record only) ------------ */}
+              <div className="space-y-3">
+                <label className="text-sm font-medium text-gray-300 flex items-center space-x-2">
+                  <Video className="h-4 w-4 text-blue-400"/><span>Verification Video (5-10s) *</span>
+                </label>
+                <div className="text-xs text-gray-400 bg-gray-800/50 p-3 rounded-lg border border-gray-700">
+                  Please record a short video stating:
+                  <span className="block font-medium text-blue-300 mt-1">"I, [Your Name], am renting a camera from RawLens PH."</span>
+                </div>
+                <div className="relative">
+                  <div className={`border-2 border-dashed rounded-lg p-4 text-center transition-all ${uploadedFiles.verificationVideo ? "border-green-500 bg-green-500/5" : "border-gray-700"}`}>
+                    {uploadedFiles.verificationVideo ? (
+                      <div className="space-y-3">
+                        <video src={URL.createObjectURL(uploadedFiles.verificationVideo)} controls playsInline className="w-full h-24 object-cover rounded mx-auto"/>
+                        <p className="text-green-400 text-sm font-medium truncate">✓ {uploadedFiles.verificationVideo.name}</p>
+                      </div>
+                    ) : (
+                      <p className="text-gray-400 text-sm">No video recorded yet. Click "Record Video" below.</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex justify-center">
+                  <button type="button" onClick={()=>openCamera("verificationVideo")}
+                          className="flex items-center space-x-2 px-4 py-2 bg-gray-800/50 border border-gray-700 text-gray-300 hover:text-white rounded-lg text-sm">
+                    <Camera className="h-4 w-4"/><span>Record Video</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Disclaimer */}
+              <div className="flex items-start space-x-3 p-4 bg-yellow-900/20 border border-yellow-500/30 rounded-lg">
+                <Info className="h-5 w-5 text-yellow-400 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-yellow-300">
+                  All pictures and documents submitted during verification will be automatically deleted after 3 days.
+                </p>
               </div>
 
                 {/* terms checkbox */}
