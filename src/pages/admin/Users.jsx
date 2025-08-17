@@ -46,7 +46,7 @@ export default function AdminUsers() {
   const [users, setUsers] = useState([])
   const [filteredUsers, setFilteredUsers] = useState([])
   const [modalUser, setModalUser] = useState(null)
-  const [imgs, setImgs] = useState({ nat: "", selfie: "", natLoaded: false, selfieLoaded: false })
+  const [imgs, setImgs] = useState({ nat: "", selfie: "", video: "", natLoaded: false, selfieLoaded: false, videoLoaded: false })
   const [loadingImg, setLoadingImg] = useState(false)
   const [loadingUsers, setLoadingUsers] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
@@ -94,24 +94,29 @@ export default function AdminUsers() {
       setModalUser(user)
 
       setImgs({
-        nat: "", selfie: "", natLoaded: false, selfieLoaded: false
+        nat: "", selfie: "", video: "", natLoaded: false, selfieLoaded: false, videoLoaded: false
       })
 
       try {
-        const [nat, selfie] = await Promise.all([
-          user.national_id_key
-            ? signedUrl("national-ids", user.national_id_key, { width: 500 })
-            : "",
+        const [nat, selfie, video] = await Promise.all([
+          user.government_id_key
+            ? signedUrl("government-ids", user.government_id_key, { width: 500 })
+            : Promise.resolve(""),
           user.selfie_id_key
             ? signedUrl("selfie-ids", user.selfie_id_key, { width: 500 })
-            : "",
+            : Promise.resolve(""),
+          user.verification_video_key
+            ? signedUrl("verification-videos", user.verification_video_key)
+            : Promise.resolve(""),
         ])
 
         setImgs({
           nat,
           selfie,
+          video,
           natLoaded: false,
           selfieLoaded: false,
+          videoLoaded: false,
         })
       } catch (err) {
         console.error("Signed-URL error", err)
@@ -435,7 +440,7 @@ export default function AdminUsers() {
               {/* ID Documents */}
               <div>
                 <h4 className="text-lg font-semibold text-white mb-4">Identity Documents</h4>
-                <div className="grid md:grid-cols-2 gap-6">
+                <div className="grid md:grid-cols-2 gap-6 mb-6">
 
                   {/* National ID */}
                   <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
@@ -507,6 +512,34 @@ export default function AdminUsers() {
                     )}
                   </div>
 
+                </div>
+
+                {/* Verification Video */}
+                <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+                  <div className="flex items-center space-x-2 mb-3">
+                    <ImageIcon className="h-4 w-4 text-blue-400" />
+                    <p className="font-medium text-white">Verification Video</p>
+                  </div>
+                  {!imgs.video ? (
+                    <div className="aspect-video bg-gray-800 rounded-lg border-2 border-dashed border-gray-700 flex items-center justify-center">
+                      <div className="text-center">
+                        <AlertCircle className="h-8 w-8 text-gray-600 mx-auto mb-2" />
+                        <p className="text-gray-500 text-sm">No video uploaded</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      {!imgs.videoLoaded && <div className="aspect-video bg-gray-800 rounded-lg animate-pulse"></div>}
+                      <video
+                        src={imgs.video}
+                        controls
+                        className={`w-full rounded-lg border border-gray-700 shadow-lg transition-opacity duration-300 ${
+                          imgs.videoLoaded ? "opacity-100" : "opacity-0 absolute top-0 left-0"
+                        }`}
+                        onLoadedData={() => setImgs((prev) => ({ ...prev, videoLoaded: true }))}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 
