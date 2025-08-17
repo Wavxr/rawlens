@@ -19,7 +19,7 @@ export default function Profile() {
   /* ─────────────────────────────────────
      Reactive state
      ─────────────────────────────────────*/
-  const [imgs,    setImgs]    = useState({ nat: null, selfie: null }); // signed URLs
+  const [imgs,    setImgs]    = useState({ nat: null, selfie: null, video: null }); // signed URLs
   const [loading, setLoading] = useState(true);                        // initial spinner
 
   /* ─────────────────────────────────────
@@ -30,7 +30,7 @@ export default function Profile() {
       /* 1️  Pull the two object keys for the current user */
       const { data: row, error } = await supabase
         .from("users")
-        .select("national_id_key, selfie_id_key")
+        .select("government_id_key, selfie_id_key, verification_video_key")
         .maybeSingle();               // returns null—not 406—if row missing
 
       if (error) {
@@ -45,11 +45,12 @@ export default function Profile() {
 
       /* 2️  Generate signed thumbnails (400 px, 1 h expiry) in parallel */
       try {
-        const [natUrl, selfieUrl] = await Promise.all([
-          signedUrl("national-ids",  row.national_id_key, { width: 400 }),
+        const [natUrl, selfieUrl, videoUrl] = await Promise.all([
+          signedUrl("government-ids",  row.government_id_key, { width: 400 }),
           signedUrl("selfie-ids",    row.selfie_id_key,   { width: 400 }),
+          signedUrl("verification-videos", row.verification_video_key),
         ]);
-        setImgs({ nat: natUrl, selfie: selfieUrl });
+        setImgs({ nat: natUrl, selfie: selfieUrl, video: videoUrl });
       } catch (e) {
         console.error("Signed-URL error:", e);
       }
@@ -87,9 +88,18 @@ export default function Profile() {
         />
       )}
 
+      {/* Verification Video */}
+      {imgs.video && (
+        <video
+          src={imgs.video}
+          controls
+          className="w-72 rounded border"
+        />
+      )}
+
       {/* Fallback if no files uploaded */}
-      {!imgs.nat && !imgs.selfie && (
-        <p className="text-gray-500">No ID images on file.</p>
+      {!imgs.nat && !imgs.selfie && !imgs.video && (
+        <p className="text-gray-500">No ID images or video on file.</p>
       )}
     </div>
   );
