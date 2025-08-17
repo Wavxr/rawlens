@@ -149,13 +149,19 @@ export async function updateRentalStatus(rentalId, statusUpdates) {
       .from('rentals')
       .update(statusUpdates)
       .eq('id', rentalId)
-      .select(); 
+      .select();
 
-    if (error) throw error;
+    if (error) {
+      throw error;
+    }
+    
     return { success: true, data: data[0] };
   } catch (error) {
-    console.error("Error in updateRentalStatus:", error);
-    return { error: error.message || "Failed to update rental status." };
+    return { 
+      error: error.message || "Failed to update rental status.",
+      code: error.code,
+      details: error.details
+    };
   }
 }
 
@@ -236,18 +242,6 @@ export async function adminCancelRental(rentalId) {
   });
 }
 
-// Update shipping status
-export async function updateShippingStatus(rentalId, shippingStatus, timestampField = null) {
-  const updates = {
-    shipping_status: shippingStatus
-  };
-  
-  if (timestampField) {
-    updates[timestampField] = new Date().toISOString();
-  }
-  
-  return await updateRentalStatus(rentalId, updates);
-}
 
 // Admin deletes a rental record row entirely
 export async function adminDeleteRental(rentalId) {
