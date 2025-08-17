@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect } from "react";
 import useRentalStore from "../../stores/rentalStore";
 import { subscribeToRentalUpdates, unsubscribeFromRentalUpdates } from "../../services/realtimeService";
@@ -19,10 +17,19 @@ import {
   DollarSign,
   Eye,
 } from "lucide-react"
-import * as rentalService from "../../services/rentalService"
+import { 
+  adminConfirmApplication, 
+  adminRejectApplication, 
+  adminStartRental, 
+  adminCompleteRental, 
+  adminCancelRental, 
+  adminDeleteRental 
+} from "../../services/rentalService"
 import { getSignedContractUrl } from "../../services/pdfService"
 import RentalStepper from "../../components/RentalStepper"
-import * as userService from "../../services/userService"
+import { fetchUserById } from "../../services/userService"
+import { toast, ToastContainer } from "react-toastify"
+import "react-toastify/dist/ReactToastify.css"
 
 export default function Rentals() {
   const navigate = useNavigate();
@@ -47,8 +54,6 @@ export default function Rentals() {
     };
   }, [loadAllRentals]);
 
-
-
   const needsAdminAction = (rental) => {
     return (
       rental.rental_status === "pending" ||
@@ -59,10 +64,10 @@ export default function Rentals() {
   const handleViewDetails = async (rental) => {
     setSelectedRental(rental)
     try {
-      const userData = await userService.fetchUserById(rental.user_id)
+      const userData = await fetchUserById(rental.user_id)
       setSelectedUser(userData)
     } catch (error) {
-      console.error("Error fetching user data:", error)
+      toast.error("Failed to load user details")
       setSelectedUser(null)
     }
   }
@@ -151,7 +156,6 @@ export default function Rentals() {
     return status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
   }
 
-  // Derive Now/Next robustly based on combined statuses
   const STEP_ORDER = [
     "pending",
     "confirmed",
@@ -208,9 +212,14 @@ export default function Rentals() {
   const handleApprove = async (rentalId) => {
     setActionLoading((prev) => ({ ...prev, [rentalId]: "approve" }))
     try {
-      await rentalService.adminConfirmApplication(rentalId);
+      const result = await adminConfirmApplication(rentalId);
+      if (result.error) {
+        toast.error(`Failed to approve rental: ${result.error}`);
+        return;
+      }
+      toast.success("Rental approved successfully!");
     } catch (error) {
-      console.error("Error approving rental:", error)
+      toast.error("Failed to approve rental");
     } finally {
       setActionLoading((prev) => {
         const newLoading = { ...prev }
@@ -223,9 +232,14 @@ export default function Rentals() {
   const handleReject = async (rentalId) => {
     setActionLoading((prev) => ({ ...prev, [rentalId]: "reject" }))
     try {
-      await rentalService.adminRejectApplication(rentalId);
+      const result = await adminRejectApplication(rentalId);
+      if (result.error) {
+        toast.error(`Failed to reject rental: ${result.error}`);
+        return;
+      }
+      toast.success("Rental rejected successfully!");
     } catch (error) {
-      console.error("Error rejecting rental:", error)
+      toast.error("Failed to reject rental");
     } finally {
       setActionLoading((prev) => {
         const newLoading = { ...prev }
@@ -238,9 +252,14 @@ export default function Rentals() {
   const handleStartRental = async (rentalId) => {
     setActionLoading((prev) => ({ ...prev, [rentalId]: "start" }))
     try {
-      await rentalService.adminStartRental(rentalId);
+      const result = await adminStartRental(rentalId);
+      if (result.error) {
+        toast.error(`Failed to start rental: ${result.error}`);
+        return;
+      }
+      toast.success("Rental activated successfully!");
     } catch (error) {
-      console.error("Error starting rental:", error)
+      toast.error("Failed to start rental");
     } finally {
       setActionLoading((prev) => {
         const newLoading = { ...prev }
@@ -253,9 +272,14 @@ export default function Rentals() {
   const handleCompleteRental = async (rentalId) => {
     setActionLoading((prev) => ({ ...prev, [rentalId]: "complete" }))
     try {
-      await rentalService.adminCompleteRental(rentalId);
+      const result = await adminCompleteRental(rentalId);
+      if (result.error) {
+        toast.error(`Failed to complete rental: ${result.error}`);
+        return;
+      }
+      toast.success("Rental completed successfully!");
     } catch (error) {
-      console.error("Error completing rental:", error)
+      toast.error("Failed to complete rental");
     } finally {
       setActionLoading((prev) => {
         const newLoading = { ...prev }
@@ -268,9 +292,14 @@ export default function Rentals() {
   const handleCancelRental = async (rentalId) => {
     setActionLoading((prev) => ({ ...prev, [rentalId]: "cancel" }))
     try {
-      await rentalService.adminCancelRental(rentalId);
+      const result = await adminCancelRental(rentalId);
+      if (result.error) {
+        toast.error(`Failed to cancel rental: ${result.error}`);
+        return;
+      }
+      toast.success("Rental cancelled successfully!");
     } catch (error) {
-      console.error("Error cancelling rental:", error)
+      toast.error("Failed to cancel rental");
     } finally {
       setActionLoading((prev) => {
         const newLoading = { ...prev }
@@ -283,10 +312,15 @@ export default function Rentals() {
   const handleDeleteRental = async (rentalId) => {
     setActionLoading((prev) => ({ ...prev, [rentalId]: "delete" }))
     try {
-      await rentalService.adminDeleteRental(rentalId);
+      const result = await adminDeleteRental(rentalId);
+      if (result.error) {
+        toast.error(`Failed to delete rental: ${result.error}`);
+        return;
+      }
+      toast.success("Rental deleted successfully!");
       setShowDeleteConfirm(null)
     } catch (error) {
-      console.error("Error deleting rental:", error)
+      toast.error("Failed to delete rental");
     } finally {
       setActionLoading((prev) => {
         const newLoading = { ...prev }
@@ -299,7 +333,7 @@ export default function Rentals() {
   const viewContract = async (rentalId, contractFilePath) => {
     if (!contractFilePath) {
       setContractViewError((prev) => ({ ...prev, [rentalId]: "Contract file path is missing." }))
-      console.warn(`Contract file path is missing for rental ID: ${rentalId}`)
+      toast.warn("Contract file path is missing");
       return
     }
 
@@ -313,8 +347,9 @@ export default function Rentals() {
     try {
       const signedUrl = await getSignedContractUrl(contractFilePath)
       window.open(signedUrl, "_blank", "noopener,noreferrer")
+      toast.success("Opening contract in new tab");
     } catch (err) {
-      console.error(`Error generating signed URL for rental ${rentalId}:`, err)
+      toast.error("Could not generate link to view contract");
       setContractViewError((prev) => ({
         ...prev,
         [rentalId]: err.message || "Could not generate link to view contract.",
@@ -329,9 +364,8 @@ export default function Rentals() {
   }
 
   const RentalCard = ({ rental }) => (
-          <div className="bg-gray-800 rounded-xl border-2 border-gray-700 hover:border-gray-600 hover:shadow-lg transition-all duration-200">
-        <div className="p-4 md:p-6">
-        {/* Header */}
+    <div className="bg-gray-800 rounded-xl border-2 border-gray-700 hover:border-gray-600 hover:shadow-lg transition-all duration-200">
+      <div className="p-4 md:p-6">
         <div className="flex justify-between items-start mb-4">
           <div className="flex-1">
             <h3 className="text-xl font-semibold text-white mb-1">{rental.cameras?.name || "Camera Equipment"}</h3>
@@ -349,7 +383,6 @@ export default function Rentals() {
           </span>
         </div>
 
-        {/* Details Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 mb-4 md:mb-6">
           <div className="flex items-center space-x-2 md:space-x-3 p-2 md:p-3 bg-gray-700 rounded-lg">
             <DollarSign className="h-4 w-4 md:h-5 md:w-5 text-green-400" />
@@ -383,7 +416,6 @@ export default function Rentals() {
           </div>
         </div>
 
-        {/* Action Buttons */}
         <div className="flex flex-wrap gap-2 md:gap-3 items-center">
           {rental.rental_status === "pending" && (
             <>
@@ -686,8 +718,19 @@ export default function Rentals() {
 
   return (
     <div className="min-h-screen bg-gray-900">
+      <ToastContainer
+        position="bottom-right"
+        autoClose={3000}
+        hideProgressBar
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable={false}
+        pauseOnHover
+        theme="light"
+        />
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 md:py-8">
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">Rental Management</h1>
           <p className="text-gray-300">
@@ -695,7 +738,6 @@ export default function Rentals() {
           </p>
         </div>
 
-        {/* Search and Filters */}
         <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 mb-6">
           <div className="flex flex-col lg:flex-row gap-4 mb-4">
             <div className="flex-1">
@@ -712,7 +754,6 @@ export default function Rentals() {
             </div>
           </div>
 
-          {/* Status Filter Chips */}
           <div className="flex flex-wrap gap-2">
             {statusFilters.map((filter) => (
               <button
@@ -740,7 +781,6 @@ export default function Rentals() {
           </div>
         </div>
 
-        {/* Results */}
         {rentals.length === 0 ? (
           <div className="bg-gray-800 rounded-xl border border-gray-700 p-12 text-center">
             <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -759,7 +799,6 @@ export default function Rentals() {
           </div>
         )}
 
-        {/* Modals */}
         {selectedRental && <RentalDetailModal rental={selectedRental} onClose={() => { setSelectedRental(null); setSelectedUser(null); }} />}
 
         {showDeleteConfirm && (

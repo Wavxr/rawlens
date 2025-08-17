@@ -1,7 +1,6 @@
-"use client"
-
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { ToastContainer, toast } from 'react-toastify';
 import useRentalStore from "../../stores/rentalStore";
 import { subscribeToRentalUpdates, unsubscribeFromRentalUpdates } from "../../services/realtimeService";
 import {
@@ -17,12 +16,11 @@ import {
   DollarSign,
   ArrowRight,
   X,
-} from "lucide-react"
-import RentalStepper from "../../components/RentalStepper"
-import * as rentalService from "../../services/rentalService"
-import * as deliveryService from "../../services/deliveryService"
-import * as userService from "../../services/userService"
-import useAuthStore from "../../stores/useAuthStore"
+} from "lucide-react";
+import RentalStepper from "../../components/RentalStepper";
+import { adminReadyCamera, adminTransitToUser, adminConfirmReturned } from "../../services/deliveryService";
+import * as userService from "../../services/userService";
+import useAuthStore from "../../stores/useAuthStore";
 
 const DELIVERY_FILTERS = [
   { key: "needs_action", label: "Needs Action", color: "bg-red-50 text-red-700 border-red-200" },
@@ -134,13 +132,11 @@ export default function Delivery() {
     };
   }, [loadAllRentals]);
 
-  // Handle deep linking from Rental page
   useEffect(() => {
     const rentalId = searchParams.get('rentalId')
     if (rentalId && allRentals.length > 0) {
       const targetRental = allRentals.find(r => String(r.id) === String(rentalId))
       if (targetRental) {
-        // Determine the correct filter for this rental
         const needsAdminAction = (r) =>
           (r.rental_status === "confirmed" && (!r.shipping_status || r.shipping_status === "ready_to_ship")) ||
           r.shipping_status === "in_transit_to_owner"
@@ -148,7 +144,6 @@ export default function Delivery() {
         let correctFilter = "needs_action"
         
         if (!needsAdminAction(targetRental)) {
-          // Find the correct filter based on shipping status
           if (["ready_to_ship", "in_transit_to_user"].includes(targetRental.shipping_status)) {
             correctFilter = "outbound"
           } else if (["return_scheduled", "in_transit_to_owner"].includes(targetRental.shipping_status)) {
@@ -162,11 +157,9 @@ export default function Delivery() {
           }
         }
 
-        // Set the correct filter and highlight the card
         setSelectedShippingFilter(correctFilter)
         setHighlightId(rentalId)
         
-        // Scroll to the card after a short delay to ensure it's rendered
         setTimeout(() => {
           const cardElement = cardRefs.current[String(rentalId)]
           if (cardElement) {
@@ -174,7 +167,6 @@ export default function Delivery() {
           }
         }, 100)
 
-        // Clear highlight after 3 seconds
         setTimeout(() => {
           setHighlightId(null)
         }, 3000)
@@ -188,12 +180,11 @@ export default function Delivery() {
       const userData = await userService.fetchUserById(rental.user_id)
       setSelectedUser(userData)
     } catch (error) {
-      console.error("Error fetching user data:", error)
+      toast.error("Failed to load user details. Please try again.");
       setSelectedUser(null)
     }
   }
 
-  // Calculate filter counts based on all rentals
   const calculateFilterCounts = (rentals) => {
     const counts = {
       needs_action: 0,
@@ -228,7 +219,6 @@ export default function Delivery() {
   }
 
   useEffect(() => {
-    // Update filter counts whenever allRentals changes
     if (allRentals.length > 0) {
       const counts = calculateFilterCounts(allRentals)
       setFilterCounts(counts)
@@ -303,9 +293,14 @@ export default function Delivery() {
   const handleReadyToShip = async (rentalId) => {
     setBusy(rentalId, "ready")
     try {
-      await rentalService.updateShippingStatus(rentalId, "ready_to_ship");
+      const result = await adminReadyCamera(rentalId, user.id);
+      if (!result.success) {
+        toast.error(`Failed to mark ready to ship: ${result.error}`);
+        return;
+      }
+      toast.success("Item marked as ready to ship!");
     } catch (err) {
-      console.error("Failed to mark ready_to_ship:", err)
+      toast.error("Failed to update shipping status. Please try again.");
     } finally {
       clearBusy(rentalId)
     }
@@ -314,9 +309,14 @@ export default function Delivery() {
   const handleTransitToUser = async (rentalId) => {
     setBusy(rentalId, "outbound")
     try {
-      await rentalService.updateShippingStatus(rentalId, "in_transit_to_user");
+      const result = await adminTransitToUser(rentalId, user.id);
+      if (!result.success) {
+        toast.error(`Failed to mark in transit: ${result.error}`);
+        return;
+      }
+      toast.success("Item marked as in transit to customer!");
     } catch (err) {
-      console.error("Failed to mark in_transit_to_user:", err)
+      toast.error("Failed to update shipping status. Please try again.");
     } finally {
       clearBusy(rentalId)
     }
@@ -325,18 +325,22 @@ export default function Delivery() {
   const handleConfirmReturned = async (rentalId) => {
     setBusy(rentalId, "returned")
     try {
-      await rentalService.updateShippingStatus(rentalId, "returned", "returned_at");
+      const result = await adminConfirmReturned(rentalId, user.id);
+      if (!result.success) {
+        toast.error(`Failed to confirm return: ${result.error}`);
+        return;
+      }
+      toast.success("Item return confirmed successfully! Rental completed.");
     } catch (err) {
-      console.error("Failed to confirm returned:", err)
+      toast.error("Failed to confirm return. Please try again.");
     } finally {
-      clearBusy(rentalId)
+      clearBusy(rentalId);
     }
   }
 
   const ShippingCard = ({ rental }) => {
     const shippingStatus = rental.shipping_status || "none"
     const rentalStatus = rental.rental_status
-    // Derive Now/Next for header summary
     const STEP_ORDER = [
       "pending",
       "confirmed",
@@ -401,7 +405,6 @@ export default function Delivery() {
         `}
       >
         <div className="p-4 md:p-6">
-          {/* Header */}
           <div className="flex justify-between items-start mb-4">
             <div className="flex-1">
               <h3 className="text-xl font-semibold text-white mb-1">{rental.cameras?.name || "Camera Equipment"}</h3>
@@ -428,7 +431,6 @@ export default function Delivery() {
             </span>
           </div>
 
-          {/* Details Grid */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-4 mb-4 md:mb-6">
             <div className="flex items-center space-x-2 md:space-x-3 p-2 md:p-3 bg-gray-700 rounded-lg">
               <DollarSign className="h-4 w-4 md:h-5 md:w-5 text-green-400" />
@@ -453,7 +455,6 @@ export default function Delivery() {
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex flex-wrap gap-2 md:gap-3 items-center">
             {canReadyToShip && (
               <button
@@ -500,7 +501,6 @@ export default function Delivery() {
               </button>
             )}
 
-            {/* Status Messages */}
             {shippingStatus === "in_transit_to_user" && (
               <div className="flex items-center space-x-1 md:space-x-2 text-xs md:text-sm text-blue-400 bg-blue-900/30 px-2 md:px-3 py-2 rounded-lg">
                 <Clock className="h-3 w-3 md:h-4 md:w-4" />
@@ -551,14 +551,24 @@ export default function Delivery() {
 
   return (
     <div className="min-h-screen bg-gray-900">
+      <ToastContainer
+        position="bottom-right"
+        autoClose={3000}
+        hideProgressBar
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable={false}
+        pauseOnHover
+        theme="light"
+        />
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 md:py-8">
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">Delivery Management</h1>
           <p className="text-gray-300">Track equipment logistics and manage shipping workflows efficiently.</p>
         </div>
 
-        {/* Search and Filters */}
         <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 mb-6">
           <div className="flex flex-col lg:flex-row gap-4">
             <div className="flex-1">
@@ -575,7 +585,6 @@ export default function Delivery() {
             </div>
           </div>
 
-          {/* Filter Chips */}
           <div className="mt-4 flex flex-wrap gap-2">
             {DELIVERY_FILTERS.map((filter) => (
               <button
@@ -606,7 +615,6 @@ export default function Delivery() {
           </div>
         </div>
 
-        {/* Results */}
         {rentals.length === 0 ? (
           <div className="bg-gray-800 rounded-xl border border-gray-700 p-12 text-center">
             <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
