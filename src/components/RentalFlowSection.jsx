@@ -4,12 +4,13 @@ import { useNavigate } from 'react-router-dom';
 import useCameraStore from '../stores/cameraStore';
 import DateFilterInput from './DateFilterInput';
 import ContractSigningModal from './ContractSigningModal';
-import { Camera, Calendar, Clock, FileText, CheckCircle, AlertCircle, Loader2, ArrowLeft, Eye } from 'lucide-react';
+import useAuthStore from '../stores/useAuthStore';
+import { Camera, FileText, CheckCircle, AlertCircle, Loader2, ArrowLeft, Eye } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
-import { getCamera } from '../services/cameraService';
-import { checkCameraAvailability, createUserRentalRequest, calculateTotalPrice, calculateRentalDays } from '../services/rentalService';
+import { checkCameraAvailability, createUserRentalRequest, calculateTotalPrice } from '../services/rentalService';
 import { generateSignedContractPdf, uploadContractPdf, getSignedContractUrl } from '../services/pdfService';
-import { fetchUserById } from '../services/userService';
+import { getUserById } from '../services/userService';
+import { isUserVerified } from '../services/verificationService';
 
 const RentalFlowSection = ({ onBackToBrowse }) => {
   const {
@@ -50,6 +51,8 @@ const RentalFlowSection = ({ onBackToBrowse }) => {
     resetRentalFlowState,
   } = useCameraStore();
 
+  const { user } = useAuthStore();
+
   const sigCanvasRef = useRef();
   const navigate = useNavigate();
 
@@ -80,6 +83,18 @@ const RentalFlowSection = ({ onBackToBrowse }) => {
   const handleCheckAvailability = async () => {
     if (!rentalFlowCamera || !startDate || !endDate) {
       setAvailabilityError("Please select a camera and both start and end dates.");
+      return;
+    }
+    // Enforce verification before proceeding
+    try {
+      
+      const canRent = await isUserVerified(user.id);
+      if (!canRent) {
+        setAvailabilityError("Your account is not verified. Please complete verification in your Profile before renting.");
+        return;
+      }
+    } catch (e) {
+      setAvailabilityError(e.message || "Unable to verify your account status. Please try again or check your Profile.");
       return;
     }
     const start = new Date(new Date(startDate).setHours(0, 0, 0, 0));
@@ -129,6 +144,17 @@ const RentalFlowSection = ({ onBackToBrowse }) => {
         setShowContractModal(true);
         return;
     }
+    // Safety: re-check verification right before submitting
+    try {
+      const canRent = await isUserVerified(user.id);
+      if (!canRent) {
+        setRequestError("Your account is not verified. Please complete verification in your Profile before renting.");
+        return;
+      }
+    } catch (e) {
+      setRequestError(e.message || "Unable to verify your account status.");
+      return;
+    }
     if (!rentalFlowCamera || !startDate || !endDate || !calculatedPrice) {
       setRequestError("Missing required information (camera, dates, price, or signature).");
       return;
@@ -149,9 +175,8 @@ const RentalFlowSection = ({ onBackToBrowse }) => {
       let customerEmail = "user_email_placeholder";
       let customerContact = "user_contact_placeholder";
       try {
-          const { data: { user: authUser } } = await supabase.auth.getUser();
-          if (authUser?.id) {
-              const userData = await fetchUserById(authUser.id);
+          if (user) {
+              const userData = await getUserById(user.id);
               customerName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || userData.email || "User";
               customerEmail = userData.email || "user_email_placeholder";
               customerContact = userData.contact_number || "user_contact_placeholder";
