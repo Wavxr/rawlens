@@ -1,94 +1,81 @@
-/******************************************************************************
- * AUTH SERVICE  –  v2
- * ---------------------------------------------------------------------------
- * • Creates the auth user
- * • Uploads private KYC images
- * • Inserts a profile row with snake-case column names
- ******************************************************************************/
-
-import { supabase } from "../lib/supabaseClient.js"
+import { supabase } from "../lib/supabaseClient";
+import { uploadFile, objectPath } from "./storageService.js";
 
 /* ---------- helpers ------------------------------------------------------ */
-
-const objectPath = (uid, type, ext) => `${uid}/${type}-${Date.now()}.${ext}`
-
-const uploadPrivate = async (bucket, file, path) => {
-  if (!file) throw new Error("File missing")
-
-  const { error } = await supabase.storage.from(bucket).upload(path, file, {
-    contentType: file.type,
-    upsert: false,
-  })
-  if (error) throw error
-  return path // return the key only
-}
 
 /** Convert camelCase userData ➜ snake_case for DB insert */
 const toDbRow = (uid, userData, govKey, selfieKey, videoKey) => ({
   id: uid,
-  first_name:      userData.firstName,
-  last_name:       userData.lastName,
-  middle_initial:  userData.middleInitial,
-  email:           userData.email,
-  address:         userData.address,
-  contact_number:  userData.contactNumber,
+  first_name: userData.firstName,
+  last_name: userData.lastName,
+  middle_initial: userData.middleInitial,
+  email: userData.email,
+  address: userData.address,
+  contact_number: userData.contactNumber,
   government_id_key: govKey,
-  selfie_id_key:   selfieKey,
+  selfie_id_key: selfieKey,
   verification_video_key: videoKey,
   role: "user",
   verification_status: "pending",
-})
+});
 
 /* ---------- exports ------------------------------------------------------ */
 
-/** SIGN-UP: auth ➜ file uploads ➜ profile insert */
-export const signUp = async (
+/**
+ * SIGN-UP FLOW:
+ * 1. Create auth account
+ * 2. Upload KYC files
+ * 3. Insert user profile row
+ */
+export async function signUp(
   email,
   password,
-  userData,       // camel-case keys from the form
+  userData,               
   governmentIdFile,
   selfieFile,
   verificationVideoFile
-) => {
-  /* 1. Create auth account */
+) {
+  // 1. Auth
   const { data: auth, error: authErr } = await supabase.auth.signUp({
     email,
     password,
-  })
-  if (authErr) return { error: authErr }
+  });
+  if (authErr) return { error: authErr };
 
-  const uid = auth.user.id
+  const uid = auth.user.id;
 
   try {
-    /* 2. Upload KYC files to private buckets */
-    const govKey = await uploadPrivate(
+    // 2. Upload KYC files
+    const govKey = await uploadFile(
       "government-ids",
       governmentIdFile,
-      objectPath(uid, "gov-id", "jpg")
-    )
-    const selfieKey = await uploadPrivate(
+      objectPath("users", uid, "verification", "government-id", "jpg")
+    );
+
+    const selfieKey = await uploadFile(
       "selfie-ids",
       selfieFile,
-      objectPath(uid, "selfie", "jpg")
-    )
-    const videoKey = await uploadPrivate(
+      objectPath("users", uid, "verification", "selfie", "jpg")
+    );
+
+    const videoKey = await uploadFile(
       "verification-videos",
       verificationVideoFile,
-      objectPath(uid, "verification", "webm")
-    )
+      objectPath("users", uid, "verification", "video", "webm")
+    );
 
-    /* 3. Insert profile row with correct column names */
+    // 3. Insert profile row
     const { error: dbErr } = await supabase
       .from("users")
-      .insert(toDbRow(uid, userData, govKey, selfieKey, videoKey))
+      .insert(toDbRow(uid, userData, govKey, selfieKey, videoKey));
 
-    if (dbErr) throw dbErr
+    if (dbErr) throw dbErr;
 
-    return { success: true }
+    return { success: true };
   } catch (err) {
-    // rollback auth user if anything else failed
-    await supabase.auth.admin.deleteUser(uid)
-    return { error: err }
+    // Rollback user if signup fails after auth
+    await supabase.auth.admin.deleteUser(uid);
+    return { error: err };
   }
 }
 
