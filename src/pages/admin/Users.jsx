@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
-import { signedUrl } from "../../lib/storage"
-import { fetchUsers, updateVerificationStatus } from "../../services/userService"
+import { getSignedUrl } from "../../services/storageService"
+import { getUsers } from "../../services/userService"
+import { adminUpdateVerificationStatus } from "../../services/verificationService"
 import {
   Users, Eye, X, Search, Filter, MoreVertical, Shield, Mail, User, Calendar,
   ImageIcon, AlertCircle, CheckCircle, Clock, Download
@@ -57,7 +58,7 @@ export default function AdminUsers() {
     async function loadUsers() {
       setLoadingUsers(true)
       try {
-        const data = await fetchUsers()
+        const data = await getUsers()
         setUsers(data)
         setFilteredUsers(data)
       } catch (error) {
@@ -100,15 +101,15 @@ export default function AdminUsers() {
       try {
         const [nat, selfie, video] = await Promise.all([
           user.government_id_key
-            ? signedUrl("government-ids", user.government_id_key, { width: 500 })
+            ? getSignedUrl("government-ids", user.government_id_key, { transform: { width: 500 } })
             : Promise.resolve(""),
           user.selfie_id_key
-            ? signedUrl("selfie-ids", user.selfie_id_key, { width: 500 })
+            ? getSignedUrl("selfie-ids", user.selfie_id_key, { transform: { width: 500 } })
             : Promise.resolve(""),
           user.verification_video_key
-            ? signedUrl("verification-videos", user.verification_video_key)
+            ? getSignedUrl("verification-videos", user.verification_video_key)
             : Promise.resolve(""),
-        ])
+        ]);      
 
         setImgs({
           nat,
@@ -137,7 +138,7 @@ export default function AdminUsers() {
 
   async function handleUpdateStatus(newStatus) {
     try {
-      await updateVerificationStatus(modalUser.id, newStatus)
+      await adminUpdateVerificationStatus(modalUser.id, newStatus)
       const updated = users.map((u) =>
         u.id === modalUser.id ? { ...u, verification_status: newStatus } : u
       )
