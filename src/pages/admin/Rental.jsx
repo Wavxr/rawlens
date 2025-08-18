@@ -27,7 +27,7 @@ import {
 } from "../../services/rentalService"
 import { getSignedContractUrl } from "../../services/pdfService"
 import RentalStepper from "../../components/RentalStepper"
-import { fetchUserById } from "../../services/userService"
+import { getUserById } from "../../services/userService"
 import { toast, ToastContainer } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 
@@ -64,7 +64,7 @@ export default function Rentals() {
   const handleViewDetails = async (rental) => {
     setSelectedRental(rental)
     try {
-      const userData = await fetchUserById(rental.user_id)
+      const userData = await getUserById(rental.user_id)
       setSelectedUser(userData)
     } catch (error) {
       toast.error("Failed to load user details")

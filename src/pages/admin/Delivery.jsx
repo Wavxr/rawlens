@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import RentalStepper from "../../components/RentalStepper";
 import { adminReadyCamera, adminTransitToUser, adminConfirmReturned } from "../../services/deliveryService";
-import * as userService from "../../services/userService";
+import { getUserById } from "../../services/userService";
 import useAuthStore from "../../stores/useAuthStore";
 
 const DELIVERY_FILTERS = [
@@ -177,7 +177,7 @@ export default function Delivery() {
   const handleViewDetails = async (rental) => {
     setSelectedRental(rental)
     try {
-      const userData = await userService.fetchUserById(rental.user_id)
+      const userData = await getUserById(rental.user_id)
       setSelectedUser(userData)
     } catch (error) {
       toast.error("Failed to load user details. Please try again.");
