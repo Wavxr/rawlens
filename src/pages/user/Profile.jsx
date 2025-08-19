@@ -16,8 +16,9 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [savingPersonal, setSavingPersonal] = useState(false);
   const [appealing, setAppealing] = useState(false);
-  const currentUser = users.find((u) => u.id === user?.id);
+  const currentUser = users.find((u) => u.id === user?.id); // Derive from store
 
+  // Initial load and subscription
   useEffect(() => {
     if (!user?.id) return;
 
@@ -27,7 +28,7 @@ export default function Profile() {
         if (error) {
           console.error("Failed to load user profile:", error);
         } else if (data) {
-          addOrUpdateUser(data);
+          addOrUpdateUser(data); // Put initial data in the store
         }
       } catch (err) {
         console.error(err);
@@ -43,6 +44,17 @@ export default function Profile() {
     };
   }, [user?.id, addOrUpdateUser]);
 
+  // NEW: Update local state when the user data in the store changes (e.g., via realtime)
+  useEffect(() => {
+    if (currentUser) {
+      setForm(currentUser);
+      setOriginalForm(currentUser);
+      // Refresh media URLs if keys might have changed via realtime
+      refreshMediaUrls(currentUser);
+    }
+  }, [currentUser]); // Depend on currentUser from the store
+
+  // --- State and Refs for Video Recording ---
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordedVideoUrl, setRecordedVideoUrl] = useState(null);
@@ -59,6 +71,10 @@ export default function Profile() {
   const preCountdownRef = useRef(null);
   const recordingIntervalRef = useRef(null);
 
+  // --- Initial Data Fetch (Consider if this is still needed with the store+realtime) ---
+  // This might be redundant now that we have the store and realtime updates.
+  // The useEffect above with addOrUpdateUser and the new useEffect for currentUser should suffice.
+  // Keeping it for now might cause slight confusion but shouldn't break realtime if the above useEffect is added.
   useEffect(() => {
     if (!userId) return;
     async function fetchUserData() {
@@ -75,7 +91,9 @@ export default function Profile() {
       }
     }
     fetchUserData();
-  }, [userId]);
+  }, [userId]); // This runs on mount and when userId changes
+
+  // --- Helper Functions ---
 
   async function refreshMediaUrls(data) {
     const [idUrl, selfieUrl, videoUrl] = await Promise.all([
@@ -154,6 +172,9 @@ export default function Profile() {
       recordedBlobRef.current = null;
       recordedChunksRef.current = [];
       await refreshMediaUrls(data);
+      // Explicitly update the store after a successful save
+      // While realtime should pick it up, this ensures consistency
+      addOrUpdateUser(data);
     } catch (error) {
       console.error("Error updating profile:", error);
       alert(`Failed to update profile: ${error.message || "Please try again."}`);
@@ -285,6 +306,8 @@ export default function Profile() {
     recordedBlobRef.current = null;
   };
 
+  // --- Render Logic ---
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -296,8 +319,15 @@ export default function Profile() {
     );
   }
 
-  const isVerified = form.verification_status === 'verified';
-  const isRejected = form.verification_status === 'rejected';
+  // This check should ideally not be needed if currentUser is synced correctly,
+  // but it's a safeguard. Ensure the new useEffect runs correctly.
+  if (!currentUser) {
+    console.warn("currentUser is null after loading or store update for user ID:", user?.id);
+    return <p>User data could not be loaded or found.</p>;
+  }
+
+  const isVerified = form.verification_status === 'verified'; // Or currentUser.verification_status
+  const isRejected = form.verification_status === 'rejected'; // Or currentUser.verification_status
   const canAppeal = isRejected;
 
   return (
