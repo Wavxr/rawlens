@@ -9,7 +9,6 @@ import {
   ImageIcon, AlertCircle, CheckCircle, Clock, Download, AlertTriangle
 } from 'lucide-react'
 
-// Appeal status badge component
 function AppealBadge() {
   return (
     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 ml-2">
@@ -19,7 +18,6 @@ function AppealBadge() {
   )
 }
 
-// Skeleton component for loading states
 const UserRowSkeleton = () => (
   <tr className="border-t border-gray-800">
     <td className="p-4">
@@ -65,7 +63,7 @@ export default function AdminUsers() {
   const [roleFilter, setRoleFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
   const [appealFilter, setAppealFilter] = useState(false)
-  const { users } = useUserStore();
+  const { users, setUsers, addOrUpdateUser } = useUserStore();
 
   useEffect(() => {
     const channel = subscribeToUserUpdates(null, "admin");
@@ -87,8 +85,7 @@ export default function AdminUsers() {
       setLoadingUsers(false)
     }
     loadUsers()
-  }, [])
-
+  }, [setUsers])
 
   useEffect(() => {
     let filtered = users
@@ -108,48 +105,45 @@ export default function AdminUsers() {
       filtered = filtered.filter((user) => user.verification_status === statusFilter)
     }
 
-    // Filter for users who are appealing
     if (appealFilter) {
       filtered = filtered.filter((user) => user.is_appealing === true)
     }
 
     setFilteredUsers(filtered)
-  }, [users, searchTerm, roleFilter, statusFilter, appealFilter]) // Add appealFilter to dependencies
+  }, [users, searchTerm, roleFilter, statusFilter, appealFilter])
 
-    async function openModal(user) {
-      setModalUser(user)
+  async function openModal(user) {
+    setModalUser(user)
+
+    setImgs({
+      nat: "", selfie: "", video: "", natLoaded: false, selfieLoaded: false, videoLoaded: false
+    })
+
+    try {
+      const [nat, selfie, video] = await Promise.all([
+        user.government_id_key
+          ? getSignedUrl("government-ids", user.government_id_key, { transform: { width: 500 } })
+          : Promise.resolve(""),
+        user.selfie_id_key
+          ? getSignedUrl("selfie-ids", user.selfie_id_key, { transform: { width: 500 } })
+          : Promise.resolve(""),
+        user.verification_video_key
+          ? getSignedUrl("verification-videos", user.verification_video_key)
+          : Promise.resolve(""),
+      ]);      
 
       setImgs({
-        nat: "", selfie: "", video: "", natLoaded: false, selfieLoaded: false, videoLoaded: false
+        nat,
+        selfie,
+        video,
+        natLoaded: false,
+        selfieLoaded: false,
+        videoLoaded: false,
       })
-
-      try {
-        const [nat, selfie, video] = await Promise.all([
-          user.government_id_key
-            ? getSignedUrl("government-ids", user.government_id_key, { transform: { width: 500 } })
-            : Promise.resolve(""),
-          user.selfie_id_key
-            ? getSignedUrl("selfie-ids", user.selfie_id_key, { transform: { width: 500 } })
-            : Promise.resolve(""),
-          user.verification_video_key
-            ? getSignedUrl("verification-videos", user.verification_video_key)
-            : Promise.resolve(""),
-        ]);      
-
-        setImgs({
-          nat,
-          selfie,
-          video,
-          natLoaded: false,
-          selfieLoaded: false,
-          videoLoaded: false,
-        })
-      } catch (err) {
-        console.error("Signed-URL error", err)
-      }
+    } catch (err) {
+      console.error("Signed-URL error", err)
     }
-
-
+  }
 
   const closeModal = () => setModalUser(null)
 
@@ -162,12 +156,10 @@ export default function AdminUsers() {
   }
 
   async function handleUpdateStatus(newStatus) {
+    if (!modalUser) return;
     try {
       await adminUpdateVerificationStatus(modalUser.id, newStatus)
-      const updated = users.map((u) =>
-        u.id === modalUser.id ? { ...u, verification_status: newStatus } : u
-      )
-      setUsers(updated)
+      addOrUpdateUser({ ...modalUser, verification_status: newStatus });
       setModalUser(null)
     } catch (err) {
       console.error("Failed to update verification status:", err)
@@ -175,14 +167,8 @@ export default function AdminUsers() {
     }
   }
 
-
-
-  /* ─────────────────────────────
-     Render
-     ─────────────────────────────*/
   return (
     <div className="space-y-6">
-      {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white">User Management</h1>
@@ -190,7 +176,6 @@ export default function AdminUsers() {
         </div>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-xl p-6">
           <div className="flex items-center justify-between">
@@ -242,10 +227,8 @@ export default function AdminUsers() {
         </div>
       </div>
 
-      {/* Search and Filters */}
       <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-xl p-6">
         <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-          {/* Search */}
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
             <input
@@ -257,7 +240,6 @@ export default function AdminUsers() {
             />
           </div>
 
-          {/* Filters */}
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
               <Filter className="h-4 w-4 text-gray-400" />
@@ -296,7 +278,6 @@ export default function AdminUsers() {
         </div>
       </div>
 
-      {/* Users Table */}
       <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -312,7 +293,6 @@ export default function AdminUsers() {
             </thead>
             <tbody>
               {loadingUsers ? (
-                // Skeleton loading rows
                 Array.from({ length: 5 }).map((_, index) => <UserRowSkeleton key={index} />)
               ) : filteredUsers.length === 0 ? (
                 <tr>
@@ -404,11 +384,9 @@ export default function AdminUsers() {
         </div>
       </div>
 
-      {/* Modal */}
       {modalUser && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
             <div className="flex items-center justify-between p-6 border-b border-gray-800">
               <div className="flex items-center space-x-4">
                 <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-medium text-lg">
@@ -429,9 +407,7 @@ export default function AdminUsers() {
               </button>
             </div>
 
-            {/* Modal Content */}
             <div className="p-6">
-              {/* User Info */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 <div className="space-y-4">
                   <h4 className="text-lg font-semibold text-white mb-4">User Information</h4>
@@ -475,12 +451,9 @@ export default function AdminUsers() {
                 </div>
               </div>
 
-              {/* ID Documents */}
               <div>
                 <h4 className="text-lg font-semibold text-white mb-4">Identity Documents</h4>
                 <div className="grid md:grid-cols-2 gap-6 mb-6">
-
-                  {/* National ID */}
                   <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
                     <div className="flex items-center space-x-2 mb-3">
                       <Shield className="h-4 w-4 text-blue-400" />
@@ -515,7 +488,6 @@ export default function AdminUsers() {
                     )}
                   </div>
 
-                  {/* Selfie with ID */}
                   <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
                     <div className="flex items-center space-x-2 mb-3">
                       <User className="h-4 w-4 text-blue-400" />
@@ -549,10 +521,8 @@ export default function AdminUsers() {
                       </div>
                     )}
                   </div>
-
                 </div>
 
-                {/* Verification Video */}
                 <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
                   <div className="flex items-center space-x-2 mb-3">
                     <ImageIcon className="h-4 w-4 text-blue-400" />
@@ -580,10 +550,8 @@ export default function AdminUsers() {
                   )}
                 </div>
               </div>
-
             </div>
 
-            {/* Modal Footer */}
             <div className="flex justify-end space-x-4 p-6 border-t border-gray-800">
               <button
                 onClick={closeModal}
@@ -612,7 +580,6 @@ export default function AdminUsers() {
                 </>
               )}
             </div>
-
           </div>
         </div>
       )}
