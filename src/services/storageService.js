@@ -3,28 +3,36 @@ import { supabase } from "../lib/supabaseClient";
 /* ---------- Path Helpers ---------- */
 
 // Generate a standardized object path
-export function objectPath(entity, entityId, category, type, ext, { versioned = true } = {}) {
+export function objectPath(entityId, type, ext, { versioned = true } = {}) {
   const ts = Date.now();
-  const filename = versioned
-    ? `${type}-${ts}.${ext}`   // e.g. government-id-1692288399999.jpg
-    : `${type}.${ext}`;        // e.g. avatar.jpg (always overwritten)
-
-  return `${entity}/${entityId}/${category}/${filename}`;
+  const filename = versioned ? `${type}-${ts}.${ext}` : `${type}.${ext}`;
+  return `${entityId}/${filename}`;
 }
+
 
 /* ---------- File Operations ---------- */
 
 // Upload a file to a private bucket
-export async function uploadFile(bucket, file, path) {
+export async function uploadFile(bucket, path, file) {
   if (!file) throw new Error("File missing");
+  if (!path) throw new Error("Path is required");
+  
+  try {
+    const { error } = await supabase.storage
+      .from(bucket)
+      .upload(path, file, {
+        contentType: file.type,
+        upsert: true,
+        cacheControl: '3600'
+      });
+    if (error) {
+      throw error;
+    }
 
-  const { error } = await supabase.storage.from(bucket).upload(path, file, {
-    contentType: file.type,
-    upsert: false, // safer: avoid overwrites unless intended
-  });
-  if (error) throw error;
-
-  return path; // return the key
+    return path;
+  } catch (error) {
+    throw error;
+  }
 }
 
 // Generate a signed URL for private file
