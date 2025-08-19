@@ -1,10 +1,13 @@
 import { useEffect, useState, useRef } from "react";
 import { getUserById, updateUserProfile } from "../../services/userService";
 import { getSignedUrl } from "../../services/storageService";
+import { subscribeToUserUpdates, unsubscribeFromUserUpdates } from "../../services/realtimeService";
 import useAuthStore from "../../stores/useAuthStore";
+import useUserStore from "../../stores/userStore";
 
 export default function Profile() {
   const { user } = useAuthStore();
+  const { users, addOrUpdateUser } = useUserStore();
   const userId = user?.id;
   const [form, setForm] = useState({});
   const [originalForm, setOriginalForm] = useState({});
@@ -13,17 +16,41 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [savingPersonal, setSavingPersonal] = useState(false);
   const [appealing, setAppealing] = useState(false);
+  const currentUser = users.find((u) => u.id === user?.id);
 
-  // Video recording states (Enhanced from Signup.jsx)
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const loadUser = async () => {
+      try {
+        const { data, error } = await getUserById(user.id);
+        if (error) {
+          console.error("Failed to load user profile:", error);
+        } else if (data) {
+          addOrUpdateUser(data);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadUser();
+
+    const channel = subscribeToUserUpdates(user.id, "user");
+    return () => {
+      unsubscribeFromUserUpdates(channel);
+    };
+  }, [user?.id, addOrUpdateUser]);
+
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordedVideoUrl, setRecordedVideoUrl] = useState(null);
   const [stream, setStream] = useState(null);
-  // countdown and timers
+
   const [preCountdown, setPreCountdown] = useState(0);
   const [timeLeft, setTimeLeft] = useState(0);
 
-  // Refs for video recording
   const videoRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const recordedChunksRef = useRef([]);
@@ -32,7 +59,6 @@ export default function Profile() {
   const preCountdownRef = useRef(null);
   const recordingIntervalRef = useRef(null);
 
-  // Fetch user & media URLs
   useEffect(() => {
     if (!userId) return;
     async function fetchUserData() {
@@ -51,7 +77,6 @@ export default function Profile() {
     fetchUserData();
   }, [userId]);
 
-  // Refresh media URLs
   async function refreshMediaUrls(data) {
     const [idUrl, selfieUrl, videoUrl] = await Promise.all([
       data.government_id_key
@@ -81,11 +106,9 @@ export default function Profile() {
     if (!fileList[0]) return;
     const file = fileList[0];
     setFiles(prev => ({ ...prev, [name]: file }));
-    // Immediately show preview
     setMediaUrls(prev => ({ ...prev, [name]: URL.createObjectURL(file) }));
   }
 
-  // Generic submit handler for both actions
   async function handleSubmit(e, isAppeal = false) {
     e.preventDefault();
     if (isAppeal) {
@@ -93,61 +116,40 @@ export default function Profile() {
     } else {
         setSavingPersonal(true);
     }
-
     try {
       const updates = {};
       let filesToUpload = {};
-
       if (isAppeal) {
-        // For appeal, check for document changes
-        // Only include changed fields/files for appeal
         if (files.government_id_key) filesToUpload.government_id_key = files.government_id_key;
         if (files.selfie_id_key) filesToUpload.selfie_id_key = files.selfie_id_key;
-
-        // Handle video file from recording if confirmed
         if (recordedBlobRef.current) {
            const videoFile = new File([recordedBlobRef.current], "verification-video.webm", { type: "video/webm" });
-           filesToUpload.verification_video_key = videoFile; // Add to files to upload
-           // Update mediaUrls for immediate preview (optional, as page will refresh)
+           filesToUpload.verification_video_key = videoFile;
            const previewUrl = URL.createObjectURL(recordedBlobRef.current);
            setMediaUrls(prev => ({ ...prev, verification_video_key_for_preview: previewUrl }));
         } else if (files.verification_video_key) {
-            // If video was uploaded via file input
             filesToUpload.verification_video_key = files.verification_video_key;
         }
-
-        // If no new files are provided for appeal, show an error or prevent submission
         if (Object.keys(filesToUpload).length === 0) {
              alert("Please provide at least one new verification document to appeal.");
-             return; // Stop submission
+             return;
         }
-
-        // Note: updateUserProfile will automatically set is_appealing = true if filesToUpload has entries
-        // We don't need to explicitly set it here.
-
       } else {
-        // For personal info update, check for field changes
         for (const key of ["first_name", "last_name", "contact_number", "address"]) {
           if (form[key] !== originalForm[key]) updates[key] = form[key];
         }
-        // No files are uploaded for personal info updates
         filesToUpload = {};
       }
-
       await updateUserProfile(userId, updates, filesToUpload);
-
       if (isAppeal) {
           alert("Verification appeal submitted successfully!");
       } else {
           alert("Personal information updated successfully!");
       }
-
-      // Refresh user & media URLs after save
       const data = await getUserById(userId);
       setForm(data);
       setOriginalForm(data);
-      setFiles({}); // Clear staged files
-      // Reset video recording state
+      setFiles({});
       setRecordedVideoUrl(null);
       recordedBlobRef.current = null;
       recordedChunksRef.current = [];
@@ -164,7 +166,6 @@ export default function Profile() {
     }
   }
 
-  // VIDEO RECORDING LOGIC (Enhanced from Signup.jsx)
   async function openVideoModal() {
     setShowVideoModal(true);
     try {
@@ -175,10 +176,8 @@ export default function Profile() {
       setStream(mediaStream);
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
-        videoRef.current.muted = true; // Mute preview
+        videoRef.current.muted = true;
       }
-
-      // Initialize MediaRecorder
       mediaRecorderRef.current = new MediaRecorder(mediaStream);
       mediaRecorderRef.current.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -189,7 +188,6 @@ export default function Profile() {
         const videoBlob = new Blob(recordedChunksRef.current, { type: "video/webm" });
         recordedBlobRef.current = videoBlob;
         const videoUrl = URL.createObjectURL(videoBlob);
-        // Detach and stop camera so preview is shown clearly
         if (videoRef.current) {
           try { videoRef.current.srcObject = null; } catch (e) { console.error(e); }
         }
@@ -208,7 +206,6 @@ export default function Profile() {
 
   const startRecording = () => {
     if (!mediaRecorderRef.current) return;
-    // Pre-record 3..2..1 countdown
     setPreCountdown(3);
     if (preCountdownRef.current) clearInterval(preCountdownRef.current);
     preCountdownRef.current = setInterval(() => {
@@ -216,12 +213,10 @@ export default function Profile() {
         const next = prev - 1;
         if (next <= 0) {
           clearInterval(preCountdownRef.current);
-          // Start actual recording
           recordedChunksRef.current = [];
           mediaRecorderRef.current.start();
           setIsRecording(true);
           setTimeLeft(10);
-          // Update remaining seconds while recording
           if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
           recordingIntervalRef.current = setInterval(() => {
             setTimeLeft(t => {
@@ -229,7 +224,6 @@ export default function Profile() {
               return nt >= 0 ? nt : 0;
             });
           }, 1000);
-          // Auto-stop after 10s
           recordingTimeoutRef.current = setTimeout(() => {
             if (mediaRecorderRef.current?.state === "recording") {
               stopRecording();
@@ -264,7 +258,6 @@ export default function Profile() {
   };
 
   const closeVideoModal = () => {
-    // Ensure camera is stopped when modal closes
     if (stream) {
       stream.getTracks().forEach(track => track.stop());
       setStream(null);
@@ -303,23 +296,19 @@ export default function Profile() {
     );
   }
 
-  // Determine appeal eligibility
   const isVerified = form.verification_status === 'verified';
   const isRejected = form.verification_status === 'rejected';
-  const canAppeal = isRejected; // Only rejected users can appeal
+  const canAppeal = isRejected;
 
   return (
     <>
       <div className="min-h-screen bg-gray-50 py-12 px-4">
         <div className="max-w-4xl mx-auto">
-          {/* Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Profile Settings</h1>
             <p className="text-gray-600">Manage your personal information and verification documents</p>
           </div>
           <form onSubmit={(e) => e.preventDefault()} className="bg-white rounded-lg shadow-sm divide-y divide-gray-100">
-
-            {/* Personal Information Section */}
             <div className="p-8">
               <div className="flex items-center mb-6">
                 <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center mr-3">
@@ -348,7 +337,7 @@ export default function Profile() {
                           <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
                           <span className="text-yellow-600 font-medium">Pending</span>
                         </>
-                      ) : form.verification_status === 'rejected' ? ( // Added rejected status
+                      ) : form.verification_status === 'rejected' ? (
                         <>
                           <div className="w-2 h-2 bg-red-500 rounded-full"></div>
                           <span className="text-red-600 font-medium">Rejected</span>
@@ -379,11 +368,10 @@ export default function Profile() {
                   <textarea name="address" value={form.address || ""} onChange={handleChange} placeholder="Enter your complete address" rows={4} className="w-full px-4 py-3 bg-gray-50 border-0 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all resize-none" style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word' }} />
                 </div>
               </div>
-              {/* Save Changes Button for Personal Info */}
               <div className="mt-8 flex justify-end">
                 <button
-                  type="button" // Changed to button to prevent form submission
-                  onClick={handleSubmit} // Calls handleSubmit with isAppeal = false
+                  type="button"
+                  onClick={handleSubmit}
                   disabled={savingPersonal}
                   className="px-8 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg"
                 >
@@ -391,8 +379,6 @@ export default function Profile() {
                 </button>
               </div>
             </div>
-
-            {/* Verification Documents Section */}
             <div className="p-8">
               <div className="flex items-center mb-6">
                 <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center mr-3">
@@ -402,8 +388,6 @@ export default function Profile() {
                 </div>
                 <h2 className="text-xl font-semibold text-gray-900">Verification Documents</h2>
               </div>
-
-              {/* Disclaimer based on verification status */}
               <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 text-sm">
                 {isVerified ? (
                   <p><strong>Note:</strong> Your account is already verified. You do not need to appeal.</p>
@@ -413,9 +397,7 @@ export default function Profile() {
                   <p><strong>Status:</strong> Your verification is currently pending or unverified. Please wait for admin review or complete the initial verification process.</p>
                 )}
               </div>
-
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Government ID */}
                 <div className="space-y-4">
                   <label className="text-sm font-medium text-gray-700">Government ID</label>
                   <div className="relative group">
@@ -436,10 +418,9 @@ export default function Profile() {
                       accept="image/*"
                       onChange={handleFileChange}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                      disabled={!canAppeal} // Disable if not eligible to appeal
+                      disabled={!canAppeal}
                     />
                   </div>
-                  {/* Change Photo Button */}
                   <div className="flex justify-center">
                     <label
                       htmlFor="government_id_key"
@@ -449,7 +430,6 @@ export default function Profile() {
                     </label>
                   </div>
                 </div>
-                {/* Selfie ID */}
                 <div className="space-y-4">
                   <label className="text-sm font-medium text-gray-700">Selfie with ID</label>
                   <div className="relative group">
@@ -470,10 +450,9 @@ export default function Profile() {
                       accept="image/*"
                       onChange={handleFileChange}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                      disabled={!canAppeal} // Disable if not eligible to appeal
+                      disabled={!canAppeal}
                     />
                   </div>
-                  {/* Change Photo Button */}
                   <div className="flex justify-center">
                     <label
                       htmlFor="selfie_id_key"
@@ -483,10 +462,8 @@ export default function Profile() {
                     </label>
                   </div>
                 </div>
-                {/* Verification Video */}
                 <div className="space-y-4">
                   <label className="text-sm font-medium text-gray-700">Verification Video</label>
-                  {/* Show the newly recorded/staged video preview first, then the saved one, then the placeholder */}
                   {files["verification_video_key"] || mediaUrls.verification_video_key_for_preview ? (
                      <video src={mediaUrls.verification_video_key_for_preview || URL.createObjectURL(files["verification_video_key"])} controls className="w-full h-48 object-cover rounded-lg bg-gray-100 border" />
                   ) : mediaUrls.verification_video_key ? (
@@ -499,20 +476,18 @@ export default function Profile() {
                   <button
                     type="button"
                     onClick={openVideoModal}
-                    disabled={!canAppeal} // Disable if not eligible to appeal
+                    disabled={!canAppeal}
                     className={`w-full h-12 ${canAppeal ? 'bg-blue-50 hover:bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400 cursor-not-allowed'} rounded-lg`}
                   >
                     Record Video
                   </button>
                 </div>
               </div>
-
-              {/* Appeal Verification Button */}
               <div className="mt-8 flex justify-end">
                 <button
-                  type="button" // Changed to button to prevent form submission
-                  onClick={(e) => handleSubmit(e, true)} // Calls handleSubmit with isAppeal = true
-                  disabled={appealing || !canAppeal} // Disable if appealing or not eligible
+                  type="button"
+                  onClick={(e) => handleSubmit(e, true)}
+                  disabled={appealing || !canAppeal}
                   className={`px-8 py-3 rounded-lg font-medium ${canAppeal ? 'bg-yellow-500 hover:bg-yellow-600 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
                 >
                   {appealing ? "Submitting Appeal..." : "Appeal Verification"}
@@ -522,8 +497,6 @@ export default function Profile() {
           </form>
         </div>
       </div>
-
-      {/* Video Modal (Enhanced) */}
       {showVideoModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={closeVideoModal}>
           <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-2xl relative" onClick={e => e.stopPropagation()}>
@@ -548,7 +521,6 @@ export default function Profile() {
               ) : (
                 <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
               )}
-              {/* Countdown and recording timer overlays */}
               {!recordedVideoUrl && preCountdown > 0 && (
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="text-white text-6xl font-bold bg-black/40 rounded-full w-24 h-24 flex items-center justify-center border border-white/30">
@@ -581,7 +553,7 @@ export default function Profile() {
                 <>
                   <button
                     type="button"
-                    onClick={() => { // Retake
+                    onClick={() => {
                       if (recordedVideoUrl) {
                         try { URL.revokeObjectURL(recordedVideoUrl); } catch (e) { console.error(e); }
                       }
@@ -590,7 +562,6 @@ export default function Profile() {
                       recordedChunksRef.current = [];
                       setPreCountdown(0);
                       setTimeLeft(0);
-                      // Re-open camera fresh for a new recording
                       openVideoModal();
                     }}
                     className="px-6 py-2 border border-gray-700 bg-gray-800/50 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-colors"
@@ -599,16 +570,13 @@ export default function Profile() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { // Confirm
-                      // 1. Create File object from the recorded Blob and store in state
+                    onClick={() => {
                       if (recordedBlobRef.current) {
                         const videoFile = new File([recordedBlobRef.current], "verification-video.webm", { type: "video/webm" });
                         setFiles(prev => ({ ...prev, verification_video_key: videoFile }));
-                        // 2. Update mediaUrls immediately for preview before modal closes
                         const previewUrl = URL.createObjectURL(recordedBlobRef.current);
                         setMediaUrls(prev => ({ ...prev, verification_video_key_for_preview: previewUrl }));
                       }
-                      // 3. Close the modal and clean up (including stopping the camera)
                       closeVideoModal();
                     }}
                     className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"

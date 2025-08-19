@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react"
 import { getSignedUrl } from "../../services/storageService"
 import { getUsers } from "../../services/userService"
+import { subscribeToUserUpdates, unsubscribeFromUserUpdates } from "../../services/realtimeService";
+import useUserStore from "../../stores/userStore";
 import { adminUpdateVerificationStatus } from "../../services/verificationService"
 import {
   Users, Eye, X, Search, Filter, MoreVertical, Shield, Mail, User, Calendar,
@@ -54,7 +56,6 @@ const ImageSkeleton = () => (
 )
 
 export default function AdminUsers() {
-  const [users, setUsers] = useState([])
   const [filteredUsers, setFilteredUsers] = useState([])
   const [modalUser, setModalUser] = useState(null)
   const [imgs, setImgs] = useState({ nat: "", selfie: "", video: "", natLoaded: false, selfieLoaded: false, videoLoaded: false })
@@ -63,7 +64,15 @@ export default function AdminUsers() {
   const [searchTerm, setSearchTerm] = useState("")
   const [roleFilter, setRoleFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
-  const [appealFilter, setAppealFilter] = useState(false) // New state for appeal filter
+  const [appealFilter, setAppealFilter] = useState(false)
+  const { users } = useUserStore();
+
+  useEffect(() => {
+    const channel = subscribeToUserUpdates(null, "admin");
+    return () => {
+      unsubscribeFromUserUpdates(channel);
+    };
+  }, []);
 
   useEffect(() => {
     async function loadUsers() {
@@ -77,9 +86,9 @@ export default function AdminUsers() {
       }
       setLoadingUsers(false)
     }
-
     loadUsers()
   }, [])
+
 
   useEffect(() => {
     let filtered = users
