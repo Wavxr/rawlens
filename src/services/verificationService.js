@@ -22,7 +22,10 @@ export async function isUserVerified(userId) {
 export async function adminUpdateVerificationStatus(userId, status) {
   const { error } = await supabase
     .from("users")
-    .update({ verification_status: status })
+    .update({ 
+      verification_status: status,
+      is_appealing: false
+    })
     .eq("id", userId)
 
   if (error) throw new Error(`Failed to update verification status: ${error.message}`)

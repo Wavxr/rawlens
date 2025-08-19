@@ -11,9 +11,10 @@ export default function Profile() {
   const [mediaUrls, setMediaUrls] = useState({});
   const [files, setFiles] = useState({});
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [savingPersonal, setSavingPersonal] = useState(false);
+  const [appealing, setAppealing] = useState(false);
 
-  // Video recording states (Enhanced)
+  // Video recording states (Enhanced from Signup.jsx)
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordedVideoUrl, setRecordedVideoUrl] = useState(null);
@@ -84,41 +85,68 @@ export default function Profile() {
     setMediaUrls(prev => ({ ...prev, [name]: URL.createObjectURL(file) }));
   }
 
-  async function handleSubmit(e) {
+  // Generic submit handler for both actions
+  async function handleSubmit(e, isAppeal = false) {
     e.preventDefault();
-    setSaving(true);
+    if (isAppeal) {
+        setAppealing(true);
+    } else {
+        setSavingPersonal(true);
+    }
+
     try {
       const updates = {};
-      // Only changed fields
-      for (const key of ["first_name", "last_name", "contact_number", "address"]) {
-        if (form[key] !== originalForm[key]) updates[key] = form[key];
-      }
+      let filesToUpload = {};
 
-      // Handle video file from recording if confirmed
-      if (recordedBlobRef.current) {
-         const videoFile = new File([recordedBlobRef.current], "verification-video.webm", { type: "video/webm" });
-         setFiles(prev => ({ ...prev, verification_video_key: videoFile }));
-         // Update mediaUrls for immediate preview
-         const previewUrl = URL.createObjectURL(recordedBlobRef.current);
-         setMediaUrls(prev => ({ ...prev, verification_video_key_for_preview: previewUrl }));
-      }
+      if (isAppeal) {
+        // For appeal, check for document changes
+        // Only include changed fields/files for appeal
+        if (files.government_id_key) filesToUpload.government_id_key = files.government_id_key;
+        if (files.selfie_id_key) filesToUpload.selfie_id_key = files.selfie_id_key;
 
-      // Prepare files object for upload (excluding potentially undefined entries)
-      const filesToUpload = {};
-      if (files.government_id_key) filesToUpload.government_id_key = files.government_id_key;
-      if (files.selfie_id_key) filesToUpload.selfie_id_key = files.selfie_id_key;
-      // Use the video file from state (which could be from recording or file input)
-      const videoFileToUpload = files["verification_video_key"];
-      if (videoFileToUpload) filesToUpload.verification_video_key = videoFileToUpload;
+        // Handle video file from recording if confirmed
+        if (recordedBlobRef.current) {
+           const videoFile = new File([recordedBlobRef.current], "verification-video.webm", { type: "video/webm" });
+           filesToUpload.verification_video_key = videoFile; // Add to files to upload
+           // Update mediaUrls for immediate preview (optional, as page will refresh)
+           const previewUrl = URL.createObjectURL(recordedBlobRef.current);
+           setMediaUrls(prev => ({ ...prev, verification_video_key_for_preview: previewUrl }));
+        } else if (files.verification_video_key) {
+            // If video was uploaded via file input
+            filesToUpload.verification_video_key = files.verification_video_key;
+        }
+
+        // If no new files are provided for appeal, show an error or prevent submission
+        if (Object.keys(filesToUpload).length === 0) {
+             alert("Please provide at least one new verification document to appeal.");
+             return; // Stop submission
+        }
+
+        // Note: updateUserProfile will automatically set is_appealing = true if filesToUpload has entries
+        // We don't need to explicitly set it here.
+
+      } else {
+        // For personal info update, check for field changes
+        for (const key of ["first_name", "last_name", "contact_number", "address"]) {
+          if (form[key] !== originalForm[key]) updates[key] = form[key];
+        }
+        // No files are uploaded for personal info updates
+        filesToUpload = {};
+      }
 
       await updateUserProfile(userId, updates, filesToUpload);
-      alert("Profile updated successfully!");
+
+      if (isAppeal) {
+          alert("Verification appeal submitted successfully!");
+      } else {
+          alert("Personal information updated successfully!");
+      }
 
       // Refresh user & media URLs after save
       const data = await getUserById(userId);
       setForm(data);
       setOriginalForm(data);
-      setFiles({});
+      setFiles({}); // Clear staged files
       // Reset video recording state
       setRecordedVideoUrl(null);
       recordedBlobRef.current = null;
@@ -126,9 +154,13 @@ export default function Profile() {
       await refreshMediaUrls(data);
     } catch (error) {
       console.error("Error updating profile:", error);
-      alert("Failed to update profile. Please try again.");
+      alert(`Failed to update profile: ${error.message || "Please try again."}`);
     } finally {
-      setSaving(false);
+      if (isAppeal) {
+        setAppealing(false);
+      } else {
+        setSavingPersonal(false);
+      }
     }
   }
 
@@ -161,7 +193,10 @@ export default function Profile() {
         if (videoRef.current) {
           try { videoRef.current.srcObject = null; } catch (e) { console.error(e); }
         }
-        // Note: Don't stop the stream here, as the user might retake. Stop it in closeVideoModal.
+        if (stream) {
+          try { stream.getTracks().forEach(t => t.stop()); } catch (e) { console.error(e); }
+        }
+        setStream(null);
         setRecordedVideoUrl(videoUrl);
       };
     } catch (err) {
@@ -268,6 +303,11 @@ export default function Profile() {
     );
   }
 
+  // Determine appeal eligibility
+  const isVerified = form.verification_status === 'verified';
+  const isRejected = form.verification_status === 'rejected';
+  const canAppeal = isRejected; // Only rejected users can appeal
+
   return (
     <>
       <div className="min-h-screen bg-gray-50 py-12 px-4">
@@ -277,9 +317,9 @@ export default function Profile() {
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Profile Settings</h1>
             <p className="text-gray-600">Manage your personal information and verification documents</p>
           </div>
-          {/* Main Content */}
-          <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm divide-y divide-gray-100">
-            {/* Personal Information */}
+          <form onSubmit={(e) => e.preventDefault()} className="bg-white rounded-lg shadow-sm divide-y divide-gray-100">
+
+            {/* Personal Information Section */}
             <div className="p-8">
               <div className="flex items-center mb-6">
                 <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center mr-3">
@@ -308,6 +348,11 @@ export default function Profile() {
                           <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
                           <span className="text-yellow-600 font-medium">Pending</span>
                         </>
+                      ) : form.verification_status === 'rejected' ? ( // Added rejected status
+                        <>
+                          <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                          <span className="text-red-600 font-medium">Rejected</span>
+                        </>
                       ) : (
                         <>
                           <div className="w-2 h-2 bg-red-500 rounded-full"></div>
@@ -334,9 +379,41 @@ export default function Profile() {
                   <textarea name="address" value={form.address || ""} onChange={handleChange} placeholder="Enter your complete address" rows={4} className="w-full px-4 py-3 bg-gray-50 border-0 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all resize-none" style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word' }} />
                 </div>
               </div>
+              {/* Save Changes Button for Personal Info */}
+              <div className="mt-8 flex justify-end">
+                <button
+                  type="button" // Changed to button to prevent form submission
+                  onClick={handleSubmit} // Calls handleSubmit with isAppeal = false
+                  disabled={savingPersonal}
+                  className="px-8 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg"
+                >
+                  {savingPersonal ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
             </div>
-            {/* Verification Documents */}
+
+            {/* Verification Documents Section */}
             <div className="p-8">
+              <div className="flex items-center mb-6">
+                <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center mr-3">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                </div>
+                <h2 className="text-xl font-semibold text-gray-900">Verification Documents</h2>
+              </div>
+
+              {/* Disclaimer based on verification status */}
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 text-sm">
+                {isVerified ? (
+                  <p><strong>Note:</strong> Your account is already verified. You do not need to appeal.</p>
+                ) : isRejected ? (
+                  <p><strong>Appeal:</strong> Your previous verification was rejected. You can re-upload your documents to appeal the decision.</p>
+                ) : (
+                  <p><strong>Status:</strong> Your verification is currently pending or unverified. Please wait for admin review or complete the initial verification process.</p>
+                )}
+              </div>
+
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Government ID */}
                 <div className="space-y-4">
@@ -359,11 +436,15 @@ export default function Profile() {
                       accept="image/*"
                       onChange={handleFileChange}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      disabled={!canAppeal} // Disable if not eligible to appeal
                     />
                   </div>
                   {/* Change Photo Button */}
                   <div className="flex justify-center">
-                    <label htmlFor="government_id_key" className="text-xs text-blue-600 hover:text-blue-800 cursor-pointer">
+                    <label
+                      htmlFor="government_id_key"
+                      className={`text-xs ${canAppeal ? 'text-blue-600 hover:text-blue-800 cursor-pointer' : 'text-gray-400 cursor-not-allowed'}`}
+                    >
                       Change Photo
                     </label>
                   </div>
@@ -389,11 +470,15 @@ export default function Profile() {
                       accept="image/*"
                       onChange={handleFileChange}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      disabled={!canAppeal} // Disable if not eligible to appeal
                     />
                   </div>
-                   {/* Change Photo Button */}
-                   <div className="flex justify-center">
-                    <label htmlFor="selfie_id_key" className="text-xs text-blue-600 hover:text-blue-800 cursor-pointer">
+                  {/* Change Photo Button */}
+                  <div className="flex justify-center">
+                    <label
+                      htmlFor="selfie_id_key"
+                      className={`text-xs ${canAppeal ? 'text-blue-600 hover:text-blue-800 cursor-pointer' : 'text-gray-400 cursor-not-allowed'}`}
+                    >
                       Change Photo
                     </label>
                   </div>
@@ -411,17 +496,28 @@ export default function Profile() {
                       <span className="text-gray-400">No video recorded</span>
                     </div>
                   )}
-                  <button type="button" onClick={openVideoModal} className="w-full h-12 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg">
+                  <button
+                    type="button"
+                    onClick={openVideoModal}
+                    disabled={!canAppeal} // Disable if not eligible to appeal
+                    className={`w-full h-12 ${canAppeal ? 'bg-blue-50 hover:bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400 cursor-not-allowed'} rounded-lg`}
+                  >
                     Record Video
                   </button>
                 </div>
               </div>
-            </div>
-            {/* Submit Button */}
-            <div className="px-8 py-6 bg-gray-50 flex justify-end">
-              <button type="submit" disabled={saving} className="px-8 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg">
-                {saving ? "Saving..." : "Save Changes"}
-              </button>
+
+              {/* Appeal Verification Button */}
+              <div className="mt-8 flex justify-end">
+                <button
+                  type="button" // Changed to button to prevent form submission
+                  onClick={(e) => handleSubmit(e, true)} // Calls handleSubmit with isAppeal = true
+                  disabled={appealing || !canAppeal} // Disable if appealing or not eligible
+                  className={`px-8 py-3 rounded-lg font-medium ${canAppeal ? 'bg-yellow-500 hover:bg-yellow-600 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+                >
+                  {appealing ? "Submitting Appeal..." : "Appeal Verification"}
+                </button>
+              </div>
             </div>
           </form>
         </div>

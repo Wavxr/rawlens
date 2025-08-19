@@ -5,9 +5,7 @@ import { uploadFile, deleteFile, objectPath } from "./storageService"
 export async function getUsers() {
   const { data, error } = await supabase
     .from("users")
-    .select(
-      "id, first_name, last_name, email, role, government_id_key, selfie_id_key, verification_video_key, created_at, contact_number, address, verification_status"
-    )
+    .select("id, first_name, last_name, email, role, government_id_key, selfie_id_key, verification_video_key, created_at, contact_number, address, verification_status, is_appealing")
     .order("created_at", { ascending: false })
 
   if (error) throw new Error(`Failed to get users: ${error.message}`)
@@ -42,7 +40,7 @@ export async function getUserById(userId) {
  */
 export async function updateUserProfile(userId, updates, files = {}) {
   // Remove forbidden fields
-  const forbidden = ["id", "email", "created_at", "role", "verification_status"];
+  const forbidden = ["id", "email", "created_at", "role", "verification_status", "is_appealing"];
   forbidden.forEach(field => delete updates[field]);
 
   // Map columns to their storage buckets
@@ -54,6 +52,8 @@ export async function updateUserProfile(userId, updates, files = {}) {
 
   // Fetch user once
   const user = await getUserById(userId);
+
+  let resubmittedVerification = false;
 
   for (const key in mediaBuckets) {
     const bucket = mediaBuckets[key];
@@ -75,16 +75,24 @@ export async function updateUserProfile(userId, updates, files = {}) {
       if (oldKey) {
         try {
           await deleteFile(bucket, oldKey);
-        } catch (err) {
-          // Ignore deletion errors
+        } catch {
+          // ignore deletion errors
         }
       }
 
       // Update the reference to the new file
       updates[key] = newKey;
+
+      // Flag as resubmitted verification
+      resubmittedVerification = true;
     } catch (error) {
       throw new Error(`Failed to upload ${fileType}: ${error.message}`);
     }
+  }
+
+  // If user resubmits any verification docs → mark appeal
+  if (resubmittedVerification) {
+    updates.is_appealing = true;
   }
 
   // Update database

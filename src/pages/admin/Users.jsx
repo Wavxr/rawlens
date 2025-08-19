@@ -4,8 +4,18 @@ import { getUsers } from "../../services/userService"
 import { adminUpdateVerificationStatus } from "../../services/verificationService"
 import {
   Users, Eye, X, Search, Filter, MoreVertical, Shield, Mail, User, Calendar,
-  ImageIcon, AlertCircle, CheckCircle, Clock, Download
+  ImageIcon, AlertCircle, CheckCircle, Clock, Download, AlertTriangle
 } from 'lucide-react'
+
+// Appeal status badge component
+function AppealBadge() {
+  return (
+    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 ml-2">
+      <AlertTriangle className="h-3 w-3 mr-1" />
+      Appealing
+    </span>
+  )
+}
 
 // Skeleton component for loading states
 const UserRowSkeleton = () => (
@@ -53,6 +63,7 @@ export default function AdminUsers() {
   const [searchTerm, setSearchTerm] = useState("")
   const [roleFilter, setRoleFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [appealFilter, setAppealFilter] = useState(false) // New state for appeal filter
 
   useEffect(() => {
     async function loadUsers() {
@@ -88,8 +99,13 @@ export default function AdminUsers() {
       filtered = filtered.filter((user) => user.verification_status === statusFilter)
     }
 
+    // Filter for users who are appealing
+    if (appealFilter) {
+      filtered = filtered.filter((user) => user.is_appealing === true)
+    }
+
     setFilteredUsers(filtered)
-  }, [users, searchTerm, roleFilter, statusFilter])
+  }, [users, searchTerm, roleFilter, statusFilter, appealFilter]) // Add appealFilter to dependencies
 
     async function openModal(user) {
       setModalUser(user)
@@ -246,6 +262,17 @@ export default function AdminUsers() {
                 <option value="admin">Admins</option>
               </select>
             </div>
+            <button
+              onClick={() => setAppealFilter(!appealFilter)}
+              className={`inline-flex items-center px-3 py-2 border rounded-md text-sm font-medium ${
+                appealFilter 
+                  ? 'bg-yellow-600/20 text-yellow-400 border-yellow-600/30' 
+                  : 'bg-gray-800/50 text-gray-300 border-gray-700 hover:bg-gray-700/50'
+              }`}
+            >
+              <AlertTriangle className="h-4 w-4 mr-2" />
+              {appealFilter ? 'Hide Appeals' : 'Show Appeals'}
+            </button>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -305,9 +332,10 @@ export default function AdminUsers() {
                             {user.first_name?.[0]?.toUpperCase() || "U"}
                           </div>
                           <div>
-                            <p className="font-medium text-white">
+                            <div className="text-sm font-medium text-gray-100 flex items-center">
                               {user.first_name} {user.last_name}
-                            </p>
+                              {user.is_appealing && <AppealBadge />}
+                            </div>
                             <p className="text-sm text-gray-400">{user.contact_number || "No phone"}</p>
                           </div>
                         </div>
