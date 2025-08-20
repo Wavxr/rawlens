@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom"; // Updated import to include useNavigate
 import { ToastContainer, toast } from 'react-toastify';
 import useRentalStore from "../../stores/rentalStore";
 import { subscribeToRentalUpdates, unsubscribeFromRentalUpdates } from "../../services/realtimeService";
@@ -103,6 +103,7 @@ function formatDate(dateString) {
 
 export default function Delivery() {
   const { user } = useAuthStore();
+  const navigate = useNavigate(); // Initialize navigate
   const [searchParams] = useSearchParams();
   const { allRentals, loadAllRentals, loading } = useRentalStore();
   const [rentals, setRentals] = useState([]);
@@ -124,9 +125,7 @@ export default function Delivery() {
 
   useEffect(() => {
     loadAllRentals();
-
     const channel = subscribeToRentalUpdates(null, 'admin');
-
     return () => {
       unsubscribeFromRentalUpdates(channel);
     };
@@ -140,9 +139,7 @@ export default function Delivery() {
         const needsAdminAction = (r) =>
           (r.rental_status === "confirmed" && (!r.shipping_status || r.shipping_status === "ready_to_ship")) ||
           r.shipping_status === "in_transit_to_owner"
-
         let correctFilter = "needs_action"
-        
         if (!needsAdminAction(targetRental)) {
           if (["ready_to_ship", "in_transit_to_user"].includes(targetRental.shipping_status)) {
             correctFilter = "outbound"
@@ -156,17 +153,14 @@ export default function Delivery() {
             correctFilter = "none"
           }
         }
-
         setSelectedShippingFilter(correctFilter)
         setHighlightId(rentalId)
-        
         setTimeout(() => {
           const cardElement = cardRefs.current[String(rentalId)]
           if (cardElement) {
             cardElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
           }
         }, 100)
-
         setTimeout(() => {
           setHighlightId(null)
         }, 3000)
@@ -194,11 +188,9 @@ export default function Delivery() {
       returned: 0,
       none: 0
     }
-
     const needsAdminAction = (r) =>
       (r.rental_status === "confirmed" && (!r.shipping_status || r.shipping_status === "ready_to_ship")) ||
       r.shipping_status === "in_transit_to_owner"
-
     rentals.forEach(rental => {
       if (needsAdminAction(rental)) {
         counts.needs_action++
@@ -214,7 +206,6 @@ export default function Delivery() {
         counts.none++
       }
     })
-
     return counts
   }
 
@@ -223,12 +214,10 @@ export default function Delivery() {
       const counts = calculateFilterCounts(allRentals)
       setFilterCounts(counts)
     }
-
     let filtered = allRentals
     const needsAdminAction = (r) =>
       (r.rental_status === "confirmed" && (!r.shipping_status || r.shipping_status === "ready_to_ship")) ||
       r.shipping_status === "in_transit_to_owner"
-
     switch (selectedShippingFilter) {
       case "needs_action":
         filtered = filtered.filter(needsAdminAction)
@@ -249,7 +238,6 @@ export default function Delivery() {
       default:
         break
     }
-
     if (searchTerm) {
       const q = searchTerm.toLowerCase()
       filtered = filtered.filter((r) => {
@@ -261,7 +249,6 @@ export default function Delivery() {
         )
       })
     }
-
     setRentals(filtered)
   }, [allRentals, selectedShippingFilter, searchTerm])
 
@@ -389,7 +376,6 @@ export default function Delivery() {
       rentalStatus === "confirmed" && (shippingStatus === "none" || shippingStatus === "ready_to_ship")
     const canTransitToUser = rentalStatus === "confirmed" && shippingStatus === "ready_to_ship"
     const canConfirmReturned = shippingStatus === "in_transit_to_owner"
-
     return (
       <div
         ref={(el) => {
@@ -430,7 +416,6 @@ export default function Delivery() {
               {prettyShippingStatus(rental.shipping_status)}
             </span>
           </div>
-
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-4 mb-4 md:mb-6">
             <div className="flex items-center space-x-2 md:space-x-3 p-2 md:p-3 bg-gray-700 rounded-lg">
               <DollarSign className="h-4 w-4 md:h-5 md:w-5 text-green-400" />
@@ -454,7 +439,6 @@ export default function Delivery() {
               </div>
             </div>
           </div>
-
           <div className="flex flex-wrap gap-2 md:gap-3 items-center">
             {canReadyToShip && (
               <button
@@ -470,7 +454,6 @@ export default function Delivery() {
                 <span>Mark Ready to Ship</span>
               </button>
             )}
-
             {canTransitToUser && (
               <button
                 onClick={() => handleTransitToUser(rental.id)}
@@ -485,7 +468,6 @@ export default function Delivery() {
                 <span>Ship to Customer</span>
               </button>
             )}
-
             {canConfirmReturned && (
               <button
                 onClick={() => handleConfirmReturned(rental.id)}
@@ -500,14 +482,28 @@ export default function Delivery() {
                 <span>Confirm Returned</span>
               </button>
             )}
+            {/* --- Added Manage Rental Button to ShippingCard --- */}
+            <button
+              onClick={(e) => {
+                 e.stopPropagation();
+                 // Determine the best status filter for the rental page
+                 const statusToFilter = ['pending', 'confirmed', 'active', 'completed', 'cancelled', 'rejected'].includes(rental?.rental_status) ? rental.rental_status : 'needs_action';
+                 navigate(`/admin/rentals?status=${statusToFilter}&highlightId=${rental.id}`);
+              }}
+              className="inline-flex items-center space-x-1 md:space-x-2 bg-gray-700 hover:bg-gray-600 border border-gray-600 text-gray-200 px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors"
+            >
+              <Truck className="h-3 w-3 md:h-4 md:w-4" />
+              <span>Manage Rental</span>
+            </button>
+            {/* --- End Added Button --- */}
 
+            {/* Status Messages */}
             {shippingStatus === "in_transit_to_user" && (
               <div className="flex items-center space-x-1 md:space-x-2 text-xs md:text-sm text-blue-400 bg-blue-900/30 px-2 md:px-3 py-2 rounded-lg">
                 <Clock className="h-3 w-3 md:h-4 md:w-4" />
                 <span>Awaiting customer delivery confirmation</span>
               </div>
             )}
-
             {shippingStatus === "delivered" && (
               <div className="flex items-center space-x-1 md:space-x-2 text-xs md:text-sm text-green-400 bg-green-900/30 px-2 md:px-3 py-2 rounded-lg">
                 <CheckCircle className="h-3 w-3 md:h-4 md:w-4" />
@@ -517,14 +513,12 @@ export default function Delivery() {
                 </span>
               </div>
             )}
-
             {shippingStatus === "return_scheduled" && (
               <div className="flex items-center space-x-1 md:space-x-2 text-xs md:text-sm text-purple-400 bg-purple-900/30 px-2 md:px-3 py-2 rounded-lg">
                 <Clock className="h-3 w-3 md:h-4 md:w-4" />
                 <span>Return scheduled - awaiting pickup</span>
               </div>
             )}
-
             <button
               onClick={() => handleViewDetails(rental)}
               className="inline-flex items-center space-x-1 md:space-x-2 text-gray-300 hover:text-white text-xs md:text-sm font-medium ml-auto"
@@ -568,7 +562,6 @@ export default function Delivery() {
           <h1 className="text-3xl font-bold text-white mb-2">Delivery Management</h1>
           <p className="text-gray-300">Track equipment logistics and manage shipping workflows efficiently.</p>
         </div>
-
         <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 mb-6">
           <div className="flex flex-col lg:flex-row gap-4">
             <div className="flex-1">
@@ -584,7 +577,6 @@ export default function Delivery() {
               </div>
             </div>
           </div>
-
           <div className="mt-4 flex flex-wrap gap-2">
             {DELIVERY_FILTERS.map((filter) => (
               <button
@@ -614,7 +606,6 @@ export default function Delivery() {
             ))}
           </div>
         </div>
-
         {rentals.length === 0 ? (
           <div className="bg-gray-800 rounded-xl border border-gray-700 p-12 text-center">
             <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -632,7 +623,6 @@ export default function Delivery() {
             ))}
           </div>
         )}
-
         {selectedRental && (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
@@ -643,23 +633,35 @@ export default function Delivery() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="p-4 md:p-6">
+                {/* Updated modal header with Manage Rental button */}
                 <div className="flex items-start justify-between mb-6">
                   <div>
                     <h2 className="text-2xl font-bold text-white">Delivery Details</h2>
                     <p className="text-gray-300 mt-1">{selectedRental.cameras?.name || "Camera Equipment"}</p>
                   </div>
-                  <button
-                    onClick={() => { setSelectedRental(null); setSelectedUser(null); }}
-                    className="p-2 text-gray-400 hover:text-gray-200 transition-colors"
-                  >
-                    <X className="h-6 w-6" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {/* Added Manage Rental button */}
+                    <button
+                      onClick={() => {
+                        const statusToFilter = ['pending', 'confirmed', 'active', 'completed', 'cancelled', 'rejected'].includes(selectedRental?.rental_status) ? selectedRental.rental_status : 'needs_action';
+                        navigate(`/admin/rentals?status=${statusToFilter}&highlightId=${selectedRental.id}`);
+                      }}
+                      className="inline-flex items-center px-3 py-1.5 border border-gray-600 text-sm font-medium rounded-md text-gray-200 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                      <Truck className="mr-1.5 h-4 w-4" />
+                      Manage Rental
+                    </button>
+                    <button
+                      onClick={() => { setSelectedRental(null); setSelectedUser(null); }}
+                      className="p-2 text-gray-400 hover:text-gray-200 transition-colors"
+                    >
+                      <X className="h-6 w-6" />
+                    </button>
+                  </div>
                 </div>
-
                 <div className="mb-6">
                   <RentalStepper rental={selectedRental} />
                 </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold text-white">Customer Information</h3>
@@ -673,7 +675,6 @@ export default function Delivery() {
                           <p className="text-sm text-gray-300">{selectedUser?.email}</p>
                         </div>
                       </div>
-                      
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-gray-600">
                         <div>
                           <p className="text-xs text-gray-400 uppercase tracking-wide">Phone</p>
@@ -694,9 +695,7 @@ export default function Delivery() {
                             )}
                           </p>
                         </div>
-
                       </div>
-                      
                       {selectedUser?.emergency_contact && (
                         <div className="pt-3 border-t border-gray-600">
                           <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Emergency Contact</p>
@@ -709,7 +708,6 @@ export default function Delivery() {
                       )}
                     </div>
                   </div>
-
                   <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-white">Rental & Equipment</h3>
                   <div className="bg-gray-700 rounded-lg p-4 space-y-4">
@@ -721,7 +719,6 @@ export default function Delivery() {
                         <span className="text-gray-300 text-sm">Shipping Status: {prettyShippingStatus(selectedRental?.shipping_status)}</span>
                       </div>
                     </div>
-                      
                       <div className="pt-3 border-t border-gray-600">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
