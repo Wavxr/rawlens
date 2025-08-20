@@ -571,12 +571,20 @@ export default function Rentals() {
           </div>
 
           {/* Status Messages */}
-          {(rental.shipping_status === 'in_transit_to_owner' || rental.shipping_status === 'returned') ? (
+          {rental.shipping_status === 'returned' ? (
             <div className="p-3 bg-green-50 border border-green-200 rounded-lg flex items-center space-x-3">
               <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
               <div>
-                <p className="font-medium text-green-800 text-sm">Shipment Confirmed</p>
-                <p className="text-xs text-green-600">You've successfully confirmed the shipment back</p>
+                <p className="font-medium text-green-800 text-sm">Return Confirmed</p>
+                <p className="text-xs text-green-600">The item has been successfully returned and checked by the admin.</p>
+              </div>
+            </div>
+          ) : rental.shipping_status === 'in_transit_to_owner' ? (
+             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center space-x-3">
+              <Truck className="h-5 w-5 text-blue-600 flex-shrink-0" />
+              <div>
+                <p className="font-medium text-blue-800 text-sm">Return Shipment Sent</p>
+                <p className="text-xs text-blue-600">You have marked the item as shipped back. It's now in transit to the owner.</p>
               </div>
             </div>
           ) : rental.shipping_status === 'return_scheduled' && actionLoading[rental.id] === "confirmSentBack" ? (
