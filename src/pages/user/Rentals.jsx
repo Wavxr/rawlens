@@ -1,3 +1,4 @@
+// Imports
 import { useEffect, useMemo, useState, useRef } from "react"
 import useAuthStore from "../../stores/useAuthStore"
 import useRentalStore from "../../stores/rentalStore"
@@ -18,8 +19,13 @@ import {
   PhilippinePeso,
   ArrowRight,
 } from "lucide-react"
+import FeedbackForm from "../../components/FeedbackForm";
+import { getRentalFeedback } from "../../services/feedbackService";
+import { motion, AnimatePresence } from "framer-motion";
 
+// Main Component
 export default function Rentals() {
+  // State Management
   const user = useAuthStore((s) => s.user)
   const authLoading = useAuthStore((s) => s.loading)
   const {
@@ -35,14 +41,17 @@ export default function Rentals() {
   const [activeFilter, setActiveFilter] = useState("awaiting")
   const [selectedRental, setSelectedRental] = useState(null)
   const subscriptionRef = useRef(null)
-
   const [now, setNow] = useState(Date.now())
+  const [showFeedbackForm, setShowFeedbackForm] = useState(false);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState({});
 
+  // Time Management: Update time every minute
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 60 * 1000)
     return () => clearInterval(id)
   }, [])
 
+  // Authentication & Data Loading: Load rentals when user is authenticated
   useEffect(() => {
     if (!authLoading && user?.id) {
       loadRentals(user.id);
@@ -60,6 +69,7 @@ export default function Rentals() {
     }
   }, [authLoading, user?.id, loadRentals]);
 
+  // Rental Selection: Update selected rental when rentals change
   useEffect(() => {
     if (selectedRental && allRentals.length > 0) {
       const updatedRental = allRentals.find(r => r.id === selectedRental.id)
@@ -69,17 +79,32 @@ export default function Rentals() {
     }
   }, [allRentals, selectedRental])
 
+  // Feedback Check: Check if feedback already exists for completed rentals
+  useEffect(() => {
+    async function checkExistingFeedback() {
+      if (selectedRental && user?.id && 
+          (selectedRental.rental_status === "completed" || selectedRental.rental_status === "active")) {
+        try {
+          const existingFeedback = await getRentalFeedback(selectedRental.id);
+          setFeedbackSubmitted(prev => ({
+            ...prev,
+            [selectedRental.id]: !!existingFeedback
+          }));
+        } catch (err) {
+          console.error("Error checking feedback:", err);
+        }
+      }
+    }
+    checkExistingFeedback();
+  }, [selectedRental, user?.id]);
+
+  // Data Processing: Filter rentals to exclude pending/rejected
   const rentals = useMemo(() => 
     allRentals.filter((r) => !["pending", "rejected"].includes(r.rental_status)), 
     [allRentals]
   );
 
-  async function refresh() {
-    if (user?.id) {
-      await loadRentals(user.id);
-    }
-  }
-
+  // Data Processing: Filter rentals based on active tab
   const displayedRentals = useMemo(() => {
     if (activeFilter === "awaiting") {
       return rentals.filter(
@@ -97,6 +122,7 @@ export default function Rentals() {
     return []
   }, [activeFilter, rentals])
 
+  // Helper Functions: Date formatting
   function formatDate(dateStr) {
     if (!dateStr) return "—"
     try {
@@ -110,6 +136,7 @@ export default function Rentals() {
     }
   }
 
+  // Helper Functions: Shipping steps configuration
   const shippingSteps = [
     { key: "ready_to_ship", label: "Packed", icon: Package },
     { key: "in_transit_to_user", label: "On the way", icon: Truck },
@@ -119,6 +146,7 @@ export default function Rentals() {
     { key: "returned", label: "Returned", icon: CheckCircle },
   ]
 
+  // Helper Functions: Calculate current shipping step
   function computeCurrentStep(rental) {
     if (!rental?.shipping_status) {
       if (rental.rental_status === "confirmed") return 0
@@ -129,6 +157,7 @@ export default function Rentals() {
     return idx >= 0 ? idx : 0
   }
 
+  // Helper Functions: Get status badge styling
   function getStatusBadgeClasses(status) {
     switch (status) {
       case "confirmed":
@@ -144,6 +173,14 @@ export default function Rentals() {
     }
   }
 
+  // Action Handlers: Refresh rental data
+  async function refresh() {
+    if (user?.id) {
+      await loadRentals(user.id);
+    }
+  }
+
+  // Action Handlers: Confirm delivery
   async function handleConfirmDelivered(rentalId) {
     setActionLoading((p) => ({ ...p, [rentalId]: "confirmDelivered" }))
     try {
@@ -162,6 +199,7 @@ export default function Rentals() {
     }
   }
 
+  // Action Handlers: Confirm sent back
   async function handleConfirmSentBack(rentalId) {
     setActionLoading((p) => ({ ...p, [rentalId]: "confirmSentBack" }))
     try {
@@ -180,6 +218,7 @@ export default function Rentals() {
     }
   }
 
+  // Action Handlers: View contract
   async function viewContract(rentalId, contractFilePath) {
     if (!contractFilePath) {
       setContractViewError((p) => ({ ...p, [rentalId]: "No contract on file." }))
@@ -206,6 +245,17 @@ export default function Rentals() {
     }
   }
 
+  // Action Handlers: Handle feedback submission
+  async function handleFeedbackSubmit() {
+    setFeedbackSubmitted(prev => ({
+      ...prev,
+      [selectedRental.id]: true
+    }));
+    setShowFeedbackForm(false);
+    await refresh();
+  }
+
+  // Helper Functions: Countdown timer
   function useCountdown(targetIso, { dir = "down", startDate = null, endDate = null } = {}) {
     if (!targetIso) return null
     
@@ -243,6 +293,7 @@ export default function Rentals() {
     return { days, hours, minutes, ms: remaining }
   }
 
+  // Helper Functions: Calculate days until date
   function daysUntil(dateIso) {
     if (!dateIso) return Number.POSITIVE_INFINITY
     const start = new Date()
@@ -251,6 +302,7 @@ export default function Rentals() {
     return Math.ceil(ms / (24 * 3600 * 1000))
   }
 
+  // Component: Sidebar rental card
   function RentalSidebarCard({ rental, isSelected, onClick }) {
     const cameraName = rental?.cameras?.name || "Camera"
     const cameraImage = rental?.cameras?.image_url || ""
@@ -324,6 +376,7 @@ export default function Rentals() {
     )
   }
 
+  // Component: Main rental detail view
   function RentalDetailView({ rental }) {
     if (!rental) return null
     const cameraName = rental?.cameras?.name || "Camera"
@@ -646,7 +699,46 @@ export default function Rentals() {
                 )}
               </button>
             )}
+            
+            {/* Feedback Button */}
+            {(rental.rental_status === "completed" || rental.rental_status === "active") && !feedbackSubmitted[rental.id] && (
+              <button
+                onClick={() => setShowFeedbackForm(true)}
+                className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 text-sm font-medium"
+              >
+                <span>Give Feedback</span>
+              </button>
+            )}
+
+            {feedbackSubmitted[rental.id] && (
+              <div className="flex items-center space-x-2 px-4 py-2 bg-green-100 text-green-800 rounded-md text-sm font-medium">
+                <CheckCircle className="h-4 w-4" />
+                <span>Feedback Submitted</span>
+              </div>
+            )}
           </div>
+
+          {/* Feedback Form Modal */}
+          <AnimatePresence>
+            {showFeedbackForm && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4"
+                onClick={() => setShowFeedbackForm(false)}
+              >
+                <div onClick={(e) => e.stopPropagation()}>
+                  <FeedbackForm
+                    rentalId={selectedRental.id}
+                    userId={user.id}
+                    onSuccess={handleFeedbackSubmit}
+                    onSkip={() => setShowFeedbackForm(false)}
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {contractViewError[rental.id] && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -658,6 +750,7 @@ export default function Rentals() {
     )
   }
 
+  // Rental Selection: Handle rental selection logic
   useEffect(() => {
     if (displayedRentals.length > 0 && !selectedRental) {
       setSelectedRental(displayedRentals[0])
@@ -669,6 +762,7 @@ export default function Rentals() {
     }
   }, [displayedRentals, selectedRental])
 
+  // Loading State: Show loading indicator
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -682,6 +776,7 @@ export default function Rentals() {
     )
   }
 
+  // Main Render: Main component UI
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 py-6">
