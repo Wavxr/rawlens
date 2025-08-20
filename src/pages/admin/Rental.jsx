@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+// Rentals.jsx
+import { useState, useEffect, useRef } from "react";
 import useRentalStore from "../../stores/rentalStore";
 import { subscribeToRentalUpdates, unsubscribeFromRentalUpdates } from "../../services/realtimeService";
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom" 
 import {
   Calendar,
   User,
@@ -17,13 +18,13 @@ import {
   DollarSign,
   Eye,
 } from "lucide-react"
-import { 
-  adminConfirmApplication, 
-  adminRejectApplication, 
-  adminStartRental, 
-  adminCompleteRental, 
-  adminCancelRental, 
-  adminDeleteRental 
+import {
+  adminConfirmApplication,
+  adminRejectApplication,
+  adminStartRental,
+  adminCompleteRental,
+  adminCancelRental,
+  adminDeleteRental
 } from "../../services/rentalService"
 import { getSignedContractUrl } from "../../services/pdfService"
 import RentalStepper from "../../components/RentalStepper"
@@ -32,27 +33,66 @@ import { toast, ToastContainer } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 
 export default function Rentals() {
-  const navigate = useNavigate();
+  const navigate = useNavigate(); 
+  const [searchParams, setSearchParams] = useSearchParams();
   const { allRentals, loadAllRentals, loading } = useRentalStore();
   const [rentals, setRentals] = useState([]);
   const [actionLoading, setActionLoading] = useState({})
   const [contractViewLoading, setContractViewLoading] = useState({})
   const [contractViewError, setContractViewError] = useState({})
-  const [selectedStatus, setSelectedStatus] = useState("needs_action")
+  const [selectedStatus, setSelectedStatus] = useState(() => {
+    return searchParams.get('status') || "needs_action";
+  });
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedRental, setSelectedRental] = useState(null)
   const [selectedUser, setSelectedUser] = useState(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null)
+  const [highlightId, setHighlightId] = useState(null); 
+  const cardRefs = useRef({}); 
 
   useEffect(() => {
     loadAllRentals();
-
     const channel = subscribeToRentalUpdates(null, 'admin');
-
     return () => {
       unsubscribeFromRentalUpdates(channel);
     };
   }, [loadAllRentals]);
+
+  useEffect(() => {
+    const rentalIdFromParams = searchParams.get('highlightId');
+    if (rentalIdFromParams && allRentals.length > 0) {
+      const targetRental = allRentals.find(r => String(r.id) === String(rentalIdFromParams));
+      if (!targetRental) {
+        console.warn(`Rental ID ${rentalIdFromParams} not found in the full rental list.`);
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete('highlightId');
+        setSearchParams(newParams);
+        return;
+      }
+
+      const isPresent = rentals.some(r => String(r.id) === String(rentalIdFromParams));
+
+      if (isPresent) {
+        setHighlightId(rentalIdFromParams);
+        setTimeout(() => {
+          const cardElement = cardRefs.current[String(rentalIdFromParams)];
+          if (cardElement) {
+            cardElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+          setTimeout(() => {
+            setHighlightId(null);
+            const newParams = new URLSearchParams(searchParams);
+            newParams.delete('highlightId');
+            setSearchParams(newParams);
+          }, 3000);
+        }, 100);
+      } else {
+        setHighlightId(rentalIdFromParams);
+      }
+    } else if (!rentalIdFromParams) {
+       setHighlightId(null);
+    }
+  }, [searchParams, allRentals, rentals, setSearchParams]); 
 
   const needsAdminAction = (rental) => {
     return (
@@ -73,26 +113,92 @@ export default function Rentals() {
   }
 
   useEffect(() => {
-    let filtered = allRentals
+    let filtered = allRentals;
 
-    if (selectedStatus === "needs_action") {
-      filtered = filtered.filter(needsAdminAction)
+    const rentalIdFromParams = searchParams.get('highlightId');
+    let targetRentalForHighlight = null;
+    let needsOverride = false;
+
+    if (rentalIdFromParams && allRentals.length > 0) {
+      targetRentalForHighlight = allRentals.find(r => String(r.id) === String(rentalIdFromParams));
+      if (targetRentalForHighlight) {
+        let wouldBeVisible = true;
+        let tempFiltered = allRentals;
+
+        if (selectedStatus === "needs_action") {
+          tempFiltered = tempFiltered.filter(needsAdminAction);
+        } else {
+          tempFiltered = tempFiltered.filter((rental) => rental.rental_status === selectedStatus);
+        }
+        if (searchTerm) {
+          const searchLower = searchTerm.toLowerCase();
+          tempFiltered = tempFiltered.filter((rental) => {
+            const fullName = `${rental.users?.first_name || ""} ${rental.users?.last_name || ""}`.toLowerCase();
+            return (
+              fullName.includes(searchLower) ||
+              rental.users?.email?.toLowerCase().includes(searchLower) ||
+              rental.cameras?.name?.toLowerCase().includes(searchLower)
+            );
+          });
+        }
+        wouldBeVisible = tempFiltered.some(r => String(r.id) === String(rentalIdFromParams));
+
+        if (!wouldBeVisible) {
+            needsOverride = true;
+        }
+      }
+    }
+
+    if (needsOverride && targetRentalForHighlight) {
+        if (selectedStatus === "needs_action") {
+            filtered = filtered.filter(needsAdminAction);
+        } else {
+            filtered = filtered.filter((rental) => rental.rental_status === selectedStatus);
+        }
+        if (searchTerm) {
+            const searchLower = searchTerm.toLowerCase();
+            filtered = filtered.filter((rental) => {
+            const fullName = `${rental.users?.first_name || ""} ${rental.users?.last_name || ""}`.toLowerCase();
+            return (
+                fullName.includes(searchLower) ||
+                rental.users?.email?.toLowerCase().includes(searchLower) ||
+                rental.cameras?.name?.toLowerCase().includes(searchLower)
+            );
+            });
+        }
+        if (!filtered.some(r => String(r.id) === String(targetRentalForHighlight.id))) {
+            const rentalToAdd = allRentals.find(r => String(r.id) === String(targetRentalForHighlight.id));
+            if (rentalToAdd) {
+                filtered = [rentalToAdd, ...filtered]; 
+            }
+        }
     } else {
-      filtered = filtered.filter((rental) => rental.rental_status === selectedStatus)
+        if (selectedStatus === "needs_action") {
+            filtered = filtered.filter(needsAdminAction);
+        } else {
+            filtered = filtered.filter((rental) => rental.rental_status === selectedStatus);
+        }
+        if (searchTerm) {
+            const searchLower = searchTerm.toLowerCase();
+            filtered = filtered.filter((rental) => {
+            const fullName = `${rental.users?.first_name || ""} ${rental.users?.last_name || ""}`.toLowerCase();
+            return (
+                fullName.includes(searchLower) ||
+                rental.users?.email?.toLowerCase().includes(searchLower) ||
+                rental.cameras?.name?.toLowerCase().includes(searchLower)
+            );
+            });
+        }
     }
-    if (searchTerm) {
-      const searchLower = searchTerm.toLowerCase()
-      filtered = filtered.filter((rental) => {
-        const fullName = `${rental.users?.first_name || ""} ${rental.users?.last_name || ""}`.toLowerCase()
-        return (
-          fullName.includes(searchLower) ||
-          rental.users?.email?.toLowerCase().includes(searchLower) ||
-          rental.cameras?.name?.toLowerCase().includes(searchLower)
-        )
-      })
+
+    setRentals(filtered);
+
+    if (needsOverride && targetRentalForHighlight && highlightId !== rentalIdFromParams) {
+        setHighlightId(rentalIdFromParams); 
     }
-    setRentals(filtered)
-  }, [selectedStatus, searchTerm, allRentals])
+
+  }, [selectedStatus, searchTerm, allRentals, searchParams, highlightId]); 
+
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -168,6 +274,7 @@ export default function Rentals() {
     "returned",
     "completed",
   ]
+
   const STEP_LABELS = {
     pending: "Application",
     confirmed: "Confirmed",
@@ -180,6 +287,7 @@ export default function Rentals() {
     returned: "Returned",
     completed: "Completed",
   }
+
   function computeNowKey(r) {
     const rentalStatus = r?.rental_status
     const shippingStatus = r?.shipping_status
@@ -193,6 +301,7 @@ export default function Rentals() {
     if (rentalStatus === "confirmed") return "confirmed"
     return "pending"
   }
+
   function getNowNextLabels(r) {
     const nowKey = computeNowKey(r)
     const idx = Math.max(0, STEP_ORDER.indexOf(nowKey))
@@ -210,7 +319,14 @@ export default function Rentals() {
   }
 
   const handleApprove = async (rentalId) => {
-    setActionLoading((prev) => ({ ...prev, [rentalId]: "approve" }))
+    setActionLoading((prev) => ({ ...prev, [rentalId]: "approve" }));
+    let originalRentalStatus = null;
+
+    const rentalToApprove = allRentals.find(r => r.id === rentalId);
+    if (rentalToApprove) {
+      originalRentalStatus = rentalToApprove.rental_status;
+    }
+
     try {
       const result = await adminConfirmApplication(rentalId);
       if (result.error) {
@@ -218,16 +334,25 @@ export default function Rentals() {
         return;
       }
       toast.success("Rental approved successfully!");
+
+      if (originalRentalStatus === "pending") {
+        const newParams = new URLSearchParams(searchParams);
+        newParams.set('status', 'confirmed');
+        newParams.set('highlightId', rentalId);
+        setSearchParams(newParams);
+        setSelectedStatus('confirmed');
+      }
+
     } catch (error) {
       toast.error("Failed to approve rental");
     } finally {
       setActionLoading((prev) => {
-        const newLoading = { ...prev }
-        delete newLoading[rentalId]
-        return newLoading
-      })
+        const newLoading = { ...prev };
+        delete newLoading[rentalId];
+        return newLoading;
+      });
     }
-  }
+  };
 
   const handleReject = async (rentalId) => {
     setActionLoading((prev) => ({ ...prev, [rentalId]: "reject" }))
@@ -336,14 +461,12 @@ export default function Rentals() {
       toast.warn("Contract file path is missing");
       return
     }
-
     setContractViewLoading((prev) => ({ ...prev, [rentalId]: true }))
     setContractViewError((prev) => {
       const newErrors = { ...prev }
       delete newErrors[rentalId]
       return newErrors
     })
-
     try {
       const signedUrl = await getSignedContractUrl(contractFilePath)
       window.open(signedUrl, "_blank", "noopener,noreferrer")
@@ -363,179 +486,184 @@ export default function Rentals() {
     }
   }
 
-  const RentalCard = ({ rental }) => (
-    <div className="bg-gray-800 rounded-xl border-2 border-gray-700 hover:border-gray-600 hover:shadow-lg transition-all duration-200">
-      <div className="p-4 md:p-6">
-        <div className="flex justify-between items-start mb-4">
-          <div className="flex-1">
-            <h3 className="text-xl font-semibold text-white mb-1">{rental.cameras?.name || "Camera Equipment"}</h3>
-            <div className="flex items-center space-x-2 text-sm text-gray-300">
-              <User className="h-4 w-4" />
-              <span>
-                {rental.users?.first_name} {rental.users?.last_name}
-              </span>
-              <span className="text-gray-500">•</span>
-              <span>{rental.users?.email}</span>
+  const RentalCard = ({ rental }) => {
+    const cardRef = (el) => {
+      cardRefs.current[String(rental.id)] = el;
+    };
+    return (
+      <div
+        ref={cardRef}
+        className={`bg-gray-800 rounded-xl border-2 transition-all duration-200 hover:shadow-lg
+          ${
+            String(highlightId) === String(rental.id)
+              ? "border-blue-500 shadow-lg ring-4 ring-blue-900/50"
+              : "border-gray-700 hover:border-gray-600"
+          }`}
+      >
+        <div className="p-4 md:p-6">
+          <div className="flex justify-between items-start mb-4">
+            <div className="flex-1">
+              <h3 className="text-xl font-semibold text-white mb-1">{rental.cameras?.name || "Camera Equipment"}</h3>
+              <div className="flex items-center space-x-2 text-sm text-gray-300">
+                <User className="h-4 w-4" />
+                <span>
+                  {rental.users?.first_name} {rental.users?.last_name}
+                </span>
+                <span className="text-gray-500">•</span>
+                <span>{rental.users?.email}</span>
+              </div>
+            </div>
+            <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(rental.rental_status)}`}>
+              {getStatusText(rental.rental_status)}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 mb-4 md:mb-6">
+            <div className="flex items-center space-x-2 md:space-x-3 p-2 md:p-3 bg-gray-700 rounded-lg">
+              <DollarSign className="h-4 w-4 md:h-5 md:w-5 text-green-400" />
+              <div className="min-w-0">
+                <p className="text-sm md:text-lg font-semibold text-white truncate">₱{rental.total_price?.toFixed(2) || "0.00"}</p>
+                <p className="text-xs text-gray-300">Total Price</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2 md:space-x-3 p-2 md:p-3 bg-gray-700 rounded-lg">
+              <Calendar className="h-4 w-4 md:h-5 md:w-5 text-blue-400" />
+              <div className="min-w-0">
+                <p className="text-xs md:text-sm font-medium text-white truncate">{formatDate(rental.start_date)}</p>
+                <p className="text-xs text-gray-300">Start Date</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2 md:space-x-3 p-2 md:p-3 bg-gray-700 rounded-lg">
+              <Calendar className="h-4 w-4 md:h-5 md:w-5 text-purple-400" />
+              <div className="min-w-0">
+                <p className="text-xs md:text-sm font-medium text-white truncate">{formatDate(rental.end_date)}</p>
+                <p className="text-xs text-gray-300">End Date</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2 md:space-x-3 p-2 md:p-3 bg-gray-700 rounded-lg">
+              <Clock className="h-4 w-4 md:h-5 md:w-5 text-orange-400" />
+              <div className="min-w-0">
+                <p className="text-xs md:text-sm font-medium text-white truncate">
+                  {Math.ceil((new Date(rental.end_date) - new Date(rental.start_date)) / (1000 * 3600 * 24))} days
+                </p>
+                <p className="text-xs text-gray-300">Duration</p>
+              </div>
             </div>
           </div>
-          <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(rental.rental_status)}`}>
-            {getStatusText(rental.rental_status)}
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 mb-4 md:mb-6">
-          <div className="flex items-center space-x-2 md:space-x-3 p-2 md:p-3 bg-gray-700 rounded-lg">
-            <DollarSign className="h-4 w-4 md:h-5 md:w-5 text-green-400" />
-            <div className="min-w-0">
-              <p className="text-sm md:text-lg font-semibold text-white truncate">₱{rental.total_price?.toFixed(2) || "0.00"}</p>
-              <p className="text-xs text-gray-300">Total Price</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-2 md:space-x-3 p-2 md:p-3 bg-gray-700 rounded-lg">
-            <Calendar className="h-4 w-4 md:h-5 md:w-5 text-blue-400" />
-            <div className="min-w-0">
-              <p className="text-xs md:text-sm font-medium text-white truncate">{formatDate(rental.start_date)}</p>
-              <p className="text-xs text-gray-300">Start Date</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-2 md:space-x-3 p-2 md:p-3 bg-gray-700 rounded-lg">
-            <Calendar className="h-4 w-4 md:h-5 md:w-5 text-purple-400" />
-            <div className="min-w-0">
-              <p className="text-xs md:text-sm font-medium text-white truncate">{formatDate(rental.end_date)}</p>
-              <p className="text-xs text-gray-300">End Date</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-2 md:space-x-3 p-2 md:p-3 bg-gray-700 rounded-lg">
-            <Clock className="h-4 w-4 md:h-5 md:w-5 text-orange-400" />
-            <div className="min-w-0">
-              <p className="text-xs md:text-sm font-medium text-white truncate">
-                {Math.ceil((new Date(rental.end_date) - new Date(rental.start_date)) / (1000 * 3600 * 24))} days
-              </p>
-              <p className="text-xs text-gray-300">Duration</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2 md:gap-3 items-center">
-          {rental.rental_status === "pending" && (
-            <>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleApprove(rental.id)
-                }}
-                disabled={actionLoading[rental.id] === "approve"}
-                className="inline-flex items-center space-x-1 md:space-x-2 bg-green-600 hover:bg-green-700 text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {actionLoading[rental.id] === "approve" ? (
-                  <Loader2 className="h-3 w-3 md:h-4 md:w-4 animate-spin" />
-                ) : (
-                  <Check className="h-3 w-3 md:h-4 md:w-4" />
-                )}
-                <span>Approve</span>
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleReject(rental.id)
-                }}
-                disabled={actionLoading[rental.id] === "reject"}
-                className="inline-flex items-center space-x-1 md:space-x-2 bg-red-600 hover:bg-red-700 text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {actionLoading[rental.id] === "reject" ? (
-                  <Loader2 className="h-3 w-3 md:h-4 md:w-4 animate-spin" />
-                ) : (
-                  <X className="h-3 w-3 md:h-4 md:w-4" />
-                )}
-                <span>Reject</span>
-              </button>
-            </>
-          )}
-
-          {rental.rental_status === "confirmed" && (
-            <>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  navigate(`/admin/delivery?rentalId=${rental.id}`)
-                }}
-                className="inline-flex items-center space-x-1 md:space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors"
-              >
-                <Truck className="h-3 w-3 md:h-4 md:w-4" />
-                <span>Manage Logistics</span>
-              </button>
-              
-              {rental.shipping_status === "delivered" && (
+          <div className="flex flex-wrap gap-2 md:gap-3 items-center">
+            {rental.rental_status === "pending" && (
+              <>
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
-                    handleStartRental(rental.id)
+                    handleApprove(rental.id)
                   }}
-                  disabled={actionLoading[rental.id] === "start"}
+                  disabled={actionLoading[rental.id] === "approve"}
                   className="inline-flex items-center space-x-1 md:space-x-2 bg-green-600 hover:bg-green-700 text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {actionLoading[rental.id] === "start" ? (
+                  {actionLoading[rental.id] === "approve" ? (
                     <Loader2 className="h-3 w-3 md:h-4 md:w-4 animate-spin" />
                   ) : (
                     <Check className="h-3 w-3 md:h-4 md:w-4" />
                   )}
-                  <span>Activate Rental</span>
+                  <span>Approve</span>
                 </button>
-              )}
-            </>
-          )}
-
-          {rental.contract_pdf_url && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleReject(rental.id)
+                  }}
+                  disabled={actionLoading[rental.id] === "reject"}
+                  className="inline-flex items-center space-x-1 md:space-x-2 bg-red-600 hover:bg-red-700 text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {actionLoading[rental.id] === "reject" ? (
+                    <Loader2 className="h-3 w-3 md:h-4 md:w-4 animate-spin" />
+                  ) : (
+                    <X className="h-3 w-3 md:h-4 md:w-4" />
+                  )}
+                  <span>Reject</span>
+                </button>
+              </>
+            )}
+            {(rental.rental_status === "confirmed" || rental.rental_status === "active") && (
+              <>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    navigate(`/admin/delivery?rentalId=${rental.id}`)
+                  }}
+                  className="inline-flex items-center space-x-1 md:space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors"
+                >
+                  <Truck className="h-3 w-3 md:h-4 md:w-4" />
+                  <span>Manage Logistics</span>
+                </button>
+                {rental.rental_status !== "active" && rental.shipping_status === "delivered" && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleStartRental(rental.id)
+                    }}
+                    disabled={actionLoading[rental.id] === "start"}
+                    className="inline-flex items-center space-x-1 md:space-x-2 bg-green-600 hover:bg-green-700 text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {actionLoading[rental.id] === "start" ? (
+                      <Loader2 className="h-3 w-3 md:h-4 md:w-4 animate-spin" />
+                    ) : (
+                      <Check className="h-3 w-3 md:h-4 md:w-4" />
+                    )}
+                    <span>Activate Rental</span>
+                  </button>
+                )}
+              </>
+            )}
+            {rental.contract_pdf_url && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  viewContract(rental.id, rental.contract_pdf_url)
+                }}
+                disabled={contractViewLoading[rental.id]}
+                className="inline-flex items-center space-x-1 md:space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {contractViewLoading[rental.id] ? (
+                  <Loader2 className="h-3 w-3 md:h-4 md:w-4 animate-spin" />
+                ) : (
+                  <FileText className="h-3 w-3 md:h-4 md:w-4" />
+                )}
+                <span>View Contract</span>
+              </button>
+            )}
+            <button
+              onClick={() => handleViewDetails(rental)}
+              className="inline-flex items-center space-x-1 md:space-x-2 text-gray-300 hover:text-white text-xs md:text-sm font-medium"
+            >
+              <Eye className="h-3 w-3 md:h-4 md:w-4" />
+              <span>View Details</span>
+            </button>
             <button
               onClick={(e) => {
                 e.stopPropagation()
-                viewContract(rental.id, rental.contract_pdf_url)
+                setShowDeleteConfirm(rental.id)
               }}
-              disabled={contractViewLoading[rental.id]}
-              className="inline-flex items-center space-x-1 md:space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={actionLoading[rental.id] === "delete"}
+              className="inline-flex items-center space-x-1 md:space-x-2 text-red-400 hover:text-red-300 text-xs md:text-sm font-medium ml-auto"
             >
-              {contractViewLoading[rental.id] ? (
+              {actionLoading[rental.id] === "delete" ? (
                 <Loader2 className="h-3 w-3 md:h-4 md:w-4 animate-spin" />
               ) : (
-                <FileText className="h-3 w-3 md:h-4 md:w-4" />
+                <Trash2 className="h-3 w-3 md:h-4 md:w-4" />
               )}
-              <span>View Contract</span>
+              <span>Delete</span>
             </button>
-          )}
-
-          <button
-            onClick={() => handleViewDetails(rental)}
-            className="inline-flex items-center space-x-1 md:space-x-2 text-gray-300 hover:text-white text-xs md:text-sm font-medium"
-          >
-            <Eye className="h-3 w-3 md:h-4 md:w-4" />
-            <span>View Details</span>
-          </button>
-
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              setShowDeleteConfirm(rental.id)
-            }}
-            disabled={actionLoading[rental.id] === "delete"}
-            className="inline-flex items-center space-x-1 md:space-x-2 text-red-400 hover:text-red-300 text-xs md:text-sm font-medium ml-auto"
-          >
-            {actionLoading[rental.id] === "delete" ? (
-              <Loader2 className="h-3 w-3 md:h-4 md:w-4 animate-spin" />
-            ) : (
-              <Trash2 className="h-3 w-3 md:h-4 md:w-4" />
-            )}
-            <span>Delete</span>
-          </button>
-        </div>
-
-        {contractViewError[rental.id] && (
-          <div className="mt-3 p-2 md:p-3 bg-red-900/50 border border-red-700 rounded-lg">
-            <p className="text-red-300 text-xs md:text-sm">{contractViewError[rental.id]}</p>
           </div>
-        )}
+          {contractViewError[rental.id] && (
+            <div className="mt-3 p-2 md:p-3 bg-red-900/50 border border-red-700 rounded-lg">
+              <p className="text-red-300 text-xs md:text-sm">{contractViewError[rental.id]}</p>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   const statusFilters = [
     { key: "needs_action", label: "Needs Action", count: allRentals.filter((r) => needsAdminAction(r)).length },
@@ -548,6 +676,9 @@ export default function Rentals() {
 
   const handleStatusChange = (status) => {
     setSelectedStatus(status)
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('status', status);
+    setSearchParams(newParams);
   }
 
   const RentalDetailModal = ({ rental, onClose }) => (
@@ -562,14 +693,23 @@ export default function Rentals() {
               <h2 className="text-2xl font-bold text-white">Rental Details</h2>
               <p className="text-gray-300 mt-1">{rental.cameras?.name}</p>
             </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-200 transition-colors p-2">
-              <X className="h-6 w-6" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  navigate(`/admin/delivery?rentalId=${rental.id}`);
+                }}
+                className="inline-flex items-center px-3 py-1.5 border border-gray-600 text-sm font-medium rounded-md text-gray-200 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <Truck className="mr-1.5 h-4 w-4" />
+                Manage Logistics
+              </button>
+              <button onClick={onClose} className="text-gray-400 hover:text-gray-200 transition-colors p-2">
+                <X className="h-6 w-6" />
+              </button>
+            </div>
           </div>
-
           <div className="space-y-6">
             <RentalStepper rental={rental} />
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-white">Customer Information</h3>
@@ -583,7 +723,6 @@ export default function Rentals() {
                       <p className="text-sm text-gray-300">{selectedUser?.email}</p>
                     </div>
                   </div>
-                  
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-gray-600">
                     <div>
                       <p className="text-xs text-gray-400 uppercase tracking-wide">Phone</p>
@@ -604,9 +743,7 @@ export default function Rentals() {
                         )}
                       </p>
                     </div>
-
                   </div>
-                  
                   {selectedUser?.emergency_contact && (
                     <div className="pt-3 border-t border-gray-600">
                       <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Emergency Contact</p>
@@ -619,7 +756,6 @@ export default function Rentals() {
                   )}
                 </div>
               </div>
-
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-white">Rental & Equipment</h3>
                 <div className="bg-gray-700 rounded-lg p-4 space-y-4">
@@ -631,7 +767,6 @@ export default function Rentals() {
                       <span className="text-gray-300 text-sm">Shipping Status: {prettyShippingStatus(selectedRental?.shipping_status)}</span>
                     </div>
                   </div>
-                  
                   <div className="pt-3 border-t border-gray-600">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
@@ -737,7 +872,6 @@ export default function Rentals() {
             Manage rental applications, agreements, and customer relationships efficiently.
           </p>
         </div>
-
         <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 mb-6">
           <div className="flex flex-col lg:flex-row gap-4 mb-4">
             <div className="flex-1">
@@ -753,7 +887,6 @@ export default function Rentals() {
               </div>
             </div>
           </div>
-
           <div className="flex flex-wrap gap-2">
             {statusFilters.map((filter) => (
               <button
@@ -780,7 +913,6 @@ export default function Rentals() {
             ))}
           </div>
         </div>
-
         {rentals.length === 0 ? (
           <div className="bg-gray-800 rounded-xl border border-gray-700 p-12 text-center">
             <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -798,9 +930,7 @@ export default function Rentals() {
             ))}
           </div>
         )}
-
         {selectedRental && <RentalDetailModal rental={selectedRental} onClose={() => { setSelectedRental(null); setSelectedUser(null); }} />}
-
         {showDeleteConfirm && (
           <DeleteConfirmModal
             rentalId={showDeleteConfirm}
