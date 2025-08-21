@@ -6,6 +6,7 @@ import useAuthStore from "../../stores/useAuthStore";
 import useUserStore from "../../stores/userStore";
 
 export default function Profile() {
+  // State Management
   const { user } = useAuthStore();
   const { users, addOrUpdateUser } = useUserStore();
   const userId = user?.id;
@@ -16,50 +17,15 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [savingPersonal, setSavingPersonal] = useState(false);
   const [appealing, setAppealing] = useState(false);
-  const currentUser = users.find((u) => u.id === user?.id); // Derive from store
+  const [hasAttemptedLoad, setHasAttemptedLoad] = useState(false);
+  const [error, setError] = useState(null);
+  const currentUser = users.find((u) => u.id === user?.id);
 
-  // Initial load and subscription
-  useEffect(() => {
-    if (!user?.id) return;
-
-    const loadUser = async () => {
-      try {
-        const { data, error } = await getUserById(user.id);
-        if (error) {
-          console.error("Failed to load user profile:", error);
-        } else if (data) {
-          addOrUpdateUser(data); // Put initial data in the store
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadUser();
-
-    const channel = subscribeToUserUpdates(user.id, "user");
-    return () => {
-      unsubscribeFromUserUpdates(channel);
-    };
-  }, [user?.id, addOrUpdateUser]);
-
-  // NEW: Update local state when the user data in the store changes (e.g., via realtime)
-  useEffect(() => {
-    if (currentUser) {
-      setForm(currentUser);
-      setOriginalForm(currentUser);
-      // Refresh media URLs if keys might have changed via realtime
-      refreshMediaUrls(currentUser);
-    }
-  }, [currentUser]); // Depend on currentUser from the store
-
-  // --- State and Refs for Video Recording ---
+  // Video Recording State
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordedVideoUrl, setRecordedVideoUrl] = useState(null);
   const [stream, setStream] = useState(null);
-
   const [preCountdown, setPreCountdown] = useState(0);
   const [timeLeft, setTimeLeft] = useState(0);
 
@@ -71,30 +37,49 @@ export default function Profile() {
   const preCountdownRef = useRef(null);
   const recordingIntervalRef = useRef(null);
 
-  // --- Initial Data Fetch (Consider if this is still needed with the store+realtime) ---
-  // This might be redundant now that we have the store and realtime updates.
-  // The useEffect above with addOrUpdateUser and the new useEffect for currentUser should suffice.
-  // Keeping it for now might cause slight confusion but shouldn't break realtime if the above useEffect is added.
+  // Data Loading and Subscription
   useEffect(() => {
-    if (!userId) return;
-    async function fetchUserData() {
+    if (!user?.id) return;
+
+    const loadUser = async () => {
       setLoading(true);
       try {
-        const data = await getUserById(userId);
-        setForm(data);
-        setOriginalForm(data);
-        await refreshMediaUrls(data);
-      } catch (error) {
-        console.error("Error fetching user:", error);
+        const { data, error: fetchError } = await getUserById(user.id);
+        if (fetchError) {
+          setError(fetchError.message);
+          return;
+        }
+        if (data) {
+          addOrUpdateUser(data);
+          setForm(data);
+          setOriginalForm(data);
+          await refreshMediaUrls(data);
+        }
+      } catch (err) {
+        setError(err.message);
       } finally {
         setLoading(false);
+        setHasAttemptedLoad(true);
       }
+    };
+    loadUser();
+
+    const channel = subscribeToUserUpdates(user.id, "user");
+    return () => {
+      unsubscribeFromUserUpdates(channel);
+    };
+  }, [user?.id]);
+
+  // Store Update Handler
+  useEffect(() => {
+    if (currentUser) {
+      setForm(currentUser);
+      setOriginalForm(currentUser);
+      refreshMediaUrls(currentUser);
     }
-    fetchUserData();
-  }, [userId]); // This runs on mount and when userId changes
+  }, [currentUser]);
 
-  // --- Helper Functions ---
-
+  // Media URL Generator
   async function refreshMediaUrls(data) {
     const [idUrl, selfieUrl, videoUrl] = await Promise.all([
       data.government_id_key
@@ -114,6 +99,7 @@ export default function Profile() {
     });
   }
 
+  // Form Handlers
   function handleChange(e) {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
@@ -127,12 +113,13 @@ export default function Profile() {
     setMediaUrls(prev => ({ ...prev, [name]: URL.createObjectURL(file) }));
   }
 
+  // Form Submission
   async function handleSubmit(e, isAppeal = false) {
     e.preventDefault();
     if (isAppeal) {
-        setAppealing(true);
+      setAppealing(true);
     } else {
-        setSavingPersonal(true);
+      setSavingPersonal(true);
     }
     try {
       const updates = {};
@@ -141,16 +128,16 @@ export default function Profile() {
         if (files.government_id_key) filesToUpload.government_id_key = files.government_id_key;
         if (files.selfie_id_key) filesToUpload.selfie_id_key = files.selfie_id_key;
         if (recordedBlobRef.current) {
-           const videoFile = new File([recordedBlobRef.current], "verification-video.webm", { type: "video/webm" });
-           filesToUpload.verification_video_key = videoFile;
-           const previewUrl = URL.createObjectURL(recordedBlobRef.current);
-           setMediaUrls(prev => ({ ...prev, verification_video_key_for_preview: previewUrl }));
+          const videoFile = new File([recordedBlobRef.current], "verification-video.webm", { type: "video/webm" });
+          filesToUpload.verification_video_key = videoFile;
+          const previewUrl = URL.createObjectURL(recordedBlobRef.current);
+          setMediaUrls(prev => ({ ...prev, verification_video_key_for_preview: previewUrl }));
         } else if (files.verification_video_key) {
-            filesToUpload.verification_video_key = files.verification_video_key;
+          filesToUpload.verification_video_key = files.verification_video_key;
         }
         if (Object.keys(filesToUpload).length === 0) {
-             alert("Please provide at least one new verification document to appeal.");
-             return;
+          alert("Please provide at least one new verification document to appeal.");
+          return;
         }
       } else {
         for (const key of ["first_name", "last_name", "contact_number", "address"]) {
@@ -160,9 +147,9 @@ export default function Profile() {
       }
       await updateUserProfile(userId, updates, filesToUpload);
       if (isAppeal) {
-          alert("Verification appeal submitted successfully!");
+        alert("Verification appeal submitted successfully!");
       } else {
-          alert("Personal information updated successfully!");
+        alert("Personal information updated successfully!");
       }
       const data = await getUserById(userId);
       setForm(data);
@@ -172,11 +159,8 @@ export default function Profile() {
       recordedBlobRef.current = null;
       recordedChunksRef.current = [];
       await refreshMediaUrls(data);
-      // Explicitly update the store after a successful save
-      // While realtime should pick it up, this ensures consistency
       addOrUpdateUser(data);
     } catch (error) {
-      console.error("Error updating profile:", error);
       alert(`Failed to update profile: ${error.message || "Please try again."}`);
     } finally {
       if (isAppeal) {
@@ -187,6 +171,7 @@ export default function Profile() {
     }
   }
 
+  // Video Recording Functions
   async function openVideoModal() {
     setShowVideoModal(true);
     try {
@@ -210,16 +195,15 @@ export default function Profile() {
         recordedBlobRef.current = videoBlob;
         const videoUrl = URL.createObjectURL(videoBlob);
         if (videoRef.current) {
-          try { videoRef.current.srcObject = null; } catch (e) { console.error(e); }
+          try { videoRef.current.srcObject = null; } catch (e) {}
         }
         if (stream) {
-          try { stream.getTracks().forEach(t => t.stop()); } catch (e) { console.error(e); }
+          try { stream.getTracks().forEach(t => t.stop()); } catch (e) {}
         }
         setStream(null);
         setRecordedVideoUrl(videoUrl);
       };
     } catch (err) {
-      console.error("getUserMedia failed:", err);
       alert("Unable to access camera/mic. Please check permissions.");
       setShowVideoModal(false);
     }
@@ -295,7 +279,7 @@ export default function Profile() {
       recordingIntervalRef.current = null;
     }
     if (recordedVideoUrl) {
-      try { URL.revokeObjectURL(recordedVideoUrl); } catch (e) { console.error(e); }
+      try { URL.revokeObjectURL(recordedVideoUrl); } catch (e) {}
     }
     setShowVideoModal(false);
     setIsRecording(false);
@@ -306,8 +290,7 @@ export default function Profile() {
     recordedBlobRef.current = null;
   };
 
-  // --- Render Logic ---
-
+  // Loading States
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -319,15 +302,28 @@ export default function Profile() {
     );
   }
 
-  // This check should ideally not be needed if currentUser is synced correctly,
-  // but it's a safeguard. Ensure the new useEffect runs correctly.
-  if (!currentUser) {
-    console.warn("currentUser is null after loading or store update for user ID:", user?.id);
-    return <p>User data could not be loaded or found.</p>;
+  if (error) {
+    return <p className="text-red-500 text-center py-12">Error loading profile: {error}</p>;
   }
 
-  const isVerified = form.verification_status === 'verified'; // Or currentUser.verification_status
-  const isRejected = form.verification_status === 'rejected'; // Or currentUser.verification_status
+  if (hasAttemptedLoad && !currentUser) {
+    return <p className="text-center py-12">User data could not be loaded or found.</p>;
+  }
+
+  if (!currentUser && user?.id) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="flex items-center space-x-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-300 border-t-blue-600"></div>
+          <p className="text-gray-600 font-medium">Loading your profile...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // UI Rendering
+  const isVerified = form.verification_status === 'verified';
+  const isRejected = form.verification_status === 'rejected';
   const canAppeal = isRejected;
 
   return (
@@ -585,7 +581,7 @@ export default function Profile() {
                     type="button"
                     onClick={() => {
                       if (recordedVideoUrl) {
-                        try { URL.revokeObjectURL(recordedVideoUrl); } catch (e) { console.error(e); }
+                        try { URL.revokeObjectURL(recordedVideoUrl); } catch (e) {}
                       }
                       setRecordedVideoUrl(null);
                       recordedBlobRef.current = null;
