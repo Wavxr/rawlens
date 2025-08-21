@@ -24,7 +24,8 @@ import {
   Layers,
   PhilippinePeso,
   Sun,
-  Moon
+  Moon,
+  UserStar,
 } from "lucide-react"
 
 export default function AdminDashboard() {
@@ -49,7 +50,8 @@ const navigationSections = [
       { name: "Calendar", path: "/admin/calendar", icon: Calendar },
       { name: "Booking Trends", path: "/admin/booking-trends", icon: TrendingUp },
       { name: "Monthly Heatmaps", path: "/admin/heatmaps", icon: Map },
-      { name: "Revenue", path: "/admin/revenue", icon: PhilippinePeso }
+      { name: "Revenue", path: "/admin/revenue", icon: PhilippinePeso },
+      { name: "Feedbacks", path: "/admin/feedbacks", icon: UserStar }
     ]
   },
   {

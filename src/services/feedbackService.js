@@ -37,17 +37,37 @@ export async function submitRentalFeedback({ rentalId, userId, rating = null, fe
   return data;
 }
 
-/**
- * Get all feedbacks (admin only).
- */
+// Admin: fetch all feedback with user + rental + camera info
 export async function getAllFeedbacks() {
   const { data, error } = await supabase
     .from("rental_feedback")
-    .select("id, rental_id, user_id, rating, feedback, created_at");
+    .select(`
+      id,
+      rating,
+      feedback,
+      created_at,
+      rentals (
+        id,
+        user_id,
+        rental_status,
+        cameras (
+          id,
+          name
+        ),
+        users (
+          id,
+          first_name,
+          last_name,
+          email
+        )
+      )
+    `)
+    .order("created_at", { ascending: false });
 
   if (error) throw error;
   return data;
 }
+
 
 /**
  * Optional helper: Get all rentals with their feedback (for user dashboard)

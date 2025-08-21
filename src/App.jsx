@@ -20,6 +20,7 @@
   import AdminCalendar from './pages/admin/Calendar';
   import AdminRentals from './pages/admin/Rental';
   import AdminDelivery from './pages/admin/Delivery';
+  import AdminFeedbacks from './pages/admin/Feedbacks';
 
   // User
   import UserDashboard from './pages/user/UserDashboard';
@@ -58,6 +59,7 @@
             <Route path="calendar" element={<AdminCalendar />} />
             <Route path="rentals" element={<AdminRentals />} />
             <Route path="delivery" element={<AdminDelivery />} />
+            <Route path="feedbacks" element={<AdminFeedbacks />} />
           </Route>
         </Route>
 
