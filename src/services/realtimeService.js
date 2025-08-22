@@ -3,6 +3,7 @@ import useRentalStore from '../stores/rentalStore';
 import useUserStore from '../stores/userStore';
 import { getRentalById } from './rentalService';
 import { getUserById } from './userService';
+import { sendRentalConfirmed, sendReturnReminder, sendItemReturned } from './emailService';
 
 /**
  * Subscribe to rental updates in real-time.
@@ -25,8 +26,15 @@ export function subscribeToRentalUpdates(targetId, role = 'user') {
       table: 'rentals'
     },
     async (payload) => {
+      console.log('Real-time event received:', payload);
+      
       const { eventType } = payload;
       const rentalId = eventType === 'DELETE' ? payload.old.id : payload.new.id;
+
+      // Handle email notifications for UPDATE events
+      if (eventType === 'UPDATE') {
+        await handleRentalEmailNotifications(payload.old, payload.new);
+      }
 
       // For user role, ensure the update belongs to them.
       if (role === 'user' && eventType !== 'DELETE') {
@@ -62,9 +70,10 @@ export function subscribeToRentalUpdates(targetId, role = 'user') {
     }
   )
   .subscribe((status) => {
+    console.log(`Rental subscription status: ${status}`);
   });
 
-return channel;
+  return channel;
 }
 
 /**
@@ -76,8 +85,6 @@ export function unsubscribeFromRentalUpdates(channel) {
     supabase.removeChannel(channel);
   }
 }
-
-
 
 // ====================================================
 // --- NEW FOR USERS ---
@@ -137,5 +144,154 @@ export function subscribeToUserUpdates(targetId, role = 'user') {
 export function unsubscribeFromUserUpdates(channel) {
   if (channel) {
     supabase.removeChannel(channel);
+  }
+}
+
+// ====================================================
+// --- EMAIL NOTIFICATIONS ---
+// ====================================================
+
+/**
+ * Handle email notifications based on rental status changes
+ */
+async function handleRentalEmailNotifications(oldRecord, newRecord) {
+  try {
+    
+    // Admin confirms rental → notify user (email)
+    if (oldRecord.rental_status !== 'confirmed' && newRecord.rental_status === 'confirmed') {
+      console.log('CONDITION MET: Rental confirmed - sending email');
+      await sendRentalConfirmedEmail(newRecord);
+    }
+
+    // End date passed or is near return (return_scheduled in shipping_status) → notify user
+    if (oldRecord.shipping_status !== 'return_scheduled' && newRecord.shipping_status === 'return_scheduled') {
+      console.log('CONDITION MET: Return scheduled - sending email');
+      await sendReturnScheduledEmail(newRecord);
+    }
+
+    // returned (marked by admin) → notify user (email)
+    if (oldRecord.shipping_status !== 'returned' && newRecord.shipping_status === 'returned') {
+      console.log('CONDITION MET: Item returned - sending email');
+      await sendRentalCompletedEmail(newRecord);
+    }
+  } catch (error) {
+    console.error('Error handling rental email notifications:', error);
+  }
+}
+
+/**
+ * Send rental confirmed email to user
+ */
+async function sendRentalConfirmedEmail(rentalData) {
+  try {
+    // Get user data
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', rentalData.user_id)
+      .single();
+
+    if (userError) {
+      console.error('Error fetching user data:', userError);
+      throw userError;
+    }
+
+    // Get camera data
+    const { data: cameraData, error: cameraError } = await supabase
+      .from('cameras')
+      .select('name')
+      .eq('id', rentalData.camera_id)
+      .single();
+
+    if (cameraError) {
+      console.error('Error fetching camera data:', cameraError);
+      throw cameraError;
+    }
+
+    // Send email
+    await sendRentalConfirmed(
+      userData,
+      { ...rentalData, item_name: cameraData.name }
+    );
+  } catch (error) {
+    console.error('Error sending rental confirmed email:', error);
+  }
+}
+
+/**
+ * Send return scheduled email to user
+ */
+async function sendReturnScheduledEmail(rentalData) {
+  try {
+    // Get user data
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', rentalData.user_id)
+      .single();
+
+    if (userError) {
+      console.error('Error fetching user data:', userError);
+      throw userError;
+    }
+
+    // Get camera data
+    const { data: cameraData, error: cameraError } = await supabase
+      .from('cameras')
+      .select('name')
+      .eq('id', rentalData.camera_id)
+      .single();
+
+    if (cameraError) {
+      console.error('Error fetching camera data:', cameraError);
+      throw cameraError;
+    }
+
+    // Send email
+    await sendReturnReminder(
+      userData,
+      { ...rentalData, item_name: cameraData.name }
+    );
+  } catch (error) {
+    console.error('Error sending return scheduled email:', error);
+  }
+}
+
+/**
+ * Send rental completed email to user
+ */
+async function sendRentalCompletedEmail(rentalData) {
+  try {
+    // Get user data
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', rentalData.user_id)
+      .single();
+
+    if (userError) {
+      console.error('Error fetching user data:', userError);
+      throw userError;
+    }
+
+    // Get camera data
+    const { data: cameraData, error: cameraError } = await supabase
+      .from('cameras')
+      .select('name')
+      .eq('id', rentalData.camera_id)
+      .single();
+
+    if (cameraError) {
+      console.error('Error fetching camera data:', cameraError);
+      throw cameraError;
+    }
+
+    // Send email
+    await sendItemReturned(
+      userData,
+      { ...rentalData, item_name: cameraData.name }
+    );
+  } catch (error) {
+    console.error('Error sending rental completed email:', error);
   }
 }
