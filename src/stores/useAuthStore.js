@@ -1,66 +1,122 @@
 // src/stores/useAuthStore.js
 import { create } from 'zustand';
 import { supabase } from '../lib/supabaseClient';
+import useSettingsStore from './settingsStore';
+import useThemeStore from './useThemeStore';
+import useUserStore from './userStore';
 
-const useAuthStore = create((set) => ({
+const useAuthStore = create((set, get) => ({
   // state
   user: null,
   role: null,
+  profile: null, // To hold the detailed user profile from the 'users' table
   session: null,
   loading: true,      // overall auth loading
   roleLoading: false, // true while we’re fetching the role
 
   /* -------- initialise session -------- */
   initialize: async () => {
-    const { data: { session }, error } = await supabase.auth.getSession();
+    set({ loading: true });
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
 
-    if (error) {
-      console.error(error);
-      return set({ user: null, session: null, role: null, loading: false });
+      if (error) {
+        console.error("Error getting session:", error);
+        set({ user: null, session: null, role: null, profile: null });
+        return;
+      }
+
+      if (session?.user) {
+        set({ session, user: session.user });
+        await get().fetchUserData(session.user.id);
+      }
+    } catch (e) {
+      console.error("Critical error during auth initialization:", e);
+      set({ user: null, session: null, role: null, profile: null });
+    } finally {
+      set({ loading: false }); // Ensure loading is always set to false
     }
 
-    if (session?.user) {
-      set({ session, user: session.user, roleLoading: true });
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        try {
+          const currentUser = get().user;
 
-      // try to get the role, but *always* clear roleLoading afterwards
-      await useAuthStore.getState().fetchUserRole(session.user.id);
-      set({ roleLoading: false });
-    }
-
-    set({ loading: false });
+          // This event fires on tab focus, token refresh, etc.
+          // We only want to trigger a full reload if the user actually changes.
+          if (event === 'SIGNED_IN' && session?.user?.id !== currentUser?.id) {
+            set({ loading: true });
+            set({ session, user: session.user });
+            await get().fetchUserData(session.user.id);
+            set({ loading: false });
+          } else if (event === 'SIGNED_OUT') {
+            useSettingsStore.getState().clear();
+            useUserStore.getState().clearUser();
+            set({ user: null, session: null, role: null, profile: null });
+          }
+        } catch (e) {
+          console.error("Critical error in onAuthStateChange:", e);
+          set({ loading: false }); // Ensure loading is always false on error
+        }
+      }
+    );
+    
+    return () => {
+        authListener.subscription.unsubscribe();
+    };
   },
 
-  /* -------- fetch role -------- */
-  fetchUserRole: async (uid) => {
-    const { data, error } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', uid)
-      .single();
+  fetchUserData: async (userId) => {
+    set({ roleLoading: true });
+    try {
+      // Fetch role and full profile in one go
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
 
-    if (error) {
-      console.warn('No role row found; defaulting to "user"');
-      // choose: null ➜ treated as regular user, or force 'user'
-      return set({ role: 'user' });
+      if (error) {
+        console.warn('No user profile found; defaulting to "user" role', error);
+        set({ role: 'user', profile: null });
+      } else {
+        set({ role: data.role || 'user', profile: data });
+        useUserStore.getState().setUser(data); // Also update the userStore
+      }
+
+      // Fetch settings and set theme
+      await useSettingsStore.getState().init(userId);
+      const settings = useSettingsStore.getState().settings;
+      if (settings) {
+        useThemeStore.getState().setTheme(settings.dark_mode);
+      }
+    } catch (e) {
+      console.error('Critical error in fetchUserData:', e);
+      set({ role: 'user', profile: null }); // Set a default state
+    } finally {
+      set({ roleLoading: false }); // Ensure roleLoading is always set to false
     }
-
-    set({ role: data.role || 'user' });
   },
 
   /* -------- login / logout -------- */
   login: async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
-
-    set({ session: data.session, user: data.user, roleLoading: true });
-    await useAuthStore.getState().fetchUserRole(data.user.id);
-    set({ roleLoading: false });
+    // onAuthStateChange will handle the rest
   },
 
   logout: async () => {
     await supabase.auth.signOut();
-    set({ user: null, session: null, role: null });
+    // onAuthStateChange will handle the rest
+  },
+  
+  register: async (email, password) => {
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) throw error;
+    return data;
   },
 }));
+
+useAuthStore.getState().initialize();
 
 export default useAuthStore;

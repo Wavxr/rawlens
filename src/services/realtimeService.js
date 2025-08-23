@@ -94,9 +94,10 @@ export function unsubscribeFromRentalUpdates(channel) {
 /**
  * Subscribe to user updates in real-time.
  * @param {string|null} targetId - The user.id (for self) or null (for admin all-users view).
+ * @param {function} callback - A function to call when an update is received.
  * @param {string} role - 'user' or 'admin'
  */
-export function subscribeToUserUpdates(targetId, role = 'user') {
+export function subscribeToUserUpdates(targetId, callback, role = 'user') {
   if (!targetId && role === 'user') {
     return null;
   }
@@ -137,6 +138,11 @@ export function subscribeToUserUpdates(targetId, role = 'user') {
             break;
           default:
             break;
+        }
+
+        // If a callback is provided, execute it.
+        if (callback) {
+          callback(payload);
         }
       }
     )

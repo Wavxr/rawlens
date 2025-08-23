@@ -9,7 +9,7 @@ export default function RedirectRoute() {
   useEffect(() => { initialize(); }, []);
 
   // wait until BOTH the auth state and the role query have finished
-  if (loading || roleLoading) return <div>Loading...</div>;
+  if (loading || roleLoading) return <div>Loading...redirect</div>;
 
   if (session) {
     if (role === 'admin') return <Navigate to="/admin" replace />;

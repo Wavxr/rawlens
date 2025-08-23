@@ -5,20 +5,21 @@ import { ensureSubscribed } from '../services/pushService';
 
 
 const ProtectedRoute = ({ requiredRole }) => {
-  const { session, role, loading, roleLoading, initialize } = useAuthStore();
+  const { session, role, loading, roleLoading } = useAuthStore();
 
   useEffect(() => {
-    initialize();
+    // The initialize function is now called once when the auth store is created.
+    // We don't need to call it here anymore.
   }, []);
 
   useEffect(() => {
-  const userId = session?.user?.id;
-  if (userId) {
-    ensureSubscribed(userId);
-  }
-}, [session?.user?.id]);
+    const userId = session?.user?.id;
+    if (userId) {
+      ensureSubscribed(userId);
+    }
+  }, [session?.user?.id]);
 
-  if (loading || roleLoading) return <div>Loading...</div>;
+  if (loading || roleLoading) return <div>Loading... protected</div>;
   if (!session) return <Navigate to="/login" replace />;
   if (requiredRole && role !== requiredRole) return <Navigate to="/" replace />;
   return <Outlet />;

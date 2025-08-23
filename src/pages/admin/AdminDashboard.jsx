@@ -26,7 +26,7 @@ import {
   Sun,
   Moon,
   UserStar,
-} from "lucide-react"
+} from "lucide-react";
 
 export default function AdminDashboard() {
   const navigate = useNavigate()

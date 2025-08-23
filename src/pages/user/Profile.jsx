@@ -4,22 +4,21 @@ import { getSignedUrl } from "../../services/storageService";
 import { subscribeToUserUpdates, unsubscribeFromUserUpdates } from "../../services/realtimeService";
 import useAuthStore from "../../stores/useAuthStore";
 import useUserStore from "../../stores/userStore";
+import useSettingsStore from "../../stores/settingsStore";
+import { Settings } from "lucide-react";
 
 export default function Profile() {
-  // State Management
-  const { user } = useAuthStore();
-  const { users, addOrUpdateUser } = useUserStore();
+    // State Management
+  const { user, profile, loading: authLoading } = useAuthStore();
+  const { settings, init: initSettings, update: updateSettings, loading: settingsLoading } = useSettingsStore();
   const userId = user?.id;
   const [form, setForm] = useState({});
   const [originalForm, setOriginalForm] = useState({});
   const [mediaUrls, setMediaUrls] = useState({});
   const [files, setFiles] = useState({});
-  const [loading, setLoading] = useState(true);
   const [savingPersonal, setSavingPersonal] = useState(false);
   const [appealing, setAppealing] = useState(false);
-  const [hasAttemptedLoad, setHasAttemptedLoad] = useState(false);
   const [error, setError] = useState(null);
-  const currentUser = users.find((u) => u.id === user?.id);
 
   // Video Recording State
   const [showVideoModal, setShowVideoModal] = useState(false);
@@ -39,45 +38,49 @@ export default function Profile() {
 
   // Data Loading and Subscription
   useEffect(() => {
-    if (!user?.id) return;
+    if (profile) {
+      // Sync profile data to local form state
+      const newForm = { ...profile };
+      setForm(newForm);
+      setOriginalForm(newForm);
+      // Fetch the media URLs for the profile
+      refreshMediaUrls(profile);
+    }
+  }, [profile]);
 
-    const loadUser = async () => {
-      setLoading(true);
-      try {
-        const { data, error: fetchError } = await getUserById(user.id);
-        if (fetchError) {
-          setError(fetchError.message);
-          return;
-        }
-        if (data) {
-          addOrUpdateUser(data);
-          setForm(data);
-          setOriginalForm(data);
-          await refreshMediaUrls(data);
-        }
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-        setHasAttemptedLoad(true);
+  // Settings Initialization
+  useEffect(() => {
+    if (userId && !settings) {
+      initSettings(userId);
+    }
+  }, [userId, settings, initSettings]);
+
+  // Effect to clean up camera stream on component unmount or when modal closes
+  useEffect(() => {
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
       }
     };
-    loadUser();
+  }, [stream]);
 
-    const channel = subscribeToUserUpdates(user.id, "user");
-    return () => {
-      unsubscribeFromUserUpdates(channel);
-    };
-  }, [user?.id]);
-
-  // Store Update Handler
+  // Real-time subscription to user profile changes
   useEffect(() => {
-    if (currentUser) {
-      setForm(currentUser);
-      setOriginalForm(currentUser);
-      refreshMediaUrls(currentUser);
+    if (userId) {
+      const handleUserUpdate = (payload) => {
+        console.log('Real-time update received for user profile. Refetching data...', payload);
+        useAuthStore.getState().fetchUserData(userId);
+      };
+
+      const subscription = subscribeToUserUpdates(userId, handleUserUpdate, 'user');
+
+      return () => {
+        if (subscription) {
+          unsubscribeFromUserUpdates(subscription);
+        }
+      };
     }
-  }, [currentUser]);
+  }, [userId]);
 
   // Media URL Generator
   async function refreshMediaUrls(data) {
@@ -98,6 +101,13 @@ export default function Profile() {
       verification_video_key: videoUrl,
     });
   }
+
+  // Toggle Handler
+  const handleToggle = async (key, value) => {
+    if (userId) {
+      await updateSettings(userId, { [key]: value });
+    }
+  };
 
   // Form Handlers
   function handleChange(e) {
@@ -151,15 +161,16 @@ export default function Profile() {
       } else {
         alert("Personal information updated successfully!");
       }
-      const data = await getUserById(userId);
-      setForm(data);
-      setOriginalForm(data);
+
+      // Re-fetch user data to update the global store, which will trigger
+      // the useEffect to update the local form state and media URLs.
+      await useAuthStore.getState().fetchUserData(userId);
+
+      // Reset local file/video state
       setFiles({});
       setRecordedVideoUrl(null);
       recordedBlobRef.current = null;
       recordedChunksRef.current = [];
-      await refreshMediaUrls(data);
-      addOrUpdateUser(data);
     } catch (error) {
       alert(`Failed to update profile: ${error.message || "Please try again."}`);
     } finally {
@@ -291,7 +302,7 @@ export default function Profile() {
   };
 
   // Loading States
-  if (loading) {
+  if (authLoading && !profile) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="flex items-center space-x-3">
@@ -306,25 +317,15 @@ export default function Profile() {
     return <p className="text-red-500 text-center py-12">Error loading profile: {error}</p>;
   }
 
-  if (hasAttemptedLoad && !currentUser) {
+  if (!authLoading && !profile) {
     return <p className="text-center py-12">User data could not be loaded or found.</p>;
-  }
-
-  if (!currentUser && user?.id) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="flex items-center space-x-3">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-300 border-t-blue-600"></div>
-          <p className="text-gray-600 font-medium">Loading your profile...</p>
-        </div>
-      </div>
-    );
   }
 
   // UI Rendering
   const isVerified = form.verification_status === 'verified';
   const isRejected = form.verification_status === 'rejected';
-  const canAppeal = isRejected;
+  const isUnverified = !form.verification_status || form.verification_status === 'unverified';
+  const canSubmitDocuments = isRejected || isUnverified;
 
   return (
     <>
@@ -444,13 +445,13 @@ export default function Profile() {
                       accept="image/*"
                       onChange={handleFileChange}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                      disabled={!canAppeal}
+                      disabled={!canSubmitDocuments}
                     />
                   </div>
                   <div className="flex justify-center">
                     <label
                       htmlFor="government_id_key"
-                      className={`text-xs ${canAppeal ? 'text-blue-600 hover:text-blue-800 cursor-pointer' : 'text-gray-400 cursor-not-allowed'}`}
+                      className={`text-xs ${canSubmitDocuments ? 'text-blue-600 hover:text-blue-800 cursor-pointer' : 'text-gray-400 cursor-not-allowed'}`}
                     >
                       Change Photo
                     </label>
@@ -476,13 +477,13 @@ export default function Profile() {
                       accept="image/*"
                       onChange={handleFileChange}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                      disabled={!canAppeal}
+                      disabled={!canSubmitDocuments}
                     />
                   </div>
                   <div className="flex justify-center">
                     <label
                       htmlFor="selfie_id_key"
-                      className={`text-xs ${canAppeal ? 'text-blue-600 hover:text-blue-800 cursor-pointer' : 'text-gray-400 cursor-not-allowed'}`}
+                      className={`text-xs ${canSubmitDocuments ? 'text-blue-600 hover:text-blue-800 cursor-pointer' : 'text-gray-400 cursor-not-allowed'}`}
                     >
                       Change Photo
                     </label>
@@ -502,8 +503,8 @@ export default function Profile() {
                   <button
                     type="button"
                     onClick={openVideoModal}
-                    disabled={!canAppeal}
-                    className={`w-full h-12 ${canAppeal ? 'bg-blue-50 hover:bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400 cursor-not-allowed'} rounded-lg`}
+                    disabled={!canSubmitDocuments}
+                    className={`w-full h-12 ${canSubmitDocuments ? 'bg-blue-50 hover:bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400 cursor-not-allowed'} rounded-lg`}
                   >
                     Record Video
                   </button>
@@ -513,11 +514,65 @@ export default function Profile() {
                 <button
                   type="button"
                   onClick={(e) => handleSubmit(e, true)}
-                  disabled={appealing || !canAppeal}
-                  className={`px-8 py-3 rounded-lg font-medium ${canAppeal ? 'bg-yellow-500 hover:bg-yellow-600 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+                  disabled={appealing || !canSubmitDocuments}
+                  className={`px-8 py-3 rounded-lg font-medium ${canSubmitDocuments ? 'bg-yellow-500 hover:bg-yellow-600 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
                 >
-                  {appealing ? "Submitting Appeal..." : "Appeal Verification"}
+                  {appealing ? "Submitting..." : (isRejected ? "Appeal Verification" : "Submit for Verification")}
                 </button>
+              </div>
+            </div>
+            <div className="p-8">
+              <div className="flex items-center mb-6">
+                <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center mr-3">
+                  <Settings className="w-5 h-5 text-blue-600" />
+                </div>
+                <h2 className="text-xl font-semibold text-gray-900">Notification Settings</h2>
+              </div>
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <span className="flex-grow flex flex-col">
+                    <span className="text-sm font-medium text-gray-900">
+                      Email Notifications
+                    </span>
+                    <span className="text-sm text-gray-500">
+                      Receive emails about your rentals and account activity.
+                    </span>
+                  </span>
+                  <button
+                    onClick={() => handleToggle('email_notifications', !settings?.email_notifications)}
+                    className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                      settings?.email_notifications ? 'bg-blue-600' : 'bg-gray-200'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${
+                        settings?.email_notifications ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+                <div className="flex items-center justify-between">
+                   <span className="flex-grow flex flex-col">
+                    <span className="text-sm font-medium text-gray-900">
+                      Push Notifications
+                    </span>
+                    <span className="text-sm text-gray-500">
+                      Get push notifications for real-time updates.
+                    </span>
+                  </span>
+                  <button
+                    onClick={() => handleToggle('push_notifications', !settings?.push_notifications)}
+                    className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                      settings?.push_notifications ? 'bg-blue-600' : 'bg-gray-200'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${
+                        settings?.push_notifications ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
             </div>
           </form>
