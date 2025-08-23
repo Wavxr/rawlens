@@ -80,13 +80,6 @@ serve(async (req) => {
       html,
     });
 
-
-    const { data, error } = await resend.emails.send({
-      from: "RawLens PH <noreply@rawlensph.cam>",
-      to,
-      subject,
-      html,
-    });
     if (error) throw error;
 
     return new Response(JSON.stringify({ success: true, data }), {

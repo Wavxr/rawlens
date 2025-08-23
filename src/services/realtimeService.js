@@ -207,15 +207,13 @@ async function handleRentalEmailNotifications(oldRecord, newRecord) {
       console.log('CONDITION MET: Rental confirmed - sending email');
       await sendRentalConfirmedEmail(newRecord);
     }
-
     // End date passed or return scheduled → notify user
-    if (oldRecord.shipping_status !== 'return_scheduled' && newRecord.shipping_status === 'return_scheduled') {
+    else if (oldRecord.shipping_status !== 'return_scheduled' && newRecord.shipping_status === 'return_scheduled') {
       console.log('CONDITION MET: Return scheduled - sending email');
       await sendReturnScheduledEmail(newRecord);
     }
-
     // Returned (marked by admin) → notify user
-    if (oldRecord.shipping_status !== 'returned' && newRecord.shipping_status === 'returned') {
+    else if (oldRecord.rental_status !== 'completed' && newRecord.rental_status === 'completed') {
       console.log('CONDITION MET: Item returned - sending email');
       await sendRentalCompletedEmail(newRecord);
     }
