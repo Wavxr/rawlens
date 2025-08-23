@@ -135,6 +135,7 @@ export default function Profile() {
       const updates = {};
       let filesToUpload = {};
       if (isAppeal) {
+        updates.is_appealing = true;
         if (files.government_id_key) filesToUpload.government_id_key = files.government_id_key;
         if (files.selfie_id_key) filesToUpload.selfie_id_key = files.selfie_id_key;
         if (recordedBlobRef.current) {
@@ -147,6 +148,7 @@ export default function Profile() {
         }
         if (Object.keys(filesToUpload).length === 0) {
           alert("Please provide at least one new verification document to appeal.");
+          setAppealing(false);
           return;
         }
       } else {
@@ -324,8 +326,10 @@ export default function Profile() {
   // UI Rendering
   const isVerified = form.verification_status === 'verified';
   const isRejected = form.verification_status === 'rejected';
+  const isPending = form.verification_status === 'pending';
   const isUnverified = !form.verification_status || form.verification_status === 'unverified';
-  const canSubmitDocuments = isRejected || isUnverified;
+  const canSubmitDocuments = !isVerified;
+  const isAppealing = form.is_appealing;
 
   return (
     <>
@@ -418,10 +422,14 @@ export default function Profile() {
               <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 text-sm">
                 {isVerified ? (
                   <p><strong>Note:</strong> Your account is already verified. You do not need to appeal.</p>
+                ) : isAppealing ? (
+                  <p><strong>Pending Review:</strong> You have submitted your documents for verification. Please wait for an admin to review them.</p>
                 ) : isRejected ? (
                   <p><strong>Appeal:</strong> Your previous verification was rejected. You can re-upload your documents to appeal the decision.</p>
+                ) : isPending ? (
+                  <p><strong>Status:</strong> Your verification is currently pending. Please wait for admin review.</p>
                 ) : (
-                  <p><strong>Status:</strong> Your verification is currently pending or unverified. Please wait for admin review or complete the initial verification process.</p>
+                  <p><strong>Action Required:</strong> Please complete the verification process by uploading your documents.</p>
                 )}
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
