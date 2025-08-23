@@ -33,9 +33,10 @@ export function subscribeToRentalUpdates(targetId, role = 'user') {
       const { eventType } = payload;
       const rentalId = eventType === 'DELETE' ? payload.old.id : payload.new.id;
 
-      // Handle email notifications for UPDATE events
+      // Handle email and push notifications for UPDATE events
       if (eventType === 'UPDATE') {
         await handleRentalEmailNotifications(payload.old, payload.new);
+        await handleRentalPushNotifications(payload.old, payload.new);
       }
 
       // For user role, ensure the update belongs to them.

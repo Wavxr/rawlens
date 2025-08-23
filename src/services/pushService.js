@@ -31,12 +31,28 @@ async function callEdge(functionName, payload) {
 export async function sendPushNotification(userIds, title, body, data = {}) {
   try {
     if (!userIds) return
-    // always wrap single userId into an array
     const ids = Array.isArray(userIds) ? userIds : [userIds]
+    if (ids.length === 0) return
+
+    // Fetch settings for the users and filter out those who disabled pushes
+    const { data: usersWithSettings, error } = await supabase
+      .from("user_settings")
+      .select("user_id")
+      .in("user_id", ids)
+      .eq("push_notifications", true)
+
+    if (error) throw error
+
+    const enabledUserIds = usersWithSettings.map((s) => s.user_id)
+
+    if (enabledUserIds.length === 0) {
+      console.log("🔕 Push notifications are disabled for all target users.")
+      return
+    }
 
     const notification = { title, body, data }
 
-    return await callEdge("send-push", { userIds: ids, notification })
+    return await callEdge("send-push", { userIds: enabledUserIds, notification })
   } catch (err) {
     console.error("❌ Failed to send push notification:", err)
   }
@@ -45,11 +61,42 @@ export async function sendPushNotification(userIds, title, body, data = {}) {
 // --- send push to all admins ---
 export async function sendPushToAdmins(title, body, data = {}) {
   try {
-    // fetch all admins from your users table
+    // fetch all admins who have push notifications enabled
     const { data: admins, error } = await supabase
       .from("users")
       .select("id")
       .eq("role", "admin")
+      .in(
+        "id",
+        (
+          await supabase
+            .from("user_settings")
+            .select("user_id")
+            .eq("push_notifications", true)
+        ).data.map((s) => s.user_id)
+      )
+
+    if (error) throw error
+    if (!admins?.length) return
+
+    const userIds = admins.map((u) => u.id)
+    const notification = { title, body, data }
+
+    return await callEdge("send-push", { userIds, notification })
+  } catch (err) {
+    console.error("❌ Failed to send push to admins:", err)
+  }
+}
+
+// --- send push to all admins ---
+export async function sendPushToAdmins(title, body, data = {}) {
+  try {
+    // fetch all admins who have push notifications enabled
+    const { data: admins, error } = await supabase
+      .from("users")
+      .select("id, user_settings(push_notifications)")
+      .eq("role", "admin")
+      .eq("user_settings.push_notifications", true)
 
     if (error) throw error
     if (!admins?.length) return
