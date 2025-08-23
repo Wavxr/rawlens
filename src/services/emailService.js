@@ -4,13 +4,14 @@ import { itemReturnedTemplate } from '../templates/email/itemReturned.js';
 import { supabase } from '../lib/supabaseClient';
 
 // Send email using Supabase Edge Function
-export async function sendEmail(to, subject, html) {
+export async function sendEmail(to, subject, html, userId) {
     try {
         const { data, error } = await supabase.functions.invoke('send-email', {
             body: {
                 to,
                 subject,
-                html
+                html,
+                userId
             }
         });
 
@@ -31,7 +32,8 @@ export async function sendRentalConfirmed(userData, rentalData) {
     return sendEmail(
         userData.email,
         'Your Rental Has Been Confirmed',
-        html
+        html,
+        userData.id
     );
 }
 
@@ -40,7 +42,8 @@ export async function sendReturnReminder(userData, rentalData) {
     return sendEmail(
         userData.email,
         'Return Reminder - Rental Ending Soon',
-        html
+        html,
+        userData.id
     );
 }
 
@@ -49,6 +52,7 @@ export async function sendItemReturned(userData, rentalData) {
     return sendEmail(
         userData.email,
         'Item Returned Successfully',
-        html
+        html,
+        userData.id
     );
 }

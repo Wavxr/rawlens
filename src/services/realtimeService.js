@@ -5,6 +5,7 @@ import { getRentalById } from './rentalService';
 import { getUserById } from './userService';
 import { sendRentalConfirmed, sendReturnReminder, sendItemReturned } from './emailService';
 import { sendPushNotification, sendPushToAdmins } from './pushService';
+import { getUserSettings } from './settingsService';
 
 /**
  * Subscribe to rental updates in real-time.
@@ -160,6 +161,29 @@ export function unsubscribeFromUserUpdates(channel) {
   }
 }
 
+
+// Helper: check if recipient allows emails (cheap single-row fetch)
+async function shouldSendEmailTo(userId) {
+ try {
+    const { data, error } = await supabase
+      .from('user_settings')
+     .select('email_notifications')
+      .eq('user_id', userId)
+      .single();
+   if (error) {
+      // If row not found or any error, be conservative and allow (backend will enforce too)
+     console.warn('Email settings lookup failed, proceeding to backend check:', error?.message || error);
+      return true;
+    }
+    return !!data?.email_notifications;
+  } catch (e) {
+    console.warn('Email settings lookup threw, proceeding to backend check:', e);
+    return true;
+  }
+}
+
+
+
 // ====================================================
 // --- EMAIL NOTIFICATIONS ---
 // ====================================================
@@ -169,26 +193,33 @@ export function unsubscribeFromUserUpdates(channel) {
  */
 async function handleRentalEmailNotifications(oldRecord, newRecord) {
   try {
-    
+    // Fetch user settings once per update
+    const settings = await getUserSettings(newRecord.user_id);
+
+    // Guard: if user has email notifications off, skip
+    if (!settings?.email_notifications) {
+      console.log(`User ${newRecord.user_id} has email notifications disabled. Skipping emails.`);
+      return;
+    }
+
     // Admin confirms rental → notify user (email)
     if (oldRecord.rental_status !== 'confirmed' && newRecord.rental_status === 'confirmed') {
       console.log('CONDITION MET: Rental confirmed - sending email');
       await sendRentalConfirmedEmail(newRecord);
     }
 
-    // End date passed or is near return (return_scheduled in shipping_status) → notify user
+    // End date passed or return scheduled → notify user
     if (oldRecord.shipping_status !== 'return_scheduled' && newRecord.shipping_status === 'return_scheduled') {
       console.log('CONDITION MET: Return scheduled - sending email');
       await sendReturnScheduledEmail(newRecord);
     }
 
-    // returned (marked by admin) → notify user (email)
+    // Returned (marked by admin) → notify user
     if (oldRecord.shipping_status !== 'returned' && newRecord.shipping_status === 'returned') {
       console.log('CONDITION MET: Item returned - sending email');
       await sendRentalCompletedEmail(newRecord);
     }
 
-    await handleRentalPushNotifications(oldRecord, newRecord);
   } catch (error) {
     console.error('Error handling rental email notifications:', error);
   }
