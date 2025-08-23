@@ -33,3 +33,6 @@ dist-ssr
 #documentation
 data-requirements.md
 schema.md
+.github/custom-instructions.md
+.gitignore
+.github/task-requirements-settings.md
