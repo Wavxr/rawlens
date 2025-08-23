@@ -7,13 +7,14 @@ import { supabase } from "../lib/supabaseClient";
  */
 export async function getRentalFeedback(rentalId) {
   const { data, error } = await supabase
-    .from("rental_feedback")
-    .select("id, rating, feedback, created_at, user_id")
-    .eq("rental_id", rentalId)
-    .single(); // returns null if skipped
+    .from('rental_feedback')
+    .select('*')
+    .eq('rental_id', rentalId)
+    .limit(1);
 
   if (error) throw error;
-  return data; // null if no feedback
+
+  return data?.[0] || null;
 }
 
 /**
