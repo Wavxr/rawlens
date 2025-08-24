@@ -15,7 +15,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // ✅ 1. Validate webhook secret (check both headers and query params)
+    // ✅ 1. Validate webhook secret
     const providedSecret =
       req.headers['x-webhook-secret'] || req.query['x-webhook-secret'];
     const expectedSecret = process.env.WEBHOOK_SECRET?.trim();
@@ -35,7 +35,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // ✅ 2. Extract notification payload from request
+    // ✅ 2. Extract notification payload
     const { user_id, title, body, data, click_action } = req.body;
 
     console.log('📨 Processing notification:', {
@@ -47,8 +47,9 @@ export default async function handler(req, res) {
     });
 
     // ✅ 3. Forward to Supabase Edge Function
-    const edgeFunctionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-fcm-notification`;
+    const supabaseUrl = process.env.SUPABASE_URL?.trim();
     const functionSecret = process.env.FCM_FUNCTION_SECRET?.trim();
+    const edgeFunctionUrl = `${supabaseUrl}/functions/v1/send-fcm-notification`;
 
     console.log('🔗 Calling Edge Function:', {
       url: edgeFunctionUrl,
@@ -64,15 +65,15 @@ export default async function handler(req, res) {
       body: JSON.stringify({ user_id, title, body, data, click_action }),
     });
 
-    const result = await response.json();
+    const result = await response.json().catch(() => ({}));
 
     console.log('📊 Edge Function response:', {
       status: response.status,
       ok: response.ok,
-      result: result,
+      result,
     });
 
-    // ✅ 4. Handle errors from Edge Function
+    // ✅ 4. Handle errors
     if (!response.ok) {
       console.error('❌ Edge Function error:', result);
       return res.status(response.status).json(result);
@@ -85,7 +86,6 @@ export default async function handler(req, res) {
     return res.status(500).json({
       error: 'Internal server error',
       details: error.message,
-      stack: error.stack,
     });
   }
 }
