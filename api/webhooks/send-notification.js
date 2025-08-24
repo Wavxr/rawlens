@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL, // frontend/backend both can use this
-  process.env.SUPABASE_SERVICE_ROLE_KEY // only safe here on server
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 // Webhook secret (set in Vercel env vars)
