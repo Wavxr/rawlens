@@ -61,50 +61,31 @@ export async function sendPushNotification(userIds, title, body, data = {}) {
 // --- send push to all admins ---
 export async function sendPushToAdmins(title, body, data = {}) {
   try {
-    // fetch all admins who have push notifications enabled
-    const { data: admins, error } = await supabase
+    // first get all admin IDs
+    const { data: admins, error: adminsError } = await supabase
       .from("users")
       .select("id")
       .eq("role", "admin")
-      .in(
-        "id",
-        (
-          await supabase
-            .from("user_settings")
-            .select("user_id")
-            .eq("push_notifications", true)
-        ).data.map((s) => s.user_id)
-      )
 
-    if (error) throw error
+    if (adminsError) throw adminsError
     if (!admins?.length) return
 
-    const userIds = admins.map((u) => u.id)
+    const adminIds = admins.map((u) => u.id)
+
+    // now filter based on push settings
+    const { data: settings, error: settingsError } = await supabase
+      .from("user_settings")
+      .select("user_id")
+      .in("user_id", adminIds)
+      .eq("push_notifications", true)
+
+    if (settingsError) throw settingsError
+    if (!settings?.length) return
+
+    const enabledAdminIds = settings.map((s) => s.user_id)
     const notification = { title, body, data }
 
-    return await callEdge("send-push", { userIds, notification })
-  } catch (err) {
-    console.error("❌ Failed to send push to admins:", err)
-  }
-}
-
-// --- send push to all admins ---
-export async function sendPushToAdmins(title, body, data = {}) {
-  try {
-    // fetch all admins who have push notifications enabled
-    const { data: admins, error } = await supabase
-      .from("users")
-      .select("id, user_settings(push_notifications)")
-      .eq("role", "admin")
-      .eq("user_settings.push_notifications", true)
-
-    if (error) throw error
-    if (!admins?.length) return
-
-    const userIds = admins.map((u) => u.id)
-    const notification = { title, body, data }
-
-    return await callEdge("send-push", { userIds, notification })
+    return await callEdge("send-push", { userIds: enabledAdminIds, notification })
   } catch (err) {
     console.error("❌ Failed to send push to admins:", err)
   }
@@ -115,7 +96,7 @@ export async function ensureSubscribed(userId) {
   if (!userId) return
   try {
     console.log(`🔔 Ensuring push subscription for user: ${userId}`)
-    // Later: navigator.serviceWorker.register + pushManager.subscribe goes here
+    // TODO: navigator.serviceWorker.register + pushManager.subscribe
   } catch (err) {
     console.error("❌ ensureSubscribed failed:", err)
   }
