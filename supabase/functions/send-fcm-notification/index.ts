@@ -42,65 +42,123 @@ function handleOptions() {
 
 // Generate a Firebase JWT (needed to request an OAuth2 token)
 async function generateFirebaseJWT(): Promise<string> {
-  const header = {
-    alg: "RS256",
-    typ: "JWT",
-  };
+  try {
+    console.log("🔑 Starting JWT generation...");
+    
+    const header = {
+      alg: "RS256",
+      typ: "JWT",
+    };
 
-  const iat = Math.floor(Date.now() / 1000);
-  const exp = iat + 3600; // 1 hour expiry
+    const iat = Math.floor(Date.now() / 1000);
+    const exp = iat + 3600;
 
-  const payload = {
-    iss: FIREBASE_CLIENT_EMAIL,
-    scope: "https://www.googleapis.com/auth/firebase.messaging",
-    aud: "https://oauth2.googleapis.com/token",
-    exp,
-    iat,
-  };
+    const payload = {
+      iss: FIREBASE_CLIENT_EMAIL,
+      scope: "https://www.googleapis.com/auth/firebase.messaging",
+      aud: "https://oauth2.googleapis.com/token",
+      exp,
+      iat,
+    };
 
-  // Encode base64url
-  const encodeBase64Url = (obj: any) =>
-    btoa(JSON.stringify(obj))
-      .replace(/\+/g, "-")
-      .replace(/\//g, "_")
-      .replace(/=+$/, "");
+    console.log("🔑 JWT payload:", { iss: payload.iss, exp, iat });
 
-  const encodedHeader = encodeBase64Url(header);
-  const encodedPayload = encodeBase64Url(payload);
-  const token = `${encodedHeader}.${encodedPayload}`;
+    // Base64URL encode
+    const base64UrlEncode = (obj: any) => {
+      const str = JSON.stringify(obj);
+      return btoa(str)
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+    };
 
-  // Sign with Firebase private key
-  const key = await crypto.subtle.importKey(
-    "pkcs8",
-    decodeBase64PEM(FIREBASE_PRIVATE_KEY),
-    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
+    const encodedHeader = base64UrlEncode(header);
+    const encodedPayload = base64UrlEncode(payload);
+    const unsignedToken = `${encodedHeader}.${encodedPayload}`;
 
-  const signature = await crypto.subtle.sign(
-    "RSASSA-PKCS1-v1_5",
-    key,
-    new TextEncoder().encode(token),
-  );
+    console.log("🔑 Unsigned token ready, length:", unsignedToken.length);
 
-  const base64Signature = btoa(
-    String.fromCharCode(...new Uint8Array(signature)),
-  )
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
+    // Get and process the private key
+    const privateKeyPem = FIREBASE_PRIVATE_KEY;
+    console.log("🔑 Private key source length:", privateKeyPem.length);
+    
+    const keyBuffer = decodeBase64PEM(privateKeyPem);
+    
+    console.log("🔑 Importing crypto key...");
+    const cryptoKey = await crypto.subtle.importKey(
+      "pkcs8",
+      keyBuffer,
+      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+      false,
+      ["sign"]
+    );
 
-  return `${token}.${base64Signature}`;
+    console.log("🔑 Signing token...");
+    const signature = await crypto.subtle.sign(
+      "RSASSA-PKCS1-v1_5",
+      cryptoKey,
+      new TextEncoder().encode(unsignedToken)
+    );
+
+    const base64Signature = btoa(String.fromCharCode(...new Uint8Array(signature)))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+
+    console.log("✅ JWT generated successfully");
+    return `${unsignedToken}.${base64Signature}`;
+
+  } catch (error) {
+    console.error("❌ JWT generation failed:", error);
+    throw new Error(`Failed to generate Firebase JWT: ${error.message}`);
+  }
 }
 
 // Decode PEM private key → ArrayBuffer
 function decodeBase64PEM(pem: string): ArrayBuffer {
-  const b64 = pem.replace(/-----.*-----/g, "").replace(/\s+/g, "");
-  const binary = atob(b64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return bytes.buffer;
+  try {
+    console.log("🔑 Processing private key...");
+    
+    // Handle the private key - replace \\n with actual newlines
+    let cleaned = pem;
+    if (cleaned.includes('\\n')) {
+      cleaned = cleaned.replace(/\\n/g, '\n');
+    }
+    
+    console.log("🔑 Key format check:", {
+      hasBegin: cleaned.includes('-----BEGIN'),
+      hasEnd: cleaned.includes('-----END'),
+      hasNewlines: cleaned.includes('\n'),
+      length: cleaned.length
+    });
+
+    // Remove PEM headers and clean base64
+    const base64Content = cleaned
+      .replace(/-----BEGIN PRIVATE KEY-----/, '')
+      .replace(/-----END PRIVATE KEY-----/, '')
+      .replace(/-----BEGIN RSA PRIVATE KEY-----/, '')
+      .replace(/-----END RSA PRIVATE KEY-----/, '')
+      .replace(/\n/g, '')
+      .replace(/\r/g, '')
+      .replace(/\s/g, '');
+
+    console.log("🔑 Base64 content length:", base64Content.length);
+
+    // Decode base64 to binary
+    const binary = atob(base64Content);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    
+    console.log("✅ Private key decoded successfully, bytes:", bytes.length);
+    return bytes.buffer;
+    
+  } catch (error) {
+    console.error("❌ Error decoding private key:", error);
+    console.error("Private key preview:", pem.substring(0, 100) + "...");
+    throw new Error(`Failed to decode private key: ${error.message}`);
+  }
 }
 
 // Get Firebase access token (valid for ~1 hour)
@@ -124,6 +182,7 @@ async function getFirebaseAccessToken(): Promise<string> {
 }
 
 // Send FCM notification to one device token
+// Replace the sendFCMToToken function with this simpler version:
 async function sendFCMToToken(
   accessToken: string,
   fcmToken: string,
@@ -133,6 +192,32 @@ async function sendFCMToToken(
   image?: string,
   click_action?: string,
 ): Promise<Response> {
+  // Create data-only message to avoid duplicate notifications
+  const message = {
+    token: fcmToken,
+    // Remove notification payload completely
+    // notification: { title, body, image },
+    
+    // Send everything as data payload - service worker will handle display
+    data: {
+      title: title,
+      body: body,
+      image: image || "",
+      click_action: click_action || "",
+      type: data?.type || "general",
+      timestamp: Date.now().toString(),
+      // Convert all data values to strings (FCM requirement)
+      ...Object.fromEntries(
+        Object.entries(data || {}).map(([key, value]) => [key, String(value)])
+      ),
+    },
+  };
+
+  console.log("📤 Sending data-only FCM message:", {
+    token: fcmToken.substring(0, 20) + "...",
+    dataKeys: Object.keys(message.data),
+  });
+
   return await fetch(
     `https://fcm.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/messages:send`,
     {
@@ -141,14 +226,7 @@ async function sendFCMToToken(
         "Authorization": `Bearer ${accessToken}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        message: {
-          token: fcmToken,
-          notification: { title, body, image },
-          data: { ...data, click_action },
-          webpush: { fcm_options: { link: click_action } },
-        },
-      }),
+      body: JSON.stringify({ message }),
     },
   );
 }
@@ -156,7 +234,7 @@ async function sendFCMToToken(
 // Mark token inactive in DB
 async function markTokenInactive(token: string) {
   await supabase
-    .from("user_push_subscriptions")
+    .from("user_fcm_tokens")  // Changed from "user_push_subscriptions"
     .update({ is_active: false })
     .eq("fcm_token", token);
 }
@@ -173,18 +251,62 @@ function isInvalidTokenError(error: any): boolean {
 
 // ================== MAIN HANDLER ==================
 serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return handleOptions();
-
-  // 🔒 Validate function secret
-  const providedSecret = req.headers.get("x-function-secret");
-  if (!providedSecret || providedSecret !== FUNCTION_SECRET) {
-    return new Response(
-      JSON.stringify({ error: "Unauthorized" }),
-      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+  // Handle preflight CORS requests
+  if (req.method === "OPTIONS") {
+    return handleOptions();
   }
 
   try {
+    // Check for function secret OR authorization header
+    const functionSecret = req.headers.get("x-function-secret");
+    const authHeader = req.headers.get("authorization");
+    const expectedSecret = Deno.env.get("FCM_FUNCTION_SECRET");
+    
+    console.log("🔐 Auth check:", {
+      hasFunctionSecret: !!functionSecret,
+      hasAuthHeader: !!authHeader,
+      expectedSecret: expectedSecret,
+      userAgent: req.headers.get("user-agent")
+    });
+
+    // Allow if either:
+    // 1. Function secret matches (from webhook)
+    // 2. Has valid authorization header (from client)
+    // 3. No auth required for internal calls
+    if (expectedSecret && functionSecret !== expectedSecret && !authHeader) {
+      console.log("❌ Authentication failed");
+      return new Response(
+        JSON.stringify({ 
+          error: "Unauthorized",
+          code: 401,
+          message: "Missing or invalid authentication"
+        }), 
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // If auth header is provided, validate it
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.replace("Bearer ", "");
+      const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+      if (userError && !functionSecret) {
+        console.log("❌ Invalid auth token and no function secret");
+        return new Response(
+          JSON.stringify({ error: "Invalid authorization token" }), 
+          {
+            status: 401,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+    }
+
+    console.log("✅ Authentication passed");
+
+    // Parse request body
     const requestData = await req.json();
     const { user_id, title, body, data, image, click_action } = requestData;
 
@@ -198,33 +320,59 @@ serve(async (req: Request) => {
     console.log(`📨 Processing FCM notification for user: ${user_id}`);
 
     // 1. Check if user has notifications enabled
-    const { data: user, error: userError } = await supabase
-      .from("users")
-      .select("notifications_enabled")
-      .eq("id", user_id)
+    const { data: settings, error: settingsError } = await supabase
+      .from("user_settings")
+      .select("push_notifications")
+      .eq("user_id", user_id)
       .single();
 
-    if (userError || !user?.notifications_enabled) {
+    if (settingsError && settingsError.code !== 'PGRST116') {
+      console.error("❌ Error fetching user settings:", settingsError);
       return new Response(
-        JSON.stringify({ success: false, reason: "Notifications disabled for this user" }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        JSON.stringify({ error: "Failed to fetch user settings" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // 2. Get active FCM tokens for user
+    if (!settings || !settings.push_notifications) {
+      console.log(`⏭️ Skipping notification - push disabled for user: ${user_id}`);
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          sent: 0, 
+          skipped: true,
+          reason: "Push notifications disabled for user" 
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // 2. Get active FCM tokens for user (using correct table name)
     const { data: tokens, error: tokensError } = await supabase
-      .from("user_push_subscriptions")
-      .select("fcm_token")
+      .from("user_fcm_tokens")  // Changed from user_push_subscriptions
+      .select("id, fcm_token, platform, device_info")
       .eq("user_id", user_id)
       .eq("is_active", true);
 
-    if (tokensError) throw tokensError;
+    if (tokensError) {
+      console.error("❌ Error fetching FCM tokens:", tokensError);
+      throw tokensError;
+    }
+    
     if (!tokens || tokens.length === 0) {
+      console.log(`📱 No active FCM tokens found for user: ${user_id}`);
       return new Response(
-        JSON.stringify({ success: false, reason: "No active tokens for user" }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        JSON.stringify({ 
+          success: true, 
+          sent: 0, 
+          failed: 0,
+          reason: "No active tokens found" 
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    console.log(`🎯 Found ${tokens.length} active tokens for user: ${user_id}`);
 
     // 3. Get Firebase access token
     const accessToken = await getFirebaseAccessToken();

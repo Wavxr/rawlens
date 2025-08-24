@@ -54,34 +54,76 @@ messaging.onBackgroundMessage((payload) => {
   self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
-// Handle notification clicks
-self.addEventListener('notificationclick', (event) => {
-  console.log('[firebase-messaging-sw.js] Notification click received.');
+// Add this to your service worker:
 
-  event.notification.close();
+self.addEventListener('push', function(event) {
+  console.log('📱 Push event received:', event);
+  
+  if (event.data) {
+    const payload = event.data.json();
+    console.log('📱 Push payload:', payload);
+    
+    // Handle data-only messages
+    if (payload.data) {
+      const notificationData = payload.data;
+      
+      const notificationOptions = {
+        body: notificationData.body,
+        icon: '/icon-192x192.png',
+        badge: '/icon-192x192.png',
+        image: notificationData.image || undefined,
+        data: {
+          click_action: notificationData.click_action,
+          type: notificationData.type,
+          ...notificationData
+        },
+        requireInteraction: true,
+        actions: [
+          {
+            action: 'open',
+            title: 'Open',
+            icon: '/icon-192x192.png'
+          }
+        ]
+      };
 
-  if (event.action === 'dismiss') {
-    return;
+      event.waitUntil(
+        self.registration.showNotification(
+          notificationData.title,
+          notificationOptions
+        )
+      );
+    }
   }
+});
 
-  // Handle the click action
+// Handle notification clicks
+self.addEventListener('notificationclick', function(event) {
+  console.log('📱 Notification clicked:', event);
+  
+  event.notification.close();
+  
   const clickAction = event.notification.data?.click_action || '/';
   
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // Check if there's already a window/tab open with the target URL
-      for (const client of clientList) {
-        if (client.url.includes(clickAction) && 'focus' in client) {
-          return client.focus();
+    clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then(function(clientList) {
+        // Check if app is already open
+        for (const client of clientList) {
+          if (client.url.includes(self.location.origin)) {
+            client.focus();
+            client.postMessage({
+              type: 'NOTIFICATION_CLICK',
+              clickAction: clickAction,
+              data: event.notification.data
+            });
+            return;
+          }
         }
-      }
-      
-      // If no existing window/tab, open a new one
-      if (clients.openWindow) {
-        const url = new URL(clickAction, self.location.origin).href;
-        return clients.openWindow(url);
-      }
-    })
+        
+        // If app is not open, open it
+        return clients.openWindow(clickAction);
+      })
   );
 });
 
