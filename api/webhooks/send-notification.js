@@ -49,17 +49,20 @@ export default async function handler(req, res) {
     // ✅ 3. Forward to Supabase Edge Function
     const supabaseUrl = process.env.SUPABASE_URL?.trim();
     const functionSecret = process.env.FCM_FUNCTION_SECRET?.trim();
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
     const edgeFunctionUrl = `${supabaseUrl}/functions/v1/send-fcm-notification`;
 
     console.log('🔗 Calling Edge Function:', {
       url: edgeFunctionUrl,
       hasFunctionSecret: !!functionSecret,
+      hasServiceRoleKey: !!serviceRoleKey,
     });
 
     const response = await fetch(edgeFunctionUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${serviceRoleKey}`,
         'x-function-secret': functionSecret,
       },
       body: JSON.stringify({ user_id, title, body, data, click_action }),
