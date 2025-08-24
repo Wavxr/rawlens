@@ -13,6 +13,7 @@
     "@supabase/supabase-js": "^2.50.2",
     "@tailwindcss/vite": "^4.1.4",
     "downloadjs": "^1.4.7",
+    "firebase": "^12.1.0",
     "framer-motion": "^12.23.12",
     "lucide-react": "^0.540.0",
     "pdf-lib": "^1.17.1",

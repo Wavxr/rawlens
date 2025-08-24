@@ -5,6 +5,9 @@ import { subscribeToUserUpdates, unsubscribeFromUserUpdates } from "../../servic
 import useAuthStore from "../../stores/useAuthStore";
 import useUserStore from "../../stores/userStore";
 import useSettingsStore from "../../stores/settingsStore";
+import { usePushNotifications } from "../../hooks/usePushNotifications";
+import PushPermissionModal from "../../components/PushPermissionModal";
+import PushNotificationPrompt from "../../components/PushNotificationPrompt";
 import { Settings } from "lucide-react";
 
 export default function Profile() {
@@ -19,6 +22,16 @@ export default function Profile() {
   const [savingPersonal, setSavingPersonal] = useState(false);
   const [appealing, setAppealing] = useState(false);
   const [error, setError] = useState(null);
+
+  // Push Notification State
+  const { 
+    isSupported: isPushSupported, 
+    permission: pushPermission, 
+    isProcessing: isPushProcessing, 
+    enablePushNotifications, 
+    disablePushNotifications 
+  } = usePushNotifications(userId);
+  const [showPushModal, setShowPushModal] = useState(false);
 
   // Video Recording State
   const [showVideoModal, setShowVideoModal] = useState(false);
@@ -104,9 +117,65 @@ export default function Profile() {
 
   // Toggle Handler
   const handleToggle = async (key, value) => {
-    if (userId) {
-      await updateSettings(userId, { [key]: value });
+    if (!userId) return;
+
+    // Special handling for push notifications
+    if (key === 'push_notifications') {
+      await handlePushToggle(value);
+      return;
     }
+
+    // Handle other settings normally
+    await updateSettings(userId, { [key]: value });
+  };
+
+  /**
+   * Handle push notification toggle with proper permission checking
+   */
+  const handlePushToggle = async (enablePush) => {
+    if (!isPushSupported) {
+      alert('Push notifications are not supported in this browser.');
+      return;
+    }
+
+    if (enablePush) {
+      // User wants to enable push notifications
+      const result = await enablePushNotifications();
+      
+      if (result.success) {
+        // Successfully enabled, update settings
+        await updateSettings(userId, { push_notifications: true });
+      } else if (result.reason === 'permission_denied') {
+        // Permission denied, show modal with instructions
+        setShowPushModal(true);
+      } else {
+        // Other error
+        console.error('Failed to enable push notifications:', result);
+        alert('Failed to enable push notifications. Please try again later.');
+      }
+    } else {
+      // User wants to disable push notifications
+      const result = await disablePushNotifications();
+      
+      if (result.success) {
+        // Successfully disabled, update settings
+        await updateSettings(userId, { push_notifications: false });
+      } else {
+        console.error('Failed to disable push notifications:', result);
+        alert('Failed to update notification settings. Please try again later.');
+      }
+    }
+  };
+
+  /**
+   * Handle retry from permission modal
+   */
+  const handlePushRetryFromModal = async () => {
+    setShowPushModal(false);
+    // Wait a bit for modal to close, then try again
+    setTimeout(async () => {
+      await handlePushToggle(true);
+    }, 300);
   };
 
   // Form Handlers
@@ -339,6 +408,10 @@ export default function Profile() {
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Profile Settings</h1>
             <p className="text-gray-600">Manage your personal information and verification documents</p>
           </div>
+          
+          {/* Post-Migration Push Notification Prompt */}
+          <PushNotificationPrompt userId={userId} />
+          
           <form onSubmit={(e) => e.preventDefault()} className="bg-white rounded-lg shadow-sm divide-y divide-gray-100">
             <div className="p-8">
               <div className="flex items-center mb-6">
@@ -567,19 +640,42 @@ export default function Profile() {
                     <span className="text-sm text-gray-500">
                       Get push notifications for real-time updates.
                     </span>
+                    {/* Browser support and permission status indicators */}
+                    {!isPushSupported && (
+                      <span className="text-xs text-orange-600 mt-1">
+                        ⚠️ Not supported in this browser
+                      </span>
+                    )}
+                    {isPushSupported && pushPermission === 'denied' && (
+                      <span className="text-xs text-red-600 mt-1">
+                        🚫 Permission denied - click to get help
+                      </span>
+                    )}
+                    {isPushSupported && pushPermission === 'default' && settings?.push_notifications && (
+                      <span className="text-xs text-yellow-600 mt-1">
+                        ⏳ Permission required
+                      </span>
+                    )}
                   </span>
-                  <button
-                    onClick={() => handleToggle('push_notifications', !settings?.push_notifications)}
-                    className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-                      settings?.push_notifications ? 'bg-blue-600' : 'bg-gray-200'
-                    }`}
-                  >
-                    <span
-                      className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${
-                        settings?.push_notifications ? 'translate-x-6' : 'translate-x-1'
+                  <div className="flex items-center space-x-2">
+                    {/* Loading indicator when processing */}
+                    {isPushProcessing && (
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-blue-600"></div>
+                    )}
+                    <button
+                      onClick={() => handleToggle('push_notifications', !settings?.push_notifications)}
+                      disabled={isPushProcessing}
+                      className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed ${
+                        settings?.push_notifications ? 'bg-blue-600' : 'bg-gray-200'
                       }`}
-                    />
-                  </button>
+                    >
+                      <span
+                        className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${
+                          settings?.push_notifications ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -691,6 +787,14 @@ export default function Profile() {
           </div>
         </div>
       )}
+      
+      {/* Push Permission Modal */}
+      <PushPermissionModal
+        isOpen={showPushModal}
+        onClose={() => setShowPushModal(false)}
+        permissionState={pushPermission}
+        onRetry={handlePushRetryFromModal}
+      />
     </>
   );
 }

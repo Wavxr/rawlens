@@ -1,103 +1,97 @@
 // src/services/pushService.js
-import { supabase } from "../lib/supabaseClient"
+import { supabase } from "../lib/supabaseClient";
+import { messaging } from "../lib/firebaseClient";
+import { getToken } from "firebase/messaging";
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
-
-// --- core edge caller ---
-async function callEdge(functionName, payload) {
-  try {
-    const { data } = await supabase.auth.getSession()
-    const token = data?.session?.access_token
-    if (!token) throw new Error("No auth token found")
-
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/${functionName}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
-      },
-      body: JSON.stringify(payload),
-    })
-
-    if (!res.ok) throw new Error(await res.text())
-    return await res.json()
-  } catch (err) {
-    console.error("❌ callEdge error:", err)
-    throw err
-  }
+/**
+ * Check if push notifications are supported in this browser
+ */
+export function isPushSupported() {
+  return (
+    "serviceWorker" in navigator &&
+    "PushManager" in window &&
+    "Notification" in window
+  );
 }
 
-// --- send push to a specific user (or users) ---
-export async function sendPushNotification(userIds, title, body, data = {}) {
-  try {
-    if (!userIds) return
-    const ids = Array.isArray(userIds) ? userIds : [userIds]
-    if (ids.length === 0) return
-
-    // Fetch settings for the users and filter out those who disabled pushes
-    const { data: usersWithSettings, error } = await supabase
-      .from("user_settings")
-      .select("user_id")
-      .in("user_id", ids)
-      .eq("push_notifications", true)
-
-    if (error) throw error
-
-    const enabledUserIds = usersWithSettings.map((s) => s.user_id)
-
-    if (enabledUserIds.length === 0) {
-      console.log("🔕 Push notifications are disabled for all target users.")
-      return
+/**
+ * Request notification permission from the user
+ * Only requests if Notification.permission === 'default'
+ * Returns true if granted, false otherwise
+ */
+export async function requestNotificationPermission() {
+  if (Notification.permission === "default") {
+    const permission = await Notification.requestPermission();
+    if (permission === "granted") {
+      return true;
+    } else {
+      console.log("🔕 Notification permission denied by user");
+      return false;
     }
+  }
 
-    const notification = { title, body, data }
+  return Notification.permission === "granted";
+}
 
-    return await callEdge("send-push", { userIds: enabledUserIds, notification })
+/**
+ * Retrieve the FCM token for this device/browser
+ * Uses the public VAPID key stored in .env
+ */
+export async function getFcmToken() {
+  try {
+    const token = await getToken(messaging, {
+      vapidKey: import.meta.env.VITE_FIREBASE_VAPID_PUBLIC_KEY,
+    });
+    return token;
   } catch (err) {
-    console.error("❌ Failed to send push notification:", err)
+    console.error("❌ Error retrieving FCM token:", err);
+    return null;
   }
 }
 
-// --- send push to all admins ---
-export async function sendPushToAdmins(title, body, data = {}) {
+/**
+ * Save or update FCM token in Supabase
+ * Includes platform (web) and device info
+ */
+export async function saveFcmToken(userId, token) {
+  if (!userId || !token) return;
+
   try {
-    // first get all admin IDs
-    const { data: admins, error: adminsError } = await supabase
-      .from("users")
-      .select("id")
-      .eq("role", "admin")
-
-    if (adminsError) throw adminsError
-    if (!admins?.length) return
-
-    const adminIds = admins.map((u) => u.id)
-
-    // now filter based on push settings
-    const { data: settings, error: settingsError } = await supabase
-      .from("user_settings")
-      .select("user_id")
-      .in("user_id", adminIds)
-      .eq("push_notifications", true)
-
-    if (settingsError) throw settingsError
-    if (!settings?.length) return
-
-    const enabledAdminIds = settings.map((s) => s.user_id)
-    const notification = { title, body, data }
-
-    return await callEdge("send-push", { userIds: enabledAdminIds, notification })
+    await supabase
+      .from("user_fcm_tokens")
+      .upsert({
+        user_id: userId,
+        fcm_token: token,
+        platform: "web",
+        device_info: { userAgent: navigator.userAgent },
+        is_active: true,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("fcm_token", token); // ensures no duplicate
+    console.log("✅ FCM token saved/updated successfully");
   } catch (err) {
-    console.error("❌ Failed to send push to admins:", err)
+    console.error("❌ Failed to save FCM token:", err);
   }
 }
 
-// --- ensure user is subscribed ---
-export async function ensureSubscribed(userId) {
-  if (!userId) return
-  try {
-    console.log(`🔔 Ensuring push subscription for user: ${userId}`)
-    // TODO: navigator.serviceWorker.register + pushManager.subscribe
-  } catch (err) {
-    console.error("❌ ensureSubscribed failed:", err)
+/**
+ * Full flow: Check support, request permission, get token, send to Supabase
+ */
+export async function registerPushForUser(userId) {
+  if (!isPushSupported()) {
+    console.warn("⚠️ Push notifications not supported in this browser");
+    return false;
   }
+
+  const granted = await requestNotificationPermission();
+  if (!granted) {
+    // Handle gracefully in UI (e.g., show instructions to enable)
+    return false;
+  }
+
+  const token = await getFcmToken();
+  if (!token) return false;
+
+  await saveFcmToken(userId, token);
+  return true;
 }

@@ -4,7 +4,6 @@ import useUserStore from '../stores/userStore';
 import { getRentalById } from './rentalService';
 import { getUserById } from './userService';
 import { sendRentalConfirmed, sendReturnReminder, sendItemReturned } from './emailService';
-import { sendPushNotification, sendPushToAdmins } from './pushService';
 import { getUserSettings } from './settingsService';
 
 /**
@@ -33,10 +32,9 @@ export function subscribeToRentalUpdates(targetId, role = 'user') {
       const { eventType } = payload;
       const rentalId = eventType === 'DELETE' ? payload.old.id : payload.new.id;
 
-      // Handle email and push notifications for UPDATE events
+      // Handle email notifications for UPDATE events
       if (eventType === 'UPDATE') {
         await handleRentalEmailNotifications(payload.old, payload.new);
-        await handleRentalPushNotifications(payload.old, payload.new);
       }
 
       // For user role, ensure the update belongs to them.
@@ -127,12 +125,6 @@ export function subscribeToUserUpdates(targetId, callback, role = 'user') {
           case 'UPDATE': {
             const user = await getUserById(userId);
             if (user) addOrUpdateUser(user);
-            // Push notifications for user events (appeals, verification status)
-            try {
-              await handleUserPushNotifications(payload.old, payload.new);
-            } catch (e) {
-              console.error('Error in user push notifications:', e);
-            }
             break;
           }
           case 'DELETE':
@@ -338,248 +330,5 @@ async function sendRentalCompletedEmail(rentalData) {
     );
   } catch (error) {
     console.error('Error sending rental completed email:', error);
-  }
-}
-
-
-// ====================================================
-// --- PUSH NOTIFICATIONS ---
-// ====================================================
-
-/**
- * Handle push notifications based on rental status changes
- * 
- * Notification Events:
- * - User submits rental request → notify admin
- * - Admin confirms rental request → notify user
- * - Admin sets ready_to_ship → notify user
- * - Shipping in_transit_to_user → notify user
- * - Delivered (user camera as delivered) → notify admin
- * - Rental_status set to active → notify admin/user
- * - End date passed / return_scheduled → notify admin/user
- * - In_transit_to_owner → notify admin
- * - Returned (admin marks) → notify user
- */
-async function handleRentalPushNotifications(oldRecord, newRecord) {
-  try {
-    // User submits rental request - notify admin
-    if (!oldRecord && newRecord && newRecord.rental_status === 'pending') {
-      console.log('Push: New rental request - notifying admins');
-      await sendPushToAdmins(
-        'New Rental Request',
-        `A new rental request has been submitted for rental ${newRecord.id}`,
-        { 
-          type: 'new_rental', 
-          rentalId: newRecord.id,
-          url: `/admin/rentals/${newRecord.id}` 
-        }
-      );
-    }
-
-    // Admin confirms rental request - notify user
-    else if (oldRecord?.rental_status !== 'confirmed' && newRecord?.rental_status === 'confirmed') {
-      console.log('Push: Rental confirmed - notifying user');
-      await sendPushNotification(
-        newRecord.user_id,
-        'Rental Confirmed!',
-        'Your rental request has been confirmed by the admin',
-        { 
-          type: 'rental_confirmed', 
-          rentalId: newRecord.id,
-          url: `/rentals/${newRecord.id}` 
-        }
-      );
-    }
-
-    // Admin sets ready_to_ship - notify user
-    else if (oldRecord?.shipping_status !== 'ready_to_ship' && newRecord?.shipping_status === 'ready_to_ship') {
-      console.log('Push: Ready to ship - notifying user');
-      await sendPushNotification(
-        newRecord.user_id,
-        'Ready to Ship',
-        'Your rental is ready to be shipped',
-        { 
-          type: 'ready_to_ship', 
-          rentalId: newRecord.id,
-          url: `/rentals/${newRecord.id}` 
-        }
-      );
-    }
-
-    // Shipping in_transit_to_user - notify user
-    else if (oldRecord?.shipping_status !== 'in_transit_to_user' && newRecord?.shipping_status === 'in_transit_to_user') {
-      console.log('Push: In transit to user - notifying user');
-      await sendPushNotification(
-        newRecord.user_id,
-        'In Transit',
-        'Your rental is on the way to you',
-        { 
-          type: 'in_transit_to_user', 
-          rentalId: newRecord.id,
-          url: `/rentals/${newRecord.id}` 
-        }
-      );
-    }
-
-    // Delivered - notify admin
-    else if (oldRecord?.shipping_status !== 'delivered' && newRecord?.shipping_status === 'delivered') {
-      console.log('Push: Delivered - notifying admins');
-      await sendPushToAdmins(
-        'Rental Delivered',
-        `Rental ${newRecord.id} has been delivered to user`,
-        { 
-          type: 'delivered', 
-          rentalId: newRecord.id,
-          url: `/admin/rentals/${newRecord.id}` 
-        }
-      );
-    }
-
-    // Rental_status set to active - notify user and admin
-    else if (oldRecord?.rental_status !== 'active' && newRecord?.rental_status === 'active') {
-      console.log('Push: Rental active - notifying user and admins');
-      // Notify user
-      await sendPushNotification(
-        newRecord.user_id,
-        'Rental Active',
-        'Your rental is now active. Enjoy!',
-        { 
-          type: 'rental_active', 
-          rentalId: newRecord.id,
-          url: `/rentals/${newRecord.id}` 
-        }
-      );
-
-      // Notify admin
-      await sendPushToAdmins(
-        'Rental Active',
-        `Rental ${newRecord.id} is now active`,
-        { 
-          type: 'rental_active', 
-          rentalId: newRecord.id,
-          url: `/admin/rentals/${newRecord.id}` 
-        }
-      );
-    }
-
-    // End date passed / return_scheduled - notify user and admin
-    else if (oldRecord?.shipping_status !== 'return_scheduled' && newRecord?.shipping_status === 'return_scheduled') {
-      console.log('Push: Return scheduled - notifying user and admins');
-      // Notify user
-      await sendPushNotification(
-        newRecord.user_id,
-        'Return Reminder',
-        'Please prepare to return your rental item',
-        { 
-          type: 'return_scheduled', 
-          rentalId: newRecord.id,
-          url: `/rentals/${newRecord.id}` 
-        }
-      );
-
-      // Notify admin
-      await sendPushToAdmins(
-        'Return Scheduled',
-        `Return scheduled for rental ${newRecord.id}`,
-        { 
-          type: 'return_scheduled', 
-          rentalId: newRecord.id,
-          url: `/admin/rentals/${newRecord.id}` 
-        }
-      );
-    }
-
-    // In_transit_to_owner - notify admin
-    else if (oldRecord?.shipping_status !== 'in_transit_to_owner' && newRecord?.shipping_status === 'in_transit_to_owner') {
-      console.log('Push: In transit to owner - notifying admins');
-      await sendPushToAdmins(
-        'Return in Transit',
-        `Rental ${newRecord.id} is being returned`,
-        { 
-          type: 'in_transit_to_owner', 
-          rentalId: newRecord.id,
-          url: `/admin/rentals/${newRecord.id}` 
-        }
-      );
-    }
-
-    // Returned (admin marks) - notify user
-    else if (oldRecord?.rental_status !== 'completed' && newRecord?.rental_status === 'completed') {
-      console.log('Push: Rental completed - notifying user');
-      await sendPushNotification(
-        newRecord.user_id,
-        'Rental Completed',
-        'Thank you for returning your rental',
-        { 
-          type: 'rental_completed', 
-          rentalId: newRecord.id,
-          url: `/rentals/${newRecord.id}` 
-        }
-      );
-    }
-  } catch (error) {
-    console.error('Error handling rental push notifications:', error);
-  }
-}
-
-/**
- * Handle push notifications based on user verification status changes
- * 
- * Notification Events:
- * - Users table Boolean is_appealing = true - notify admin
- * - Admin approves/rejects verification - notify user
- */
-async function handleUserPushNotifications(oldRecord, newRecord) {
-  try {
-    // User sets is_appealing = true - notify admin
-    if (!oldRecord?.is_appealing && newRecord?.is_appealing) {
-      console.log('Push: User appeal submitted - notifying admins');
-      await sendPushToAdmins(
-        'User Appeal',
-        `User ${newRecord.first_name} ${newRecord.last_name} has submitted an appeal`,
-        { 
-          type: 'user_appeal', 
-          userId: newRecord.id,
-          url: `/admin/users/${newRecord.id}` 
-        }
-      );
-    }
-
-    // User verification status changes - notify user
-    else if (oldRecord?.verification_status !== newRecord?.verification_status) {
-      console.log('Push: Verification status changed - notifying user');
-      let title = '';
-      let body = '';
-
-      switch (newRecord.verification_status) {
-        case 'verified':
-          title = 'Verification Approved';
-          body = 'Your account has been verified!';
-          break;
-        case 'rejected':
-          title = 'Verification Rejected';
-          body = 'Your verification request was rejected. Please check your documents.';
-          break;
-        case 'pending':
-          title = 'Verification Submitted';
-          body = 'Your verification documents have been received.';
-          break;
-        default:
-          return; // No notification for other status changes
-      }
-
-      await sendPushNotification(
-        newRecord.id,
-        title,
-        body,
-        { 
-          type: 'verification_status', 
-          userId: newRecord.id,
-          url: '/profile' 
-        }
-      );
-    }
-  } catch (error) {
-    console.error('Error handling user push notifications:', error);
   }
 }
