@@ -43,8 +43,6 @@ function handleOptions() {
 // Generate a Firebase JWT (needed to request an OAuth2 token)
 async function generateFirebaseJWT(): Promise<string> {
   try {
-    console.log("🔑 Starting JWT generation...");
-    
     const header = {
       alg: "RS256",
       typ: "JWT",
@@ -61,8 +59,6 @@ async function generateFirebaseJWT(): Promise<string> {
       iat,
     };
 
-    console.log("🔑 JWT payload:", { iss: payload.iss, exp, iat });
-
     // Base64URL encode
     const base64UrlEncode = (obj: any) => {
       const str = JSON.stringify(obj);
@@ -76,15 +72,10 @@ async function generateFirebaseJWT(): Promise<string> {
     const encodedPayload = base64UrlEncode(payload);
     const unsignedToken = `${encodedHeader}.${encodedPayload}`;
 
-    console.log("🔑 Unsigned token ready, length:", unsignedToken.length);
-
     // Get and process the private key
     const privateKeyPem = FIREBASE_PRIVATE_KEY;
-    console.log("🔑 Private key source length:", privateKeyPem.length);
-    
     const keyBuffer = decodeBase64PEM(privateKeyPem);
     
-    console.log("🔑 Importing crypto key...");
     const cryptoKey = await crypto.subtle.importKey(
       "pkcs8",
       keyBuffer,
@@ -93,7 +84,6 @@ async function generateFirebaseJWT(): Promise<string> {
       ["sign"]
     );
 
-    console.log("🔑 Signing token...");
     const signature = await crypto.subtle.sign(
       "RSASSA-PKCS1-v1_5",
       cryptoKey,
@@ -105,11 +95,9 @@ async function generateFirebaseJWT(): Promise<string> {
       .replace(/\//g, '_')
       .replace(/=+$/, '');
 
-    console.log("✅ JWT generated successfully");
     return `${unsignedToken}.${base64Signature}`;
 
   } catch (error) {
-    console.error("❌ JWT generation failed:", error);
     throw new Error(`Failed to generate Firebase JWT: ${error.message}`);
   }
 }
@@ -117,20 +105,11 @@ async function generateFirebaseJWT(): Promise<string> {
 // Decode PEM private key → ArrayBuffer
 function decodeBase64PEM(pem: string): ArrayBuffer {
   try {
-    console.log("🔑 Processing private key...");
-    
     // Handle the private key - replace \\n with actual newlines
     let cleaned = pem;
     if (cleaned.includes('\\n')) {
       cleaned = cleaned.replace(/\\n/g, '\n');
     }
-    
-    console.log("🔑 Key format check:", {
-      hasBegin: cleaned.includes('-----BEGIN'),
-      hasEnd: cleaned.includes('-----END'),
-      hasNewlines: cleaned.includes('\n'),
-      length: cleaned.length
-    });
 
     // Remove PEM headers and clean base64
     const base64Content = cleaned
@@ -142,8 +121,6 @@ function decodeBase64PEM(pem: string): ArrayBuffer {
       .replace(/\r/g, '')
       .replace(/\s/g, '');
 
-    console.log("🔑 Base64 content length:", base64Content.length);
-
     // Decode base64 to binary
     const binary = atob(base64Content);
     const bytes = new Uint8Array(binary.length);
@@ -151,12 +128,9 @@ function decodeBase64PEM(pem: string): ArrayBuffer {
       bytes[i] = binary.charCodeAt(i);
     }
     
-    console.log("✅ Private key decoded successfully, bytes:", bytes.length);
     return bytes.buffer;
     
   } catch (error) {
-    console.error("❌ Error decoding private key:", error);
-    console.error("Private key preview:", pem.substring(0, 100) + "...");
     throw new Error(`Failed to decode private key: ${error.message}`);
   }
 }
@@ -182,7 +156,6 @@ async function getFirebaseAccessToken(): Promise<string> {
 }
 
 // Send FCM notification to one device token
-// Replace the sendFCMToToken function with this simpler version:
 async function sendFCMToToken(
   accessToken: string,
   fcmToken: string,
@@ -195,9 +168,6 @@ async function sendFCMToToken(
   // Create data-only message to avoid duplicate notifications
   const message = {
     token: fcmToken,
-    // Remove notification payload completely
-    // notification: { title, body, image },
-    
     // Send everything as data payload - service worker will handle display
     data: {
       title: title,
@@ -212,11 +182,6 @@ async function sendFCMToToken(
       ),
     },
   };
-
-  console.log("📤 Sending data-only FCM message:", {
-    token: fcmToken.substring(0, 20) + "...",
-    dataKeys: Object.keys(message.data),
-  });
 
   return await fetch(
     `https://fcm.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/messages:send`,
@@ -261,20 +226,12 @@ serve(async (req: Request) => {
     const functionSecret = req.headers.get("x-function-secret");
     const authHeader = req.headers.get("authorization");
     const expectedSecret = Deno.env.get("FCM_FUNCTION_SECRET");
-    
-    console.log("🔐 Auth check:", {
-      hasFunctionSecret: !!functionSecret,
-      hasAuthHeader: !!authHeader,
-      expectedSecret: expectedSecret,
-      userAgent: req.headers.get("user-agent")
-    });
 
     // Allow if either:
     // 1. Function secret matches (from webhook)
     // 2. Has valid authorization header (from client)
     // 3. No auth required for internal calls
     if (expectedSecret && functionSecret !== expectedSecret && !authHeader) {
-      console.log("❌ Authentication failed");
       return new Response(
         JSON.stringify({ 
           error: "Unauthorized",
@@ -293,7 +250,6 @@ serve(async (req: Request) => {
       const token = authHeader.replace("Bearer ", "");
       const { data: { user }, error: userError } = await supabase.auth.getUser(token);
       if (userError && !functionSecret) {
-        console.log("❌ Invalid auth token and no function secret");
         return new Response(
           JSON.stringify({ error: "Invalid authorization token" }), 
           {
@@ -304,65 +260,116 @@ serve(async (req: Request) => {
       }
     }
 
-    console.log("✅ Authentication passed");
-
     // Parse request body
     const requestData = await req.json();
-    const { user_id, title, body, data, image, click_action, role = 'user' } = requestData;
+    const { user_id, role, title, body, data } = requestData;
 
-    if (!user_id || !title || !body) {
-      return new Response(
-        JSON.stringify({ error: "Missing required fields", required: ["user_id", "title", "body"] }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+    // Validate required fields
+    if (!role || !title || !body) {
+      throw new Error('Missing required fields: role, title, body');
     }
 
-    console.log(`📨 Processing FCM notification for user: ${user_id}, role: ${role}`);
-
-    // 1. Check if user has notifications enabled for their role
-    const { data: settings, error: settingsError } = await supabase
-      .from("settings")
-      .select("push_notifications")
-      .eq("user_id", user_id)
-      .eq("role", role)
-      .single();
-
-    if (settingsError && settingsError.code !== 'PGRST116') {
-      console.error("❌ Error fetching user settings:", settingsError);
-      return new Response(
-        JSON.stringify({ error: "Failed to fetch user settings" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // user_id is only required for user notifications
+    if (role === "user" && !user_id) {
+      throw new Error('user_id is required for user notifications');
     }
 
-    if (!settings || !settings.push_notifications) {
-      console.log(`⏭️ Skipping notification - push disabled for user: ${user_id}, role: ${role}`);
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          sent: 0, 
-          skipped: true,
-          reason: "Push notifications disabled for user" 
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // 2. Get active FCM tokens for user with role filtering
-    const { data: tokens, error: tokensError } = await supabase
-      .from("fcm_tokens")
-      .select("id, fcm_token, platform, device_info")
-      .eq("user_id", user_id)
-      .eq("role", role)
-      .eq("is_active", true);
-
-    if (tokensError) {
-      console.error("❌ Error fetching FCM tokens:", tokensError);
-      throw tokensError;
-    }
+    let tokens;
+    let recipientInfo = "";
     
+    if (role === "admin") {
+      // Get all admin tokens
+      const { data: adminTokens, error: tokensError } = await supabase
+        .from("fcm_tokens")
+        .select("id, fcm_token, platform, device_info, user_id")
+        .eq("role", "admin")
+        .eq("is_active", true);
+
+      if (tokensError) {
+        console.error("❌ Error fetching admin FCM tokens:", tokensError);
+        throw tokensError;
+      }
+
+      if (!adminTokens || adminTokens.length === 0) {
+        tokens = [];
+      } else {
+        // Get admin settings with push enabled
+        const adminUserIds = adminTokens.map(t => t.user_id);
+        const { data: enabledAdmins, error: settingsError } = await supabase
+          .from("settings")
+          .select("user_id")
+          .eq("role", "admin")
+          .eq("push_notifications", true)
+          .in("user_id", adminUserIds);
+
+        if (settingsError) {
+          console.error("❌ Error fetching admin settings:", settingsError);
+          throw settingsError;
+        }
+
+        // Filter tokens for admins with push enabled
+        const enabledUserIds = new Set(enabledAdmins?.map(s => s.user_id) || []);
+        tokens = adminTokens.filter(token => enabledUserIds.has(token.user_id));
+      }
+      
+      recipientInfo = `ALL ADMINS (${tokens?.length || 0} devices)`;
+      
+    } else {
+      // Get user info for logging
+      const { data: userInfo } = await supabase
+        .from("users")
+        .select("first_name, last_name, email")
+        .eq("id", user_id)
+        .single();
+
+      recipientInfo = userInfo 
+        ? `USER: ${userInfo.first_name} ${userInfo.last_name} (${userInfo.email})`
+        : `USER: ${user_id}`;
+
+      // For user notifications: existing logic
+      const { data: settings, error: settingsError } = await supabase
+        .from("settings")
+        .select("push_notifications")
+        .eq("user_id", user_id)
+        .eq("role", role)
+        .single();
+
+      if (settingsError && settingsError.code !== 'PGRST116') {
+        console.error("❌ Error fetching user settings:", settingsError);
+        throw settingsError;
+      }
+
+      if (!settings || !settings.push_notifications) {
+        console.log(`⏭️ NOTIFICATION SKIPPED → ${recipientInfo} (push notifications disabled)`);
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            sent: 0, 
+            skipped: true,
+            reason: "Push notifications disabled" 
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Get user tokens
+      const { data: userTokens, error: tokensError } = await supabase
+        .from("fcm_tokens")
+        .select("id, fcm_token, platform, device_info")
+        .eq("user_id", user_id)
+        .eq("role", role)
+        .eq("is_active", true);
+
+      if (tokensError) {
+        console.error("❌ Error fetching user FCM tokens:", tokensError);
+        throw tokensError;
+      }
+      
+      tokens = userTokens;
+    }
+
     if (!tokens || tokens.length === 0) {
-      console.log(`📱 No active FCM tokens found for user: ${user_id}, role: ${role}`);
+      console.log(`📱 NO TOKENS FOUND → ${recipientInfo}`);
       return new Response(
         JSON.stringify({ 
           success: true, 
@@ -374,13 +381,14 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log(`🎯 Found ${tokens.length} active tokens for user: ${user_id}, role: ${role}`);
-
-    // 3. Get Firebase access token
+    // Get Firebase access token
     const accessToken = await getFirebaseAccessToken();
 
-    // 4. Send notification to all tokens
+    // Send notification to all tokens
     const results = [];
+    let successCount = 0;
+    let failCount = 0;
+
     for (const { fcm_token } of tokens) {
       try {
         const response = await sendFCMToToken(
@@ -389,29 +397,35 @@ serve(async (req: Request) => {
           title,
           body,
           data,
-          image,
-          click_action,
+          undefined, // image
+          data?.click_action, // click_action
         );
 
         const result = await response.json();
-        if (!response.ok && isInvalidTokenError(result)) {
-          await markTokenInactive(fcm_token);
-          console.log(`⚠️ Marked invalid FCM token inactive: ${fcm_token}`);
+        if (response.ok) {
+          successCount++;
+        } else {
+          failCount++;
+          if (isInvalidTokenError(result)) {
+            await markTokenInactive(fcm_token);
+          }
         }
         results.push({ token: fcm_token, success: response.ok, result });
       } catch (err) {
-        console.error(`❌ Error sending to token ${fcm_token}:`, err);
+        failCount++;
         results.push({ token: fcm_token, success: false, error: String(err) });
       }
     }
 
-    // 5. Return results
+    // Log notification outcome
+    console.log(`📨 NOTIFICATION SENT → ${recipientInfo} | Success: ${successCount}/${tokens.length} | Title: "${title}"`);
+
     return new Response(
       JSON.stringify({ success: true, results }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error) {
-    console.error("❌ Error in send-fcm-notification:", error);
+    console.error("❌ FCM Error:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error", details: String(error) }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },

@@ -10,6 +10,9 @@ import {
   updatePushNotificationSetting,
   debouncedRefreshUserToken 
 } from '../utils/tokenLifecycle';
+import { useEffect as useFirebaseEffect } from 'react';
+import { onMessage } from 'firebase/messaging';
+import { messaging } from '../services/firebase';
 
 export const usePushNotifications = (userId, role = 'user') => {
   const [isSupported, setIsSupported] = useState(false);
@@ -115,3 +118,38 @@ export const usePushNotifications = (userId, role = 'user') => {
     disablePushNotifications
   };
 };
+
+/**
+ * Custom hook to handle foreground notifications using Firebase
+ */
+export function useForegroundNotifications() {
+  useFirebaseEffect(() => {
+    if (!messaging || !('Notification' in window)) return;
+
+    const unsubscribe = onMessage(messaging, (payload) => {
+      console.log('📨 Foreground notification:', payload);
+      
+      // Show notification when app is open
+      if (Notification.permission === 'granted') {
+        const isAdmin = payload.data?.type === 'admin';
+        
+        const notification = new Notification(payload.data?.title || 'RawLens', {
+          body: payload.data?.body,
+          icon: '/logo.png',
+          badge: '/logo.png',
+          tag: isAdmin ? 'admin' : 'user',
+        });
+
+        notification.onclick = () => {
+          window.focus();
+          if (payload.data?.click_action) {
+            window.location.href = payload.data.click_action;
+          }
+          notification.close();
+        };
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+}

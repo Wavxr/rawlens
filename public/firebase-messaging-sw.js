@@ -26,16 +26,16 @@ messaging.onBackgroundMessage(function(payload) {
   const notificationTitle = payload.notification?.title || payload.data?.title || 'RawLens';
   const notificationOptions = {
     body: payload.notification?.body || payload.data?.body || 'You have a new notification',
-    icon: '/icon-192x192.png',
-    badge: isAdmin ? '/admin-badge-72x72.png' : '/icon-192x192.png',
-    data: { ...payload.data, click_action: '/', isAdmin },
+    icon: '/logo.png',
+    badge: '/logo.png',
+    data: { ...payload.data, click_action: payload.data?.click_action || '/', isAdmin },
     actions: [
       { action: 'open', title: isAdmin ? 'View Admin Panel' : 'Open App' },
       { action: 'dismiss', title: 'Dismiss' }
     ],
     requireInteraction: isAdmin,
     vibrate: [200, 100, 200],
-    tag: isAdmin ? 'admin' : 'default',
+    tag: isAdmin ? 'admin' : 'user',
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
@@ -44,17 +44,4 @@ messaging.onBackgroundMessage(function(payload) {
 // Notification clicks
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
-  if (event.action === 'dismiss') return;
-  const clickAction = event.notification.data?.click_action || '/';
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientsArr => {
-      for (const client of clientsArr) {
-        if (client.url.includes(self.location.origin)) {
-          client.focus();
-          return;
-        }
-      }
-      return clients.openWindow(clickAction);
-    })
-  );
 });
