@@ -1,9 +1,11 @@
 // public/firebase-messaging-sw.js
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-import { getMessaging, onBackgroundMessage } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-messaging-sw.js";
 
-// ⚠️ Only public config here — safe to expose
-const firebaseConfig = {
+// Load Firebase libraries
+importScripts('https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/9.22.2/firebase-messaging-compat.js');
+
+// Initialize Firebase (only public keys, safe)
+firebase.initializeApp({
   apiKey: "AIzaSyDxZokRZdGw3VpCDlfax0tueh1gg-dWbVM",
   authDomain: "rawlens-ph.firebaseapp.com",
   projectId: "rawlens-ph",
@@ -11,13 +13,12 @@ const firebaseConfig = {
   messagingSenderId: "543168518515",
   appId: "1:543168518515:web:0da88e50a7f99bf1b74d06",
   measurementId: "G-9SX1CNBTCR"
-};
+});
 
-const app = initializeApp(firebaseConfig);
-const messaging = getMessaging(app);
+const messaging = firebase.messaging();
 
-// Handle background messages (when app is not in focus)
-onBackgroundMessage(messaging, (payload) => {
+// Background messages
+messaging.onBackgroundMessage(function(payload) {
   console.log('[firebase-messaging-sw.js] Received background message:', payload);
 
   const isAdmin = payload.data?.type === 'admin' || payload.data?.role === 'admin';
@@ -27,12 +28,7 @@ onBackgroundMessage(messaging, (payload) => {
     body: payload.notification?.body || payload.data?.body || 'You have a new notification',
     icon: '/icon-192x192.png',
     badge: isAdmin ? '/admin-badge-72x72.png' : '/icon-192x192.png',
-    image: payload.notification?.image || payload.data?.image,
-    data: {
-      ...payload.data,
-      click_action: payload.notification?.click_action || payload.data?.click_action || '/',
-      isAdmin
-    },
+    data: { ...payload.data, click_action: '/', isAdmin },
     actions: [
       { action: 'open', title: isAdmin ? 'View Admin Panel' : 'Open App' },
       { action: 'dismiss', title: 'Dismiss' }
@@ -45,61 +41,20 @@ onBackgroundMessage(messaging, (payload) => {
   self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
-// Data-only messages (no notification payload)
-self.addEventListener('push', (event) => {
-  if (!event.data) return;
-  try {
-    const payload = event.data.json();
-    if (payload.data && !payload.notification) {
-      const data = payload.data;
-      const isAdmin = data.type === 'admin' || data.role === 'admin';
-
-      const options = {
-        body: data.body,
-        icon: '/icon-192x192.png',
-        badge: isAdmin ? '/admin-badge-72x72.png' : '/icon-192x192.png',
-        data: { click_action: data.click_action, isAdmin, ...data },
-        requireInteraction: isAdmin,
-        tag: isAdmin ? 'admin' : 'default',
-        actions: [{ action: 'open', title: isAdmin ? 'View Admin Panel' : 'Open' }]
-      };
-
-      event.waitUntil(
-        self.registration.showNotification(data.title || 'RawLens', options)
-      );
-    }
-  } catch (err) {
-    console.error('Error parsing push payload:', err);
-  }
-});
-
-// Notification click handling
-self.addEventListener('notificationclick', (event) => {
+// Notification clicks
+self.addEventListener('notificationclick', function(event) {
   event.notification.close();
   if (event.action === 'dismiss') return;
-
-  const isAdmin = event.notification.data?.isAdmin || false;
   const clickAction = event.notification.data?.click_action || '/';
-  const targetUrl = isAdmin && !clickAction.includes('/admin')
-    ? '/admin' + clickAction
-    : clickAction;
-
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true })
-      .then((clientList) => {
-        for (const client of clientList) {
-          if (client.url.includes(self.location.origin)) {
-            client.focus();
-            client.postMessage({
-              type: 'NOTIFICATION_CLICK',
-              clickAction: targetUrl,
-              isAdmin,
-              data: event.notification.data
-            });
-            return;
-          }
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientsArr => {
+      for (const client of clientsArr) {
+        if (client.url.includes(self.location.origin)) {
+          client.focus();
+          return;
         }
-        return clients.openWindow(targetUrl);
-      })
+      }
+      return clients.openWindow(clickAction);
+    })
   );
 });
