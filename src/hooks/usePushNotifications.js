@@ -6,9 +6,9 @@ import {
   registerPushForUser 
 } from '../services/pushService';
 import { 
-  deactivateUserTokens,
+  deactivateCurrentDeviceToken,
   updatePushNotificationSetting,
-  refreshUserToken 
+  debouncedRefreshUserToken 
 } from '../utils/tokenLifecycle';
 
 export const usePushNotifications = (userId) => {
@@ -27,7 +27,7 @@ export const usePushNotifications = (userId) => {
   // Refresh token on userId change (login/logout)
   useEffect(() => {
     if (userId && isSupported && Notification.permission === 'granted') {
-      refreshUserToken(userId);
+      debouncedRefreshUserToken(userId);
     }
   }, [userId, isSupported]);
 
@@ -87,7 +87,7 @@ export const usePushNotifications = (userId) => {
 
   /**
    * Handle disabling push notifications
-   * - Deactivates all user FCM tokens
+   * - Deactivates only the current device's FCM token
    * - Updates user settings
    */
   const disablePushNotifications = useCallback(async () => {
@@ -95,11 +95,8 @@ export const usePushNotifications = (userId) => {
 
     setIsProcessing(true);
     try {
-      // Update settings first
+      // Update settings (this will also call deactivateCurrentDeviceToken)
       await updatePushNotificationSetting(userId, false);
-      
-      // Then deactivate tokens
-      await deactivateUserTokens(userId);
       
       setIsProcessing(false);
       return { success: true };

@@ -8,6 +8,7 @@ import useSettingsStore from "../../stores/settingsStore";
 import { usePushNotifications } from "../../hooks/usePushNotifications";
 import PushPermissionModal from "../../components/PushPermissionModal";
 import PushNotificationPrompt from "../../components/PushNotificationPrompt";
+import NotificationSettings from "../../components/NotificationSettings";
 import { Settings } from "lucide-react";
 
 export default function Profile() {
@@ -32,6 +33,7 @@ export default function Profile() {
     disablePushNotifications 
   } = usePushNotifications(userId);
   const [showPushModal, setShowPushModal] = useState(false);
+  const [devicePushEnabled, setDevicePushEnabled] = useState(true);
 
   // Video Recording State
   const [showVideoModal, setShowVideoModal] = useState(false);
@@ -95,6 +97,34 @@ export default function Profile() {
     }
   }, [userId]);
 
+  // Load device-specific push setting on mount
+  useEffect(() => {
+    const loadDevicePushSetting = async () => {
+      if (userId && isPushSupported) {
+        // Check if current device has an active FCM token
+        const currentToken = await getFcmToken();
+        if (currentToken) {
+          try {
+            const { data, error } = await supabase
+              .from('user_fcm_tokens')
+              .select('is_active')
+              .eq('user_id', userId)
+              .eq('fcm_token', currentToken)
+              .single();
+            
+            if (!error && data) {
+              setDevicePushEnabled(data.is_active);
+            }
+          } catch (err) {
+            console.warn('Could not check device FCM token status');
+          }
+        }
+      }
+    };
+    
+    loadDevicePushSetting();
+  }, [userId, isPushSupported]);
+
   // Media URL Generator
   async function refreshMediaUrls(data) {
     const [idUrl, selfieUrl, videoUrl] = await Promise.all([
@@ -143,8 +173,8 @@ export default function Profile() {
       const result = await enablePushNotifications();
       
       if (result.success) {
-        // Successfully enabled, update settings
-        await updateSettings(userId, { push_notifications: true });
+        // Successfully enabled, update device state
+        setDevicePushEnabled(true);
       } else if (result.reason === 'permission_denied') {
         // Permission denied, show modal with instructions
         setShowPushModal(true);
@@ -158,8 +188,8 @@ export default function Profile() {
       const result = await disablePushNotifications();
       
       if (result.success) {
-        // Successfully disabled, update settings
-        await updateSettings(userId, { push_notifications: false });
+        // Successfully disabled, update device state
+        setDevicePushEnabled(false);
       } else {
         console.error('Failed to disable push notifications:', result);
         alert('Failed to update notification settings. Please try again later.');
@@ -603,81 +633,7 @@ export default function Profile() {
               </div>
             </div>
             <div className="p-8">
-              <div className="flex items-center mb-6">
-                <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center mr-3">
-                  <Settings className="w-5 h-5 text-blue-600" />
-                </div>
-                <h2 className="text-xl font-semibold text-gray-900">Notification Settings</h2>
-              </div>
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <span className="flex-grow flex flex-col">
-                    <span className="text-sm font-medium text-gray-900">
-                      Email Notifications
-                    </span>
-                    <span className="text-sm text-gray-500">
-                      Receive emails about your rentals and account activity.
-                    </span>
-                  </span>
-                  <button
-                    onClick={() => handleToggle('email_notifications', !settings?.email_notifications)}
-                    className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-                      settings?.email_notifications ? 'bg-blue-600' : 'bg-gray-200'
-                    }`}
-                  >
-                    <span
-                      className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${
-                        settings?.email_notifications ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
-                </div>
-                <div className="flex items-center justify-between">
-                   <span className="flex-grow flex flex-col">
-                    <span className="text-sm font-medium text-gray-900">
-                      Push Notifications
-                    </span>
-                    <span className="text-sm text-gray-500">
-                      Get push notifications for real-time updates.
-                    </span>
-                    {/* Browser support and permission status indicators */}
-                    {!isPushSupported && (
-                      <span className="text-xs text-orange-600 mt-1">
-                        ⚠️ Not supported in this browser
-                      </span>
-                    )}
-                    {isPushSupported && pushPermission === 'denied' && (
-                      <span className="text-xs text-red-600 mt-1">
-                        🚫 Permission denied - click to get help
-                      </span>
-                    )}
-                    {isPushSupported && pushPermission === 'default' && settings?.push_notifications && (
-                      <span className="text-xs text-yellow-600 mt-1">
-                        ⏳ Permission required
-                      </span>
-                    )}
-                  </span>
-                  <div className="flex items-center space-x-2">
-                    {/* Loading indicator when processing */}
-                    {isPushProcessing && (
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-blue-600"></div>
-                    )}
-                    <button
-                      onClick={() => handleToggle('push_notifications', !settings?.push_notifications)}
-                      disabled={isPushProcessing}
-                      className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed ${
-                        settings?.push_notifications ? 'bg-blue-600' : 'bg-gray-200'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${
-                          settings?.push_notifications ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <NotificationSettings />
             </div>
           </form>
         </div>

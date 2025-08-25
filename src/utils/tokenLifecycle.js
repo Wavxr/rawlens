@@ -2,9 +2,14 @@
 import { supabase } from '../lib/supabaseClient';
 import { getFcmToken, saveFcmToken, isPushSupported } from '../services/pushService';
 
+// Cache to prevent redundant token refreshes
+const tokenRefreshCache = new Map();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 /**
  * Refresh FCM token for a user on login/session refresh
  * This ensures tokens stay updated and active
+ * Includes caching to prevent redundant calls
  */
 export async function refreshUserToken(userId) {
   if (!userId || !isPushSupported()) {
@@ -16,6 +21,14 @@ export async function refreshUserToken(userId) {
     return false;
   }
 
+  // Check cache to prevent redundant calls
+  const cacheKey = `refresh_${userId}`;
+  const cachedResult = tokenRefreshCache.get(cacheKey);
+  if (cachedResult && (Date.now() - cachedResult.timestamp) < CACHE_DURATION) {
+    console.log('🔄 Using cached token refresh result for user:', userId);
+    return cachedResult.success;
+  }
+
   try {
     console.log('🔄 Refreshing FCM token for user:', userId);
     
@@ -23,6 +36,8 @@ export async function refreshUserToken(userId) {
     const newToken = await getFcmToken();
     if (!newToken) {
       console.warn('⚠️ Could not retrieve FCM token');
+      const result = { success: false, timestamp: Date.now() };
+      tokenRefreshCache.set(cacheKey, result);
       return false;
     }
 
@@ -30,10 +45,53 @@ export async function refreshUserToken(userId) {
     await saveFcmToken(userId, newToken);
     
     console.log('✅ FCM token refreshed successfully');
+    
+    // Cache the successful result
+    const result = { success: true, timestamp: Date.now() };
+    tokenRefreshCache.set(cacheKey, result);
+    
     return true;
   } catch (error) {
     console.error('❌ Failed to refresh FCM token:', error);
+    
+    // Cache the failed result for a shorter time
+    const result = { success: false, timestamp: Date.now() };
+    tokenRefreshCache.set(cacheKey, result);
+    
     return false;
+  }
+}
+
+/**
+ * Debounced version of refreshUserToken to prevent rapid successive calls
+ */
+const refreshDebounceMap = new Map();
+
+export function debouncedRefreshUserToken(userId, delay = 1000) {
+  const existingTimeout = refreshDebounceMap.get(userId);
+  if (existingTimeout) {
+    clearTimeout(existingTimeout);
+  }
+
+  return new Promise((resolve) => {
+    const timeout = setTimeout(async () => {
+      refreshDebounceMap.delete(userId);
+      const result = await refreshUserToken(userId);
+      resolve(result);
+    }, delay);
+    
+    refreshDebounceMap.set(userId, timeout);
+  });
+}
+
+/**
+ * Clear token refresh cache (useful for force refresh)
+ */
+export function clearTokenRefreshCache(userId = null) {
+  if (userId) {
+    tokenRefreshCache.delete(`refresh_${userId}`);
+  } else {
+    tokenRefreshCache.clear();
   }
 }
 
@@ -66,7 +124,49 @@ export async function cleanupInactiveTokens(userId, olderThanDays = 30) {
 }
 
 /**
- * Mark user's FCM tokens as inactive (when user disables push notifications)
+ * Deactivate only the current device's token
+ */
+export async function deactivateCurrentDeviceToken(userId) {
+  if (!userId) return false;
+
+  try {
+    // Get the current device's FCM token
+    const currentToken = await getFcmToken();
+    if (!currentToken) {
+      console.warn('⚠️ No FCM token found for current device');
+      return false;
+    }
+
+    console.log('🔇 Deactivating current device FCM token:', currentToken.substring(0, 20) + '...');
+
+    const { error } = await supabase
+      .from('user_fcm_tokens')
+      .update({ 
+        is_active: false, 
+        updated_at: new Date().toISOString() 
+      })
+      .eq('user_id', userId)
+      .eq('fcm_token', currentToken);
+
+    if (error) {
+      console.error('❌ Failed to deactivate current device token:', error);
+      return false;
+    }
+
+    console.log('✅ Current device FCM token deactivated');
+    
+    // Clear cache for this user
+    clearTokenRefreshCache(userId);
+    
+    return true;
+  } catch (error) {
+    console.error('❌ Error deactivating current device token:', error);
+    return false;
+  }
+}
+
+/**
+ * Mark user's FCM tokens as inactive (when user disables push notifications globally)
  */
 export async function deactivateUserTokens(userId) {
   if (!userId) return;
@@ -85,7 +185,11 @@ export async function deactivateUserTokens(userId) {
       return false;
     }
 
-    console.log('✅ User FCM tokens deactivated');
+    console.log('✅ All user FCM tokens deactivated');
+    
+    // Clear cache for this user
+    clearTokenRefreshCache(userId);
+    
     return true;
   } catch (error) {
     console.error('❌ Error deactivating tokens:', error);
@@ -150,22 +254,42 @@ export async function updatePushNotificationSetting(userId, enabled) {
   if (!userId) return false;
 
   try {
-    const { error } = await supabase
+    // First try to update existing record
+    const { data: existingData, error: selectError } = await supabase
       .from('user_settings')
-      .upsert({
-        user_id: userId,
-        push_notifications: enabled,
-        updated_at: new Date().toISOString()
-      });
+      .select('id')
+      .eq('user_id', userId)
+      .single();
 
-    if (error) {
-      console.error('❌ Failed to update push notification setting:', error);
+    let result;
+    if (existingData) {
+      // Update existing record
+      result = await supabase
+        .from('user_settings')
+        .update({
+          push_notifications: enabled,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', userId);
+    } else {
+      // Insert new record
+      result = await supabase
+        .from('user_settings')
+        .insert({
+          user_id: userId,
+          push_notifications: enabled,
+          updated_at: new Date().toISOString()
+        });
+    }
+
+    if (result.error) {
+      console.error('❌ Failed to update push notification setting:', result.error);
       return false;
     }
 
     console.log(`✅ Push notification setting updated: ${enabled}`);
     
-    // If disabled, also deactivate all tokens
+    // If disabled, deactivate ALL user tokens (global disable)
     if (!enabled) {
       await deactivateUserTokens(userId);
     }
