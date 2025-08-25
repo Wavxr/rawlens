@@ -10,9 +10,8 @@ import {
   updatePushNotificationSetting,
   debouncedRefreshUserToken 
 } from '../utils/tokenLifecycle';
-import { useEffect as useFirebaseEffect } from 'react';
 import { onMessage } from 'firebase/messaging';
-import { messaging } from '../services/firebase';
+import { messaging } from '../lib/firebaseClient';
 
 export const usePushNotifications = (userId, role = 'user') => {
   const [isSupported, setIsSupported] = useState(false);
@@ -123,7 +122,7 @@ export const usePushNotifications = (userId, role = 'user') => {
  * Custom hook to handle foreground notifications using Firebase
  */
 export function useForegroundNotifications() {
-  useFirebaseEffect(() => {
+  useEffect(() => {
     if (!messaging || !('Notification' in window)) return;
 
     const unsubscribe = onMessage(messaging, (payload) => {
