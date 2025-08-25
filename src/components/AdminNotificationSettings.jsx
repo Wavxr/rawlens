@@ -8,6 +8,7 @@ import { usePushNotifications } from '../hooks/usePushNotifications';
 const AdminNotificationSettings = () => {
   const { user } = useAuthStore();
   const { settings, update: updateSettings, currentRole } = useSettingsStore();
+  // ✅ Force admin role for this component
   const { enablePushNotifications, disablePushNotifications } = usePushNotifications(user?.id, 'admin');
 
   const [devices, setDevices] = useState([]);
@@ -15,7 +16,7 @@ const AdminNotificationSettings = () => {
 
   // single load function (no stale closure)
   async function loadDevices() {
-    console.log('loadDevices called', { userId: user?.id, currentRole, settingsLoaded: !!settings });
+    console.log('loadDevices called', { userId: user?.id, role: 'admin', settingsLoaded: !!settings });
     if (!user?.id) {
       console.log('Skipping loadDevices - missing user ID');
       setDevices([]);

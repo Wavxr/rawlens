@@ -278,6 +278,8 @@ serve(async (req: Request) => {
     let recipientInfo = "";
     
     if (role === "admin") {
+      console.log("🔍 Starting admin token lookup...");
+      
       // Get all admin tokens
       const { data: adminTokens, error: tokensError } = await supabase
         .from("fcm_tokens")
@@ -290,14 +292,19 @@ serve(async (req: Request) => {
         throw tokensError;
       }
 
+      console.log(`🔍 Raw admin tokens found: ${adminTokens?.length || 0}`);
+      console.log(`🔍 Admin token user_ids:`, adminTokens?.map(t => t.user_id));
+
       if (!adminTokens || adminTokens.length === 0) {
         tokens = [];
       } else {
         // Get admin settings with push enabled
         const adminUserIds = adminTokens.map(t => t.user_id);
+        console.log(`🔍 Looking for settings for user_ids:`, adminUserIds);
+        
         const { data: enabledAdmins, error: settingsError } = await supabase
           .from("settings")
-          .select("user_id")
+          .select("user_id, push_notifications, role")
           .eq("role", "admin")
           .eq("push_notifications", true)
           .in("user_id", adminUserIds);
@@ -307,9 +314,21 @@ serve(async (req: Request) => {
           throw settingsError;
         }
 
+        console.log(`🔍 Enabled admin settings found: ${enabledAdmins?.length || 0}`);
+        console.log(`🔍 Enabled admin user_ids:`, enabledAdmins?.map(s => s.user_id));
+        console.log(`🔍 Full enabled admin settings:`, enabledAdmins);
+
         // Filter tokens for admins with push enabled
         const enabledUserIds = new Set(enabledAdmins?.map(s => s.user_id) || []);
-        tokens = adminTokens.filter(token => enabledUserIds.has(token.user_id));
+        console.log(`🔍 Enabled user IDs set:`, Array.from(enabledUserIds));
+        
+        tokens = adminTokens.filter(token => {
+          const isEnabled = enabledUserIds.has(token.user_id);
+          console.log(`🔍 Token for user ${token.user_id}: enabled=${isEnabled}`);
+          return isEnabled;
+        });
+        
+        console.log(`🔍 Final filtered tokens: ${tokens?.length || 0}`);
       }
       
       recipientInfo = `ALL ADMINS (${tokens?.length || 0} devices)`;
