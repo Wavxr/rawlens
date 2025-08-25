@@ -200,16 +200,18 @@ export const NotificationTemplates = {
 };
 
 /**
- * Check if user has push notifications enabled
+ * Check if user has push notifications enabled for their role
  * @param {string} userId - User ID to check
+ * @param {string} role - User role ('user' or 'admin')
  * @returns {Promise<boolean>} Whether push notifications are enabled
  */
-export async function isPushNotificationEnabled(userId) {
+export async function isPushNotificationEnabled(userId, role = 'user') {
   try {
     const { data, error } = await supabase
-      .from('user_settings')
+      .from('settings')
       .select('push_notifications')
       .eq('user_id', userId)
+      .eq('role', role)
       .single();
 
     if (error && error.code !== 'PGRST116') {
@@ -225,16 +227,18 @@ export async function isPushNotificationEnabled(userId) {
 }
 
 /**
- * Get user's active FCM token count
+ * Get user's active FCM token count for their role
  * @param {string} userId - User ID to check
+ * @param {string} role - User role ('user' or 'admin')
  * @returns {Promise<number>} Number of active tokens
  */
-export async function getActiveTokenCount(userId) {
+export async function getActiveTokenCount(userId, role = 'user') {
   try {
     const { count, error } = await supabase
-      .from('user_fcm_tokens')
+      .from('fcm_tokens')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
+      .eq('role', role)
       .eq('is_active', true);
 
     if (error) {

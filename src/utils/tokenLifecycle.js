@@ -11,7 +11,7 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
  * This ensures tokens stay updated and active
  * Includes caching to prevent redundant calls
  */
-export async function refreshUserToken(userId) {
+export async function refreshUserToken(userId, role = 'user') {
   if (!userId || !isPushSupported()) {
     return false;
   }
@@ -22,15 +22,15 @@ export async function refreshUserToken(userId) {
   }
 
   // Check cache to prevent redundant calls
-  const cacheKey = `refresh_${userId}`;
+  const cacheKey = `refresh_${userId}_${role}`;
   const cachedResult = tokenRefreshCache.get(cacheKey);
   if (cachedResult && (Date.now() - cachedResult.timestamp) < CACHE_DURATION) {
-    console.log('🔄 Using cached token refresh result for user:', userId);
+    console.log('🔄 Using cached token refresh result for user:', userId, 'role:', role);
     return cachedResult.success;
   }
 
   try {
-    console.log('🔄 Refreshing FCM token for user:', userId);
+    console.log('🔄 Refreshing FCM token for user:', userId, 'role:', role);
     
     // Get current FCM token
     const newToken = await getFcmToken();
@@ -42,7 +42,7 @@ export async function refreshUserToken(userId) {
     }
 
     // Update or insert the token
-    await saveFcmToken(userId, newToken);
+    await saveFcmToken(userId, newToken, role);
     
     console.log('✅ FCM token refreshed successfully');
     
@@ -67,20 +67,21 @@ export async function refreshUserToken(userId) {
  */
 const refreshDebounceMap = new Map();
 
-export function debouncedRefreshUserToken(userId, delay = 1000) {
-  const existingTimeout = refreshDebounceMap.get(userId);
+export function debouncedRefreshUserToken(userId, role = 'user', delay = 1000) {
+  const key = `${userId}_${role}`;
+  const existingTimeout = refreshDebounceMap.get(key);
   if (existingTimeout) {
     clearTimeout(existingTimeout);
   }
 
   return new Promise((resolve) => {
     const timeout = setTimeout(async () => {
-      refreshDebounceMap.delete(userId);
-      const result = await refreshUserToken(userId);
+      refreshDebounceMap.delete(key);
+      const result = await refreshUserToken(userId, role);
       resolve(result);
     }, delay);
     
-    refreshDebounceMap.set(userId, timeout);
+    refreshDebounceMap.set(key, timeout);
   });
 }
 
@@ -107,7 +108,7 @@ export async function cleanupInactiveTokens(userId, olderThanDays = 30) {
     cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
 
     const { error } = await supabase
-      .from('user_fcm_tokens')
+      .from('fcm_tokens')
       .delete()
       .eq('user_id', userId)
       .eq('is_active', false)
@@ -140,7 +141,7 @@ export async function deactivateCurrentDeviceToken(userId) {
     console.log('🔇 Deactivating current device FCM token:', currentToken.substring(0, 20) + '...');
 
     const { error } = await supabase
-      .from('user_fcm_tokens')
+      .from('fcm_tokens')
       .update({ 
         is_active: false, 
         updated_at: new Date().toISOString() 
@@ -173,7 +174,7 @@ export async function deactivateUserTokens(userId) {
 
   try {
     const { error } = await supabase
-      .from('user_fcm_tokens')
+      .from('fcm_tokens')
       .update({ 
         is_active: false, 
         updated_at: new Date().toISOString() 
@@ -205,7 +206,7 @@ export async function getActiveTokenCount(userId) {
 
   try {
     const { count, error } = await supabase
-      .from('user_fcm_tokens')
+      .from('fcm_tokens')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
       .eq('is_active', true);
@@ -225,14 +226,15 @@ export async function getActiveTokenCount(userId) {
 /**
  * Check if user has push notifications enabled in settings
  */
-export async function isPushNotificationEnabled(userId) {
+export async function isPushNotificationEnabled(userId, role = 'user') {
   if (!userId) return false;
 
   try {
     const { data, error } = await supabase
-      .from('user_settings')
+      .from('settings')
       .select('push_notifications')
       .eq('user_id', userId)
+      .eq('role', role)
       .single();
 
     if (error) {
@@ -250,33 +252,36 @@ export async function isPushNotificationEnabled(userId) {
 /**
  * Update user's push notification preference
  */
-export async function updatePushNotificationSetting(userId, enabled) {
+export async function updatePushNotificationSetting(userId, enabled, role = 'user') {
   if (!userId) return false;
 
   try {
     // First try to update existing record
     const { data: existingData, error: selectError } = await supabase
-      .from('user_settings')
+      .from('settings')
       .select('id')
       .eq('user_id', userId)
+      .eq('role', role)
       .single();
 
     let result;
     if (existingData) {
       // Update existing record
       result = await supabase
-        .from('user_settings')
+        .from('settings')
         .update({
           push_notifications: enabled,
           updated_at: new Date().toISOString()
         })
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .eq('role', role);
     } else {
       // Insert new record
       result = await supabase
-        .from('user_settings')
+        .from('settings')
         .insert({
           user_id: userId,
+          role: role,
           push_notifications: enabled,
           updated_at: new Date().toISOString()
         });

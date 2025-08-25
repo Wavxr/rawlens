@@ -65,35 +65,37 @@ export async function testFCMNotification(userId) {
 /**
  * Test user settings and tokens
  */
-export async function testUserFCMSetup(userId) {
+export async function testUserFCMSetup(userId, role = 'user') {
   console.log('🔍 Checking user FCM setup...');
   
   try {
     // Check user settings
     const { data: settings, error: settingsError } = await supabase
-      .from('user_settings')
+      .from('settings')
       .select('push_notifications')
       .eq('user_id', userId)
+      .eq('role', role)
       .single();
 
     if (settingsError && settingsError.code !== 'PGRST116') {
       throw new Error(`Settings error: ${settingsError.message}`);
     }
 
-    console.log('📱 User push settings:', settings?.push_notifications);
+    console.log('📱 User push settings:', settings?.push_notifications, 'for role:', role);
 
     // Check FCM tokens
     const { data: tokens, error: tokensError } = await supabase
-      .from('user_fcm_tokens')
+      .from('fcm_tokens')
       .select('id, platform, is_active, created_at')
-      .eq('user_id', userId);
+      .eq('user_id', userId)
+      .eq('role', role);
 
     if (tokensError) {
       throw new Error(`Tokens error: ${tokensError.message}`);
     }
 
     console.log('🎯 User FCM tokens:', tokens);
-
+    
     const activeTokens = tokens?.filter(t => t.is_active) || [];
     
     return {
@@ -101,25 +103,25 @@ export async function testUserFCMSetup(userId) {
       pushEnabled: settings?.push_notifications === true,
       totalTokens: tokens?.length || 0,
       activeTokens: activeTokens.length,
-      tokens: tokens || []
+      tokens: tokens || [],
+      role: role
     };
 
   } catch (error) {
     console.error('❌ Setup check failed:', error);
     return {
       success: false,
-      error: error.message
+      error: error.message,
+      role: role
     };
   }
-}
-
-/**
+}/**
  * Run comprehensive FCM tests
  */
-export async function runFCMTests(userId) {
+export async function runFCMTests(userId, role = 'user') {
   console.log('🚀 Starting comprehensive FCM tests...');
   
-  const setupResult = await testUserFCMSetup(userId);
+  const setupResult = await testUserFCMSetup(userId, role);
   console.log('Setup check:', setupResult);
   
   if (!setupResult.success) {
@@ -141,7 +143,8 @@ export async function runFCMTests(userId) {
   return {
     setup: setupResult,
     notifications: notificationResult,
-    overall: setupResult.success && notificationResult.success
+    overall: setupResult.success && notificationResult.success,
+    role: role
   };
 }
 

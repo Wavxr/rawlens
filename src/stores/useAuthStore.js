@@ -50,7 +50,7 @@ const useAuthStore = create((set, get) => ({
             await get().fetchUserData(session.user.id);
             set({ loading: false });
           } else if (event === 'SIGNED_OUT') {
-            useSettingsStore.getState().clear();
+            useSettingsStore.getState().clearAll();
             useUserStore.getState().clearUser();
             set({ user: null, session: null, role: null, profile: null });
           }
@@ -84,8 +84,9 @@ const useAuthStore = create((set, get) => ({
         useUserStore.getState().setUser(data); // Also update the userStore
       }
 
-      // Fetch settings and set theme
-      await useSettingsStore.getState().init(userId);
+      // Fetch settings and set theme (role-aware)
+      const currentRole = get().role; // Get the current role from the store
+      await useSettingsStore.getState().init(userId, currentRole || 'user');
       const settings = useSettingsStore.getState().settings;
       if (settings) {
         useThemeStore.getState().setTheme(settings.dark_mode);

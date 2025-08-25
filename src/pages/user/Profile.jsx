@@ -2,6 +2,8 @@ import { useEffect, useState, useRef } from "react";
 import { getUserById, updateUserProfile } from "../../services/userService";
 import { getSignedUrl } from "../../services/storageService";
 import { subscribeToUserUpdates, unsubscribeFromUserUpdates } from "../../services/realtimeService";
+import { supabase } from "../../lib/supabaseClient";
+import { getFcmToken } from "../../services/pushService";
 import useAuthStore from "../../stores/useAuthStore";
 import useUserStore from "../../stores/userStore";
 import useSettingsStore from "../../stores/settingsStore";
@@ -13,9 +15,10 @@ import { Settings } from "lucide-react";
 
 export default function Profile() {
     // State Management
-  const { user, profile, loading: authLoading } = useAuthStore();
+  const { user, profile, role, loading: authLoading } = useAuthStore();
   const { settings, init: initSettings, update: updateSettings, loading: settingsLoading } = useSettingsStore();
   const userId = user?.id;
+  const userRole = role || 'user'; // Default to 'user' if role is not set yet
   const [form, setForm] = useState({});
   const [originalForm, setOriginalForm] = useState({});
   const [mediaUrls, setMediaUrls] = useState({});
@@ -31,7 +34,7 @@ export default function Profile() {
     isProcessing: isPushProcessing, 
     enablePushNotifications, 
     disablePushNotifications 
-  } = usePushNotifications(userId);
+  } = usePushNotifications(userId, userRole);
   const [showPushModal, setShowPushModal] = useState(false);
   const [devicePushEnabled, setDevicePushEnabled] = useState(true);
 
@@ -106,9 +109,10 @@ export default function Profile() {
         if (currentToken) {
           try {
             const { data, error } = await supabase
-              .from('user_fcm_tokens')
+              .from('fcm_tokens')
               .select('is_active')
               .eq('user_id', userId)
+              .eq('role', userRole)
               .eq('fcm_token', currentToken)
               .single();
             

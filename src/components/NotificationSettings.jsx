@@ -4,10 +4,11 @@ import useSettingsStore from '../stores/settingsStore';
 import { getUserDevices, toggleDeviceNotifications, updateDeviceActivity } from '../services/pushService';
 import { updatePushNotificationSetting, isPushNotificationEnabled } from '../utils/tokenLifecycle';
 
-export default function NotificationSettings() {
-  const { user } = useAuthStore();
+export default function NotificationSettings({ userRole = 'user' }) {
+  const { user, role: authRole } = useAuthStore();
   const { settings, loading: settingsLoading } = useSettingsStore();
   const userId = user?.id;
+  const currentRole = userRole || authRole || 'user';
 
   const [devices, setDevices] = useState([]);
   const [loadingDevices, setLoadingDevices] = useState(false);
@@ -20,9 +21,9 @@ export default function NotificationSettings() {
     if (userId) {
       loadNotificationSettings();
       loadUserDevices();
-      updateDeviceActivity(userId); // Update current device activity
+      updateDeviceActivity(userId, currentRole); // Update current device activity
     }
-  }, [userId]);
+  }, [userId, currentRole]);
 
   // Update global setting when settings change
   useEffect(() => {
@@ -35,7 +36,7 @@ export default function NotificationSettings() {
     if (!userId) return;
     
     try {
-      const enabled = await isPushNotificationEnabled(userId);
+      const enabled = await isPushNotificationEnabled(userId, currentRole);
       setGlobalEnabled(enabled);
     } catch (error) {
       console.error('Error loading notification settings:', error);
@@ -47,7 +48,7 @@ export default function NotificationSettings() {
     
     setLoadingDevices(true);
     try {
-      const userDevices = await getUserDevices(userId);
+      const userDevices = await getUserDevices(userId, currentRole);
       setDevices(userDevices);
     } catch (error) {
       console.error('Error loading user devices:', error);
@@ -61,7 +62,7 @@ export default function NotificationSettings() {
     
     setTogglingGlobal(true);
     try {
-      const success = await updatePushNotificationSetting(userId, enabled);
+      const success = await updatePushNotificationSetting(userId, enabled, currentRole);
       if (success) {
         setGlobalEnabled(enabled);
         // Reload devices to see updated status
@@ -79,7 +80,7 @@ export default function NotificationSettings() {
     
     setTogglingDevice(prev => new Set([...prev, device.fcm_token]));
     try {
-      const success = await toggleDeviceNotifications(userId, device.fcm_token, enabled);
+      const success = await toggleDeviceNotifications(userId, device.fcm_token, enabled, currentRole);
       if (success) {
         // Update local state
         setDevices(prev => prev.map(d => 
@@ -107,7 +108,7 @@ export default function NotificationSettings() {
       if (key === 'email_notifications') {
         // Use settings store for email notifications
         const settingsStore = useSettingsStore.getState();
-        await settingsStore.update(userId, { [key]: value });
+        await settingsStore.update(userId, { [key]: value }, currentRole);
       }
     } catch (error) {
       console.error(`Error updating ${key}:`, error);

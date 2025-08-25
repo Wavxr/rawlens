@@ -11,7 +11,7 @@ import {
   debouncedRefreshUserToken 
 } from '../utils/tokenLifecycle';
 
-export const usePushNotifications = (userId) => {
+export const usePushNotifications = (userId, role = 'user') => {
   const [isSupported, setIsSupported] = useState(false);
   const [permission, setPermission] = useState('default');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -27,9 +27,9 @@ export const usePushNotifications = (userId) => {
   // Refresh token on userId change (login/logout)
   useEffect(() => {
     if (userId && isSupported && Notification.permission === 'granted') {
-      debouncedRefreshUserToken(userId);
+      debouncedRefreshUserToken(userId, role);
     }
-  }, [userId, isSupported]);
+  }, [userId, role, isSupported]);
 
   /**
    * Handle enabling push notifications
@@ -67,11 +67,11 @@ export const usePushNotifications = (userId) => {
       }
 
       // Permission is granted, register FCM token
-      const registered = await registerPushForUser(userId);
+      const registered = await registerPushForUser(userId, role);
       
       if (registered) {
         // Update user settings
-        await updatePushNotificationSetting(userId, true);
+        await updatePushNotificationSetting(userId, true, role);
         setIsProcessing(false);
         return { success: true };
       } else {
@@ -83,7 +83,7 @@ export const usePushNotifications = (userId) => {
       setIsProcessing(false);
       return { success: false, reason: 'error', error };
     }
-  }, [isSupported, userId]);
+  }, [isSupported, userId, role]);
 
   /**
    * Handle disabling push notifications
@@ -96,7 +96,7 @@ export const usePushNotifications = (userId) => {
     setIsProcessing(true);
     try {
       // Update settings (this will also call deactivateCurrentDeviceToken)
-      await updatePushNotificationSetting(userId, false);
+      await updatePushNotificationSetting(userId, false, role);
       
       setIsProcessing(false);
       return { success: true };
@@ -105,7 +105,7 @@ export const usePushNotifications = (userId) => {
       setIsProcessing(false);
       return { success: false, error };
     }
-  }, [userId]);
+  }, [userId, role]);
 
   return {
     isSupported,

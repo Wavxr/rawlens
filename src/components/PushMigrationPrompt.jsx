@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabaseClient';
 const PushMigrationPrompt = () => {
   const { session } = useAuthStore();
   const userId = session?.user?.id;
+  const userRole = 'user'; // Default role for regular users
   
   const {
     isSupported,
@@ -14,7 +15,7 @@ const PushMigrationPrompt = () => {
     isProcessing,
     enablePushNotifications,
     disablePushNotifications
-  } = usePushNotifications(userId);
+  } = usePushNotifications(userId, userRole);
 
   const [showPrompt, setShowPrompt] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
@@ -23,6 +24,9 @@ const PushMigrationPrompt = () => {
   useEffect(() => {
     // Only show migration prompt once per session
     if (!userId || !isSupported || hasCheckedMigration) return;
+
+    // Don't show if migration already dismissed this session
+    if (sessionStorage.getItem('push_migration_dismissed')) return;
 
     // Check if user has already been migrated (has FCM tokens)
     checkMigrationStatus();
@@ -37,9 +41,10 @@ const PushMigrationPrompt = () => {
       
       // Check if user already has FCM tokens in database
       const { data: tokens } = await supabase
-        .from('user_fcm_tokens')
+        .from('fcm_tokens')
         .select('id')
         .eq('user_id', userId)
+        .eq('role', userRole)
         .eq('is_active', true)
         .limit(1);
 
@@ -61,14 +66,28 @@ const PushMigrationPrompt = () => {
   };
 
   const handleEnableNotifications = async () => {
-    const result = await enablePushNotifications();
-    
-    if (result.success) {
+    try {
+      const result = await enablePushNotifications();
+      console.log('Push notification result:', result); // Debug log
+      
+      if (result.success) {
+        setShowPrompt(false);
+        setShowInstructions(false);
+        // Mark as handled to prevent showing again
+        sessionStorage.setItem('push_migration_dismissed', 'true');
+      } else if (result.reason === 'permission_denied') {
+        setShowPrompt(false);
+        setShowInstructions(true);
+      } else {
+        console.error('Failed to enable push notifications:', result);
+        // Still dismiss the prompt if there's an error to avoid infinite loop
+        setShowPrompt(false);
+        sessionStorage.setItem('push_migration_dismissed', 'true');
+      }
+    } catch (error) {
+      console.error('Error in handleEnableNotifications:', error);
       setShowPrompt(false);
-      setShowInstructions(false);
-    } else if (result.reason === 'permission_denied') {
-      setShowPrompt(false);
-      setShowInstructions(true);
+      sessionStorage.setItem('push_migration_dismissed', 'true');
     }
   };
 

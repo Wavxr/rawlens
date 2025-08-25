@@ -234,7 +234,7 @@ async function sendFCMToToken(
 // Mark token inactive in DB
 async function markTokenInactive(token: string) {
   await supabase
-    .from("user_fcm_tokens")  // Changed from "user_push_subscriptions"
+    .from("fcm_tokens")
     .update({ is_active: false })
     .eq("fcm_token", token);
 }
@@ -308,7 +308,7 @@ serve(async (req: Request) => {
 
     // Parse request body
     const requestData = await req.json();
-    const { user_id, title, body, data, image, click_action } = requestData;
+    const { user_id, title, body, data, image, click_action, role = 'user' } = requestData;
 
     if (!user_id || !title || !body) {
       return new Response(
@@ -317,13 +317,14 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log(`📨 Processing FCM notification for user: ${user_id}`);
+    console.log(`📨 Processing FCM notification for user: ${user_id}, role: ${role}`);
 
-    // 1. Check if user has notifications enabled
+    // 1. Check if user has notifications enabled for their role
     const { data: settings, error: settingsError } = await supabase
-      .from("user_settings")
+      .from("settings")
       .select("push_notifications")
       .eq("user_id", user_id)
+      .eq("role", role)
       .single();
 
     if (settingsError && settingsError.code !== 'PGRST116') {
@@ -335,7 +336,7 @@ serve(async (req: Request) => {
     }
 
     if (!settings || !settings.push_notifications) {
-      console.log(`⏭️ Skipping notification - push disabled for user: ${user_id}`);
+      console.log(`⏭️ Skipping notification - push disabled for user: ${user_id}, role: ${role}`);
       return new Response(
         JSON.stringify({ 
           success: true, 
@@ -347,11 +348,12 @@ serve(async (req: Request) => {
       );
     }
 
-    // 2. Get active FCM tokens for user (using correct table name)
+    // 2. Get active FCM tokens for user with role filtering
     const { data: tokens, error: tokensError } = await supabase
-      .from("user_fcm_tokens")  // Changed from user_push_subscriptions
+      .from("fcm_tokens")
       .select("id, fcm_token, platform, device_info")
       .eq("user_id", user_id)
+      .eq("role", role)
       .eq("is_active", true);
 
     if (tokensError) {
@@ -360,7 +362,7 @@ serve(async (req: Request) => {
     }
     
     if (!tokens || tokens.length === 0) {
-      console.log(`📱 No active FCM tokens found for user: ${user_id}`);
+      console.log(`📱 No active FCM tokens found for user: ${user_id}, role: ${role}`);
       return new Response(
         JSON.stringify({ 
           success: true, 
@@ -372,7 +374,7 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log(`🎯 Found ${tokens.length} active tokens for user: ${user_id}`);
+    console.log(`🎯 Found ${tokens.length} active tokens for user: ${user_id}, role: ${role}`);
 
     // 3. Get Firebase access token
     const accessToken = await getFirebaseAccessToken();

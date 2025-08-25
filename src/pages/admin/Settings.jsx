@@ -3,18 +3,20 @@ import useAuthStore from '../../stores/useAuthStore';
 import useSettingsStore from '../../stores/settingsStore';
 
 const Settings = () => {
-  const { user } = useAuthStore();
+  const { user, role } = useAuthStore();
   const { settings, init: initSettings, update: updateSettings, loading } = useSettingsStore();
 
   useEffect(() => {
     if (user?.id && !settings) {
-      initSettings(user.id);
+      // Admin settings page should manage admin role settings
+      initSettings(user.id, 'admin');
     }
   }, [user, settings, initSettings]);
 
   const handleToggle = async (key, value) => {
     if (user?.id) {
-      await updateSettings(user.id, { [key]: value });
+      // Update admin settings
+      await updateSettings(user.id, { [key]: value }, 'admin');
     }
   };
 
