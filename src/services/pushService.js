@@ -190,37 +190,73 @@ export async function saveFcmToken(userId, token, role = 'user') {
 /**
  * Get all FCM tokens for a user with device info and last activity
  */
-export async function getUserDevices(userId, role = 'user') {
-  if (!userId) return [];
-
+export const getUserDevices = async (userId, role = 'user') => {
   try {
+    console.log(`🔍 Getting ${role} devices for user:`, userId);
+    
     const { data, error } = await supabase
-      .from("fcm_tokens")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("role", role)
-      .order("updated_at", { ascending: false });
+      .from('fcm_tokens')
+      .select(`
+        id,
+        user_id,
+        fcm_token,
+        platform,
+        device_info,
+        is_active,
+        role,
+        created_at,
+        updated_at
+      `)
+      .eq('user_id', userId)
+      .eq('role', role)
+      .order('updated_at', { ascending: false });
 
     if (error) {
-      console.error("❌ Error fetching user devices:", error);
-      return [];
+      console.error(`❌ Error fetching ${role} devices:`, error);
+      throw error;
     }
 
-    // Get current device token to mark it
-    const currentToken = await getFcmToken();
-    
-    return data.map(device => ({
-      ...device,
-      is_current_device: device.fcm_token === currentToken,
-      device_name: device.device_info?.deviceName || 'Unknown Device',
-      last_active: device.device_info?.timestamp || device.updated_at,
-      relative_time: getRelativeTime(device.device_info?.timestamp || device.updated_at)
-    }));
+    console.log(`📱 Raw ${role} devices from DB:`, data);
+
+    const currentToken = await getCurrentDeviceFcmToken();
+
+    // Process the devices to add helpful information
+    const processedDevices = data.map(device => {
+      const deviceInfo = device.device_info || {};
+      const deviceName = deviceInfo.deviceName || 
+                        deviceInfo.userAgent?.split(' ')[0] || 
+                        `${device.platform} Device`;
+      
+      const lastActive = new Date(device.updated_at);
+      const now = new Date();
+      const diffInHours = Math.abs(now - lastActive) / (1000 * 60 * 60);
+      
+      let relativeTime;
+      if (diffInHours < 1) {
+        relativeTime = 'just now';
+      } else if (diffInHours < 24) {
+        relativeTime = `${Math.floor(diffInHours)} hours ago`;
+      } else {
+        const diffInDays = Math.floor(diffInHours / 24);
+        relativeTime = `${diffInDays} days ago`;
+      }
+
+      return {
+        ...device,
+        device_name: deviceName,
+        relative_time: relativeTime,
+        is_current_device: device.fcm_token === currentToken,
+      };
+    });
+
+    console.log(`✅ Processed ${role} devices:`, processedDevices);
+    return processedDevices;
+
   } catch (error) {
-    console.error("❌ Error fetching user devices:", error);
+    console.error(`❌ Failed to get ${role} devices:`, error);
     return [];
   }
-}
+};
 
 /**
  * Toggle device-specific push notifications

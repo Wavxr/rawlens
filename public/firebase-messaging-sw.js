@@ -1,135 +1,105 @@
-// Firebase Messaging Service Worker for background notifications
-// This file handles FCM notifications when the app is in the background
+// public/firebase-messaging-sw.js
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+import { getMessaging, onBackgroundMessage } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-messaging-sw.js";
 
-// Import Firebase scripts
-importScripts('https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging-compat.js');
-
-// Initialize Firebase in the service worker
-// Note: This config should match your Firebase project
+// ⚠️ Only public config here — safe to expose
 const firebaseConfig = {
-  apiKey: "your-api-key", // This will be replaced by the build process
-  authDomain: "your-project.firebaseapp.com",
-  projectId: "your-project-id",
-  storageBucket: "your-project.appspot.com",
-  messagingSenderId: "your-sender-id",
-  appId: "your-app-id",
-  measurementId: "your-measurement-id"
+  apiKey: "AIzaSyDxZokRZdGw3VpCDlfax0tueh1gg-dWbVM",
+  authDomain: "rawlens-ph.firebaseapp.com",
+  projectId: "rawlens-ph",
+  storageBucket: "rawlens-ph.firebasestorage.app",
+  messagingSenderId: "543168518515",
+  appId: "1:543168518515:web:0da88e50a7f99bf1b74d06",
+  measurementId: "G-9SX1CNBTCR"
 };
 
-firebase.initializeApp(firebaseConfig);
+const app = initializeApp(firebaseConfig);
+const messaging = getMessaging(app);
 
-// Retrieve Firebase Messaging object
-const messaging = firebase.messaging();
+// Handle background messages (when app is not in focus)
+onBackgroundMessage(messaging, (payload) => {
+  console.log('[firebase-messaging-sw.js] Received background message:', payload);
 
-// Handle background messages
-messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Received background message ', payload);
-  
-  // Customize notification here
+  const isAdmin = payload.data?.type === 'admin' || payload.data?.role === 'admin';
+
   const notificationTitle = payload.notification?.title || payload.data?.title || 'RawLens';
   const notificationOptions = {
     body: payload.notification?.body || payload.data?.body || 'You have a new notification',
-    icon: '/logo.png',
-    badge: '/logo.png',
+    icon: '/icon-192x192.png',
+    badge: isAdmin ? '/admin-badge-72x72.png' : '/icon-192x192.png',
     image: payload.notification?.image || payload.data?.image,
     data: {
       ...payload.data,
-      click_action: payload.notification?.click_action || payload.data?.click_action || '/'
+      click_action: payload.notification?.click_action || payload.data?.click_action || '/',
+      isAdmin
     },
     actions: [
-      {
-        action: 'open',
-        title: 'Open App'
-      },
-      {
-        action: 'dismiss',
-        title: 'Dismiss'
-      }
+      { action: 'open', title: isAdmin ? 'View Admin Panel' : 'Open App' },
+      { action: 'dismiss', title: 'Dismiss' }
     ],
-    requireInteraction: true,
-    vibrate: [200, 100, 200]
+    requireInteraction: isAdmin,
+    vibrate: [200, 100, 200],
+    tag: isAdmin ? 'admin' : 'default',
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
-// Add this to your service worker:
-
-self.addEventListener('push', function(event) {
-  console.log('📱 Push event received:', event);
-  
-  if (event.data) {
+// Data-only messages (no notification payload)
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+  try {
     const payload = event.data.json();
-    console.log('📱 Push payload:', payload);
-    
-    // Handle data-only messages
-    if (payload.data) {
-      const notificationData = payload.data;
-      
-      const notificationOptions = {
-        body: notificationData.body,
+    if (payload.data && !payload.notification) {
+      const data = payload.data;
+      const isAdmin = data.type === 'admin' || data.role === 'admin';
+
+      const options = {
+        body: data.body,
         icon: '/icon-192x192.png',
-        badge: '/icon-192x192.png',
-        image: notificationData.image || undefined,
-        data: {
-          click_action: notificationData.click_action,
-          type: notificationData.type,
-          ...notificationData
-        },
-        requireInteraction: true,
-        actions: [
-          {
-            action: 'open',
-            title: 'Open',
-            icon: '/icon-192x192.png'
-          }
-        ]
+        badge: isAdmin ? '/admin-badge-72x72.png' : '/icon-192x192.png',
+        data: { click_action: data.click_action, isAdmin, ...data },
+        requireInteraction: isAdmin,
+        tag: isAdmin ? 'admin' : 'default',
+        actions: [{ action: 'open', title: isAdmin ? 'View Admin Panel' : 'Open' }]
       };
 
       event.waitUntil(
-        self.registration.showNotification(
-          notificationData.title,
-          notificationOptions
-        )
+        self.registration.showNotification(data.title || 'RawLens', options)
       );
     }
+  } catch (err) {
+    console.error('Error parsing push payload:', err);
   }
 });
 
-// Handle notification clicks
-self.addEventListener('notificationclick', function(event) {
-  console.log('📱 Notification clicked:', event);
-  
+// Notification click handling
+self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  
+  if (event.action === 'dismiss') return;
+
+  const isAdmin = event.notification.data?.isAdmin || false;
   const clickAction = event.notification.data?.click_action || '/';
-  
+  const targetUrl = isAdmin && !clickAction.includes('/admin')
+    ? '/admin' + clickAction
+    : clickAction;
+
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true })
-      .then(function(clientList) {
-        // Check if app is already open
+      .then((clientList) => {
         for (const client of clientList) {
           if (client.url.includes(self.location.origin)) {
             client.focus();
             client.postMessage({
               type: 'NOTIFICATION_CLICK',
-              clickAction: clickAction,
+              clickAction: targetUrl,
+              isAdmin,
               data: event.notification.data
             });
             return;
           }
         }
-        
-        // If app is not open, open it
-        return clients.openWindow(clickAction);
+        return clients.openWindow(targetUrl);
       })
   );
-});
-
-// Handle push events (fallback)
-self.addEventListener('push', (event) => {
-  if (event.data) {
-    console.log('[firebase-messaging-sw.js] Push event received:', event.data.text());
-  }
 });

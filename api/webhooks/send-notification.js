@@ -36,7 +36,7 @@ export default async function handler(req, res) {
     }
 
     // ✅ 2. Extract notification payload
-    const { user_id, title, body, data, click_action } = req.body;
+    const { user_id, title, body, data, click_action, role = 'user' } = req.body;
 
     console.log('📨 Processing notification:', {
       user_id,
@@ -44,6 +44,7 @@ export default async function handler(req, res) {
       bodyLength: body?.length,
       hasData: !!data,
       hasClickAction: !!click_action,
+      role,
     });
 
     // ✅ 3. Forward to Supabase Edge Function
@@ -65,7 +66,7 @@ export default async function handler(req, res) {
         Authorization: `Bearer ${serviceRoleKey}`,
         'x-function-secret': functionSecret,
       },
-      body: JSON.stringify({ user_id, title, body, data, click_action }),
+      body: JSON.stringify({ user_id, title, body, data, click_action, role }),
     });
 
     const result = await response.json().catch(() => ({}));
