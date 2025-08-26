@@ -41,3 +41,4 @@ schema.md
 .github/task-requirements-serverside-email.md
 .github/to-do.md
 admin_push_notification_triggers.sql
+database_validation.sql
