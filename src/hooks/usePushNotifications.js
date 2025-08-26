@@ -3,20 +3,21 @@ import { useState, useEffect, useCallback } from 'react';
 import { 
   isPushSupported, 
   requestNotificationPermission, 
-  registerPushForUser 
+  registerUserPushNotifications,
+  registerAdminPushNotifications
 } from '../services/pushService';
 import { 
-  deactivateCurrentDeviceToken,
+  deactivateCurrentUserDeviceToken,
+  deactivateCurrentAdminDeviceToken,
   updatePushNotificationSetting,
   debouncedRefreshUserToken 
 } from '../utils/tokenLifecycle';
 
-export const usePushNotifications = (userId, role = 'user') => {
+export const usePushNotifications = (userId, userRole = 'user') => {
   const [isSupported, setIsSupported] = useState(false);
   const [permission, setPermission] = useState('default');
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Check browser support and current permission status
   useEffect(() => {
     setIsSupported(isPushSupported());
     if (isPushSupported()) {
@@ -24,19 +25,14 @@ export const usePushNotifications = (userId, role = 'user') => {
     }
   }, []);
 
-  // Refresh token on userId change (login/logout)
   useEffect(() => {
     if (userId && isSupported && Notification.permission === 'granted') {
-      debouncedRefreshUserToken(userId, role);
+      debouncedRefreshUserToken(userId, userRole);
     }
-  }, [userId, role, isSupported]);
+  }, [userId, userRole, isSupported]);
 
   /**
-   * Handle enabling push notifications
-   * - Checks current permission state
-   * - Requests permission if needed
-   * - Registers FCM token if permission granted
-   * - Updates user settings
+   * Context-aware push notification enabling
    */
   const enablePushNotifications = useCallback(async () => {
     if (!isSupported || !userId) {
@@ -46,7 +42,6 @@ export const usePushNotifications = (userId, role = 'user') => {
     setIsProcessing(true);
 
     try {
-      // Check current permission
       const currentPermission = Notification.permission;
       setPermission(currentPermission);
 
@@ -56,7 +51,6 @@ export const usePushNotifications = (userId, role = 'user') => {
       }
 
       if (currentPermission === 'default') {
-        // Request permission
         const granted = await requestNotificationPermission();
         setPermission(Notification.permission);
         
@@ -66,12 +60,15 @@ export const usePushNotifications = (userId, role = 'user') => {
         }
       }
 
-      // Permission is granted, register FCM token
-      const registered = await registerPushForUser(userId, role);
+      let registered;
+      if (userRole === 'admin') {
+        registered = await registerAdminPushNotifications(userId);
+      } else {
+        registered = await registerUserPushNotifications(userId);
+      }
       
       if (registered) {
-        // Update user settings
-        await updatePushNotificationSetting(userId, true, role);
+        await updatePushNotificationSetting(userId, true, userRole);
         setIsProcessing(false);
         return { success: true };
       } else {
@@ -79,33 +76,30 @@ export const usePushNotifications = (userId, role = 'user') => {
         return { success: false, reason: 'token_registration_failed' };
       }
     } catch (error) {
-      console.error('❌ Error enabling push notifications:', error);
+      console.error('Error enabling push notifications:', error);
       setIsProcessing(false);
       return { success: false, reason: 'error', error };
     }
-  }, [isSupported, userId, role]);
+  }, [isSupported, userId, userRole]);
 
   /**
-   * Handle disabling push notifications
-   * - Deactivates only the current device's FCM token
-   * - Updates user settings
+   * Context-aware push notification disabling
    */
   const disablePushNotifications = useCallback(async () => {
     if (!userId) return { success: false };
 
     setIsProcessing(true);
     try {
-      // Update settings (this will also call deactivateCurrentDeviceToken)
-      await updatePushNotificationSetting(userId, false, role);
+      await updatePushNotificationSetting(userId, false, userRole);
       
       setIsProcessing(false);
       return { success: true };
     } catch (error) {
-      console.error('❌ Error disabling push notifications:', error);
+      console.error('Error disabling push notifications:', error);
       setIsProcessing(false);
       return { success: false, error };
     }
-  }, [userId, role]);
+  }, [userId, userRole]);
 
   return {
     isSupported,

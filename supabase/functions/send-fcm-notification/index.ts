@@ -196,16 +196,23 @@ async function sendFCMToToken(
   );
 }
 
-// Mark token inactive in DB
-async function markTokenInactive(token: string) {
+// Mark token inactive in DB (table-specific)
+async function markUserTokenInactive(token: string) {
   await supabase
-    .from("fcm_tokens")
+    .from("user_fcm_tokens")
+    .update({ is_active: false })
+    .eq("fcm_token", token);
+}
+
+async function markAdminTokenInactive(token: string) {
+  await supabase
+    .from("admin_fcm_tokens")
     .update({ is_active: false })
     .eq("fcm_token", token);
 }
 
 // Detect invalid token error
-function isInvalidTokenError(error: any): boolean {
+function isInvalidTokenError(error: { error?: { status?: string } }): boolean {
   if (!error?.error?.status) return false;
   return (
     error.error.status === "UNREGISTERED" ||
@@ -248,7 +255,7 @@ serve(async (req: Request) => {
     // If auth header is provided, validate it
     if (authHeader && authHeader.startsWith("Bearer ")) {
       const token = authHeader.replace("Bearer ", "");
-      const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+      const { data: { user: _user }, error: userError } = await supabase.auth.getUser(token);
       if (userError && !functionSecret) {
         return new Response(
           JSON.stringify({ error: "Invalid authorization token" }), 
@@ -274,17 +281,24 @@ serve(async (req: Request) => {
       throw new Error('user_id is required for user notifications');
     }
 
-    let tokens;
+    interface TokenData {
+      id: string;
+      fcm_token: string;
+      platform: string;
+      device_info: string;
+      user_id?: string;
+    }
+
+    let tokens: TokenData[];
     let recipientInfo = "";
     
     if (role === "admin") {
       console.log("🔍 Starting admin token lookup...");
       
-      // Get all admin tokens
+      // Get all admin tokens from admin_fcm_tokens table
       const { data: adminTokens, error: tokensError } = await supabase
-        .from("fcm_tokens")
+        .from("admin_fcm_tokens")
         .select("id, fcm_token, platform, device_info, user_id")
-        .eq("role", "admin")
         .eq("is_active", true);
 
       if (tokensError) {
@@ -298,14 +312,13 @@ serve(async (req: Request) => {
       if (!adminTokens || adminTokens.length === 0) {
         tokens = [];
       } else {
-        // Get admin settings with push enabled
+        // Get admin settings with push enabled from admin_settings table
         const adminUserIds = adminTokens.map(t => t.user_id);
         console.log(`🔍 Looking for settings for user_ids:`, adminUserIds);
         
         const { data: enabledAdmins, error: settingsError } = await supabase
-          .from("settings")
-          .select("user_id, push_notifications, role")
-          .eq("role", "admin")
+          .from("admin_settings")
+          .select("user_id, push_notifications")
           .eq("push_notifications", true)
           .in("user_id", adminUserIds);
 
@@ -345,12 +358,11 @@ serve(async (req: Request) => {
         ? `USER: ${userInfo.first_name} ${userInfo.last_name} (${userInfo.email})`
         : `USER: ${user_id}`;
 
-      // For user notifications: existing logic
+      // For user notifications: check user_settings table
       const { data: settings, error: settingsError } = await supabase
-        .from("settings")
+        .from("user_settings")
         .select("push_notifications")
         .eq("user_id", user_id)
-        .eq("role", role)
         .single();
 
       if (settingsError && settingsError.code !== 'PGRST116') {
@@ -371,12 +383,11 @@ serve(async (req: Request) => {
         );
       }
 
-      // Get user tokens
+      // Get user tokens from user_fcm_tokens table
       const { data: userTokens, error: tokensError } = await supabase
-        .from("fcm_tokens")
+        .from("user_fcm_tokens")
         .select("id, fcm_token, platform, device_info")
         .eq("user_id", user_id)
-        .eq("role", role)
         .eq("is_active", true);
 
       if (tokensError) {
@@ -384,7 +395,7 @@ serve(async (req: Request) => {
         throw tokensError;
       }
       
-      tokens = userTokens;
+      tokens = userTokens || [];
     }
 
     if (!tokens || tokens.length === 0) {
@@ -426,7 +437,12 @@ serve(async (req: Request) => {
         } else {
           failCount++;
           if (isInvalidTokenError(result)) {
-            await markTokenInactive(fcm_token);
+            // Mark token inactive in appropriate table based on role
+            if (role === "admin") {
+              await markAdminTokenInactive(fcm_token);
+            } else {
+              await markUserTokenInactive(fcm_token);
+            }
           }
         }
         results.push({ token: fcm_token, success: response.ok, result });

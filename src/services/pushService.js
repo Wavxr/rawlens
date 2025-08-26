@@ -119,38 +119,34 @@ const tokenSaveCache = new Map();
 const TOKEN_SAVE_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
 
 /**
- * Save or update FCM token in Supabase with role awareness
- * Includes proper platform detection and device info with timestamp
+ * Save or update FCM token in user_fcm_tokens table
+ * @param {string} userId - User ID
+ * @param {string} token - FCM token
+ * @returns {Promise<Object>} Saved token data
  */
-export async function saveFcmToken(userId, token, role = 'user') {
+export async function saveUserFcmToken(userId, token) {
   if (!userId || !token) return;
 
-  // Check cache to prevent redundant saves
-  const cacheKey = `${userId}_${token}_${role}`;
+  const cacheKey = `${userId}_${token}_user`;
   const cachedSave = tokenSaveCache.get(cacheKey);
   if (
     cachedSave &&
     Date.now() - cachedSave.timestamp < TOKEN_SAVE_CACHE_DURATION
   ) {
-    console.log("💾 Using cached FCM token save result");
+    console.log("Using cached FCM token save result");
     return cachedSave.data;
   }
 
   try {
-    console.log("💾 Saving FCM token for user:", userId, "role:", role);
-
     const platform = detectPlatform();
     const deviceName = getDeviceName(navigator.userAgent, platform);
-    console.log("📱 Detected platform:", platform, "Device:", deviceName);
 
-    // DON'T deactivate other tokens - just upsert this specific token
     const { data, error } = await supabase
-      .from("fcm_tokens")
+      .from("user_fcm_tokens")
       .upsert(
         {
           user_id: userId,
           fcm_token: token,
-          role: role,
           platform: platform,
           is_active: true,
           device_info: {
@@ -168,13 +164,10 @@ export async function saveFcmToken(userId, token, role = 'user') {
       .single();
 
     if (error) {
-      console.error("❌ Error saving FCM token:", error);
+      console.error("Error saving user FCM token:", error);
       throw error;
     }
 
-    console.log("✅ FCM token saved successfully");
-
-    // Cache the result
     tokenSaveCache.set(cacheKey, {
       data,
       timestamp: Date.now(),
@@ -182,20 +175,82 @@ export async function saveFcmToken(userId, token, role = 'user') {
 
     return data;
   } catch (error) {
-    console.error("❌ Error saving FCM token:", error);
+    console.error("Error saving user FCM token:", error);
     throw error;
   }
 }
 
 /**
- * Get all FCM tokens for a user with device info and last activity
+ * Save or update FCM token in admin_fcm_tokens table
+ * @param {string} userId - User ID
+ * @param {string} token - FCM token
+ * @returns {Promise<Object>} Saved token data
  */
-export const getUserDevices = async (userId, role = 'user') => {
+export async function saveAdminFcmToken(userId, token) {
+  if (!userId || !token) return;
+
+  const cacheKey = `${userId}_${token}_admin`;
+  const cachedSave = tokenSaveCache.get(cacheKey);
+  if (
+    cachedSave &&
+    Date.now() - cachedSave.timestamp < TOKEN_SAVE_CACHE_DURATION
+  ) {
+    console.log("Using cached FCM token save result");
+    return cachedSave.data;
+  }
+
   try {
-    console.log(`🔍 Getting ${role} devices for user:`, userId);
-    
+    const platform = detectPlatform();
+    const deviceName = getDeviceName(navigator.userAgent, platform);
+
     const { data, error } = await supabase
-      .from('fcm_tokens')
+      .from("admin_fcm_tokens")
+      .upsert(
+        {
+          user_id: userId,
+          fcm_token: token,
+          platform: platform,
+          is_active: true,
+          device_info: {
+            userAgent: navigator.userAgent,
+            deviceName: deviceName,
+            timestamp: new Date().toISOString(),
+          },
+        },
+        {
+          onConflict: "user_id,fcm_token",
+          ignoreDuplicates: false,
+        }
+      )
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error saving admin FCM token:", error);
+      throw error;
+    }
+
+    tokenSaveCache.set(cacheKey, {
+      data,
+      timestamp: Date.now(),
+    });
+
+    return data;
+  } catch (error) {
+    console.error("Error saving admin FCM token:", error);
+    throw error;
+  }
+}
+
+/**
+ * Get all FCM tokens for a user from user_fcm_tokens table
+ * @param {string} userId - User ID
+ * @returns {Promise<Array>} Array of user devices
+ */
+export const getUserDevices = async (userId) => {
+  try {
+    const { data, error } = await supabase
+      .from('user_fcm_tokens')
       .select(`
         id,
         user_id,
@@ -203,24 +258,19 @@ export const getUserDevices = async (userId, role = 'user') => {
         platform,
         device_info,
         is_active,
-        role,
         created_at,
         updated_at
       `)
       .eq('user_id', userId)
-      .eq('role', role)
       .order('updated_at', { ascending: false });
 
     if (error) {
-      console.error(`❌ Error fetching ${role} devices:`, error);
+      console.error("Error fetching user devices:", error);
       throw error;
     }
 
-    console.log(`📱 Raw ${role} devices from DB:`, data);
-
     const currentToken = await getCurrentDeviceFcmToken();
 
-    // Process the devices to add helpful information
     const processedDevices = data.map(device => {
       const deviceInfo = device.device_info || {};
       const deviceName = deviceInfo.deviceName || 
@@ -249,49 +299,150 @@ export const getUserDevices = async (userId, role = 'user') => {
       };
     });
 
-    console.log(`✅ Processed ${role} devices:`, processedDevices);
     return processedDevices;
 
   } catch (error) {
-    console.error(`❌ Failed to get ${role} devices:`, error);
+    console.error("Failed to get user devices:", error);
     return [];
   }
 };
 
 /**
- * Toggle device-specific push notifications
+ * Get all FCM tokens for an admin from admin_fcm_tokens table
+ * @param {string} userId - User ID
+ * @returns {Promise<Array>} Array of admin devices
  */
-export async function toggleDeviceNotifications(userId, fcmToken, enabled, role = 'user') {
+export const getAdminDevices = async (userId) => {
+  try {
+    const { data, error } = await supabase
+      .from('admin_fcm_tokens')
+      .select(`
+        id,
+        user_id,
+        fcm_token,
+        platform,
+        device_info,
+        is_active,
+        created_at,
+        updated_at
+      `)
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false });
+
+    if (error) {
+      console.error("Error fetching admin devices:", error);
+      throw error;
+    }
+
+    const currentToken = await getCurrentDeviceFcmToken();
+
+    const processedDevices = data.map(device => {
+      const deviceInfo = device.device_info || {};
+      const deviceName = deviceInfo.deviceName || 
+                        deviceInfo.userAgent?.split(' ')[0] || 
+                        `${device.platform} Device`;
+      
+      const lastActive = new Date(device.updated_at);
+      const now = new Date();
+      const diffInHours = Math.abs(now - lastActive) / (1000 * 60 * 60);
+      
+      let relativeTime;
+      if (diffInHours < 1) {
+        relativeTime = 'just now';
+      } else if (diffInHours < 24) {
+        relativeTime = `${Math.floor(diffInHours)} hours ago`;
+      } else {
+        const diffInDays = Math.floor(diffInHours / 24);
+        relativeTime = `${diffInDays} days ago`;
+      }
+
+      return {
+        ...device,
+        device_name: deviceName,
+        relative_time: relativeTime,
+        is_current_device: device.fcm_token === currentToken,
+      };
+    });
+
+    return processedDevices;
+
+  } catch (error) {
+    console.error("Failed to get admin devices:", error);
+    return [];
+  }
+};
+
+/**
+ * Toggle device-specific push notifications for user context
+ * @param {string} userId - User ID
+ * @param {string} fcmToken - FCM token
+ * @param {boolean} enabled - Enable or disable notifications
+ * @returns {Promise<boolean>} Success status
+ */
+export async function toggleUserDeviceNotifications(userId, fcmToken, enabled) {
   if (!userId || !fcmToken) return false;
 
   try {
     const { error } = await supabase
-      .from("fcm_tokens")
+      .from("user_fcm_tokens")
       .update({ 
         is_active: enabled,
         updated_at: new Date().toISOString()
       })
       .eq("user_id", userId)
-      .eq("fcm_token", fcmToken)
-      .eq("role", role);
+      .eq("fcm_token", fcmToken);
 
     if (error) {
-      console.error("❌ Error toggling device notifications:", error);
+      console.error("Error toggling user device notifications:", error);
       return false;
     }
 
-    console.log(`✅ Device notifications ${enabled ? 'enabled' : 'disabled'} for token`);
+    console.log(`User device notifications ${enabled ? 'enabled' : 'disabled'} for token`);
     return true;
   } catch (error) {
-    console.error("❌ Error toggling device notifications:", error);
+    console.error("Error toggling user device notifications:", error);
     return false;
   }
 }
 
 /**
- * Update last activity timestamp for current device
+ * Toggle device-specific push notifications for admin context
+ * @param {string} userId - User ID
+ * @param {string} fcmToken - FCM token
+ * @param {boolean} enabled - Enable or disable notifications
+ * @returns {Promise<boolean>} Success status
  */
-export async function updateDeviceActivity(userId, role = 'user') {
+export async function toggleAdminDeviceNotifications(userId, fcmToken, enabled) {
+  if (!userId || !fcmToken) return false;
+
+  try {
+    const { error } = await supabase
+      .from("admin_fcm_tokens")
+      .update({ 
+        is_active: enabled,
+        updated_at: new Date().toISOString()
+      })
+      .eq("user_id", userId)
+      .eq("fcm_token", fcmToken);
+
+    if (error) {
+      console.error("Error toggling admin device notifications:", error);
+      return false;
+    }
+
+    console.log(`Admin device notifications ${enabled ? 'enabled' : 'disabled'} for token`);
+    return true;
+  } catch (error) {
+    console.error("Error toggling admin device notifications:", error);
+    return false;
+  }
+}
+
+/**
+ * Update last activity timestamp for current device in user context
+ * @param {string} userId - User ID
+ */
+export async function updateUserDeviceActivity(userId) {
   if (!userId) return;
 
   try {
@@ -299,7 +450,7 @@ export async function updateDeviceActivity(userId, role = 'user') {
     if (!currentToken) return;
 
     await supabase
-      .from("fcm_tokens")
+      .from("user_fcm_tokens")
       .update({
         device_info: {
           userAgent: navigator.userAgent,
@@ -309,12 +460,41 @@ export async function updateDeviceActivity(userId, role = 'user') {
         updated_at: new Date().toISOString()
       })
       .eq("user_id", userId)
-      .eq("fcm_token", currentToken)
-      .eq("role", role);
+      .eq("fcm_token", currentToken);
 
-    console.log("📱 Updated device activity timestamp");
+    console.log("Updated user device activity timestamp");
   } catch (error) {
-    console.error("❌ Error updating device activity:", error);
+    console.error("Error updating user device activity:", error);
+  }
+}
+
+/**
+ * Update last activity timestamp for current device in admin context
+ * @param {string} userId - User ID
+ */
+export async function updateAdminDeviceActivity(userId) {
+  if (!userId) return;
+
+  try {
+    const currentToken = await getFcmToken();
+    if (!currentToken) return;
+
+    await supabase
+      .from("admin_fcm_tokens")
+      .update({
+        device_info: {
+          userAgent: navigator.userAgent,
+          deviceName: getDeviceName(navigator.userAgent, detectPlatform()),
+          timestamp: new Date().toISOString(),
+        },
+        updated_at: new Date().toISOString()
+      })
+      .eq("user_id", userId)
+      .eq("fcm_token", currentToken);
+
+    console.log("Updated admin device activity timestamp");
+  } catch (error) {
+    console.error("Error updating admin device activity:", error);
   }
 }
 
@@ -340,28 +520,56 @@ function getRelativeTime(timestamp) {
   return `${Math.floor(diffDays / 30)}mo ago`;
 }
 
-// Add a function to deactivate only the current device's token
-export async function deactivateFcmToken(userId, token, role = 'user') {
+/**
+ * Deactivate FCM token in user_fcm_tokens table
+ * @param {string} userId - User ID
+ * @param {string} token - FCM token
+ */
+export async function deactivateUserFcmToken(userId, token) {
   if (!userId || !token) return;
 
   try {
-    console.log("🔇 Deactivating FCM token for user:", userId, "role:", role);
-
     const { error } = await supabase
-      .from("fcm_tokens")
+      .from("user_fcm_tokens")
       .update({ is_active: false })
       .eq("user_id", userId)
-      .eq("fcm_token", token)
-      .eq("role", role);
+      .eq("fcm_token", token);
 
     if (error) {
-      console.error("❌ Error deactivating FCM token:", error);
+      console.error("Error deactivating user FCM token:", error);
       throw error;
     }
 
-    console.log("✅ FCM token deactivated successfully");
+    console.log("User FCM token deactivated successfully");
   } catch (error) {
-    console.error("❌ Error deactivating FCM token:", error);
+    console.error("Error deactivating user FCM token:", error);
+    throw error;
+  }
+}
+
+/**
+ * Deactivate FCM token in admin_fcm_tokens table
+ * @param {string} userId - User ID
+ * @param {string} token - FCM token
+ */
+export async function deactivateAdminFcmToken(userId, token) {
+  if (!userId || !token) return;
+
+  try {
+    const { error } = await supabase
+      .from("admin_fcm_tokens")
+      .update({ is_active: false })
+      .eq("user_id", userId)
+      .eq("fcm_token", token);
+
+    if (error) {
+      console.error("Error deactivating admin FCM token:", error);
+      throw error;
+    }
+
+    console.log("Admin FCM token deactivated successfully");
+  } catch (error) {
+    console.error("Error deactivating admin FCM token:", error);
     throw error;
   }
 }
@@ -381,23 +589,83 @@ export async function getCurrentDeviceFcmToken() {
 }
 
 /**
- * Full flow: Check support, request permission, get token, send to Supabase
+ * Full flow for user: Check support, request permission, get token, send to user_fcm_tokens
+ * @param {string} userId - User ID
+ * @returns {Promise<boolean>} Success status
  */
-export async function registerPushForUser(userId, role = 'user') {
+export async function registerUserPushNotifications(userId) {
   if (!isPushSupported()) {
-    console.warn("⚠️ Push notifications not supported in this browser");
+    console.warn("Push notifications not supported in this browser");
     return false;
   }
 
   const granted = await requestNotificationPermission();
   if (!granted) {
-    // Handle gracefully in UI (e.g., show instructions to enable)
     return false;
   }
 
   const token = await getFcmToken();
   if (!token) return false;
 
-  await saveFcmToken(userId, token, role);
+  await saveUserFcmToken(userId, token);
   return true;
+}
+
+/**
+ * Full flow for admin: Check support, request permission, get token, send to admin_fcm_tokens
+ * @param {string} userId - User ID
+ * @returns {Promise<boolean>} Success status
+ */
+export async function registerAdminPushNotifications(userId) {
+  if (!isPushSupported()) {
+    console.warn("Push notifications not supported in this browser");
+    return false;
+  }
+
+  const granted = await requestNotificationPermission();
+  if (!granted) {
+    return false;
+  }
+
+  const token = await getFcmToken();
+  if (!token) return false;
+
+  await saveAdminFcmToken(userId, token);
+  return true;
+}
+
+/**
+ * Context-aware token saving based on current user role
+ * @param {string} userId - User ID
+ * @param {string} token - FCM token
+ * @param {string} userRole - User role ('user' or 'admin')
+ * @returns {Promise<Object>} Saved token data
+ */
+export async function saveFcmTokenForCurrentContext(userId, token, userRole) {
+  const platform = detectPlatform();
+  const deviceInfo = {
+    userAgent: navigator.userAgent,
+    deviceName: getDeviceName(navigator.userAgent, platform),
+    timestamp: new Date().toISOString(),
+  };
+  
+  if (userRole === 'admin') {
+    return await saveAdminFcmToken(userId, token, platform, deviceInfo);
+  } else {
+    return await saveUserFcmToken(userId, token, platform, deviceInfo);
+  }
+}
+
+/**
+ * Backward compatibility function for updateDeviceActivity
+ * Context-aware device activity update based on user role
+ * @param {string} userId - User ID
+ * @param {string} userRole - User role ('user' or 'admin')
+ */
+export async function updateDeviceActivity(userId, userRole = 'user') {
+  if (userRole === 'admin') {
+    await updateAdminDeviceActivity(userId);
+  } else {
+    await updateUserDeviceActivity(userId);
+  }
 }

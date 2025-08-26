@@ -1,265 +1,271 @@
-import { useState, useEffect } from 'react';
-import { Bell, Smartphone, Monitor, Tablet, RefreshCw } from 'lucide-react';
-import { getUserDevices, toggleDeviceNotifications, updateDeviceActivity } from '../services/pushService';
+import React, { useState, useEffect } from 'react';
 import useAuthStore from '../stores/useAuthStore';
 import useSettingsStore from '../stores/settingsStore';
-import { usePushNotifications } from '../hooks/usePushNotifications';
+import { getAdminDevices, toggleAdminDeviceNotifications, updateAdminDeviceActivity } from '../services/pushService';
+import { updateAdminPushNotificationSetting, isAdminPushNotificationEnabled } from '../utils/tokenLifecycle';
 
-const AdminNotificationSettings = () => {
+export default function AdminNotificationSettings() {
   const { user } = useAuthStore();
-  const { settings, update: updateSettings, currentRole } = useSettingsStore();
-  // ✅ Force admin role for this component
-  const { enablePushNotifications, disablePushNotifications } = usePushNotifications(user?.id, 'admin');
+  const { settings, loading: settingsLoading } = useSettingsStore();
+  const userId = user?.id;
 
   const [devices, setDevices] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingDevices, setLoadingDevices] = useState(false);
+  const [globalEnabled, setGlobalEnabled] = useState(false);
+  const [togglingGlobal, setTogglingGlobal] = useState(false);
+  const [togglingDevice, setTogglingDevice] = useState(new Set());
 
-  // single load function (no stale closure)
-  async function loadDevices() {
-    console.log('loadDevices called', { userId: user?.id, role: 'admin', settingsLoaded: !!settings });
-    if (!user?.id) {
-      console.log('Skipping loadDevices - missing user ID');
-      setDevices([]);
-      setLoading(false);
-      return;
+  useEffect(() => {
+    if (userId) {
+      loadNotificationSettings();
+      loadAdminDevices();
+      updateAdminDeviceActivity(userId);
     }
+  }, [userId]);
 
-    setLoading(true);
+  useEffect(() => {
+    if (settings) {
+      setGlobalEnabled(!!settings.push_notifications);
+    }
+  }, [settings]);
+
+  const loadNotificationSettings = async () => {
+    if (!userId) return;
+    
     try {
-      // Always use admin role for this component
-      const adminDevices = await getUserDevices(user.id, 'admin');
-      console.log('getUserDevices returned', adminDevices?.length);
-      setDevices(adminDevices || []);
+      const enabled = await isAdminPushNotificationEnabled(userId);
+      setGlobalEnabled(enabled);
     } catch (error) {
-      console.error('Failed to load admin devices:', error);
-      setDevices([]);
+      console.error('Error loading admin notification settings:', error);
+    }
+  };
+
+  const loadAdminDevices = async () => {
+    if (!userId) return;
+    
+    setLoadingDevices(true);
+    try {
+      const adminDevices = await getAdminDevices(userId);
+      setDevices(adminDevices);
+    } catch (error) {
+      console.error('Error loading admin devices:', error);
     } finally {
-      setLoading(false);
+      setLoadingDevices(false);
     }
-  }
+  };
 
-  // First effect: Update device activity when component mounts
-  useEffect(() => {
-    let cancelled = false;
-    async function initActivityThenLoad() {
-      if (!user?.id) return;
-      try {
-        // Update current device activity for admin role first
-        await updateDeviceActivity(user.id, 'admin');
-        if (!cancelled) {
-          // Then fetch devices so latest activity/token is reflected
-          await loadDevices();
-        }
-      } catch (e) {
-        console.warn('updateDeviceActivity failed (admin); proceeding to load devices anyway');
-        if (!cancelled) await loadDevices();
-      }
-    }
-    initActivityThenLoad();
-    return () => { cancelled = true; };
-  }, [user?.id]);
-
-  // Second effect: Reload devices when push setting flips (e.g., enabling registers token)
-  useEffect(() => {
-    if (!user?.id) return;
-    loadDevices();
-  }, [user?.id, settings?.push_notifications]);
-
-  // handlers stay simple and reuse loadDevices
   const handleGlobalToggle = async (enabled) => {
-    if (!user?.id) return;
+    if (!userId) return;
+    
+    setTogglingGlobal(true);
     try {
-      if (enabled) await enablePushNotifications();
-      else await disablePushNotifications();
-      await updateSettings(user.id, { push_notifications: enabled }, 'admin');
-      // refresh after a short delay to give token/save time
-      setTimeout(loadDevices, 800);
+      const success = await updateAdminPushNotificationSetting(userId, enabled);
+      if (success) {
+        setGlobalEnabled(enabled);
+        await loadAdminDevices();
+      }
     } catch (error) {
-      console.error('Failed to toggle admin notifications:', error);
+      console.error('Error updating admin global notifications:', error);
+    } finally {
+      setTogglingGlobal(false);
     }
   };
 
   const handleDeviceToggle = async (device, enabled) => {
-    if (!user?.id) return;
+    if (!userId) return;
+    
+    setTogglingDevice(prev => new Set([...prev, device.fcm_token]));
     try {
-      await toggleDeviceNotifications(user.id, device.fcm_token, enabled, 'admin');
-      await loadDevices();
+      const success = await toggleAdminDeviceNotifications(userId, device.fcm_token, enabled);
+      if (success) {
+        setDevices(prev => prev.map(d => 
+          d.fcm_token === device.fcm_token 
+            ? { ...d, is_active: enabled }
+            : d
+        ));
+      }
     } catch (error) {
-      console.error('Failed to toggle device notifications:', error);
+      console.error('Error updating admin device notifications:', error);
+    } finally {
+      setTogglingDevice(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(device.fcm_token);
+        return newSet;
+      });
     }
   };
 
-  const getDeviceIcon = (platform) => {
-    switch ((platform || '').toLowerCase()) {
-      case 'android':
-      case 'ios':
-        return <Smartphone className="h-5 w-5" />;
-      case 'web':
-        return <Monitor className="h-5 w-5" />;
-      default:
-        return <Tablet className="h-5 w-5" />;
+  const handleToggle = async (key, value) => {
+    if (!userId) return;
+    
+    try {
+      if (key === 'email_notifications') {
+        const settingsStore = useSettingsStore.getState();
+        await settingsStore.updateAdminSettings(userId, { [key]: value });
+      }
+    } catch (error) {
+      console.error(`Error updating admin ${key}:`, error);
     }
   };
 
-  const getPlatformLabel = (platform) => {
-    switch ((platform || '').toLowerCase()) {
-      case 'android': return 'Android';
-      case 'ios': return 'iOS';
-      case 'web': return 'Web Browser';
-      default: return 'Unknown Device';
+  const getPlatformIcon = (platform) => {
+    switch (platform) {
+      case 'android': return '🤖';
+      case 'ios': return '📱';
+      case 'mobile_web': return '📱';
+      case 'web': return '💻';
+      default: return '🔗';
     }
   };
 
-  if (!user?.id || currentRole !== 'admin') {
+  if (settingsLoading || loadingDevices) {
     return (
-      <div className="bg-white dark:bg-gray-800 shadow sm:rounded-lg p-6">
+      <div className="bg-white rounded-lg shadow p-6">
         <div className="animate-pulse">
           <div className="h-6 bg-gray-200 rounded w-1/3 mb-4"></div>
-          <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+          <div className="space-y-3">
+            <div className="h-4 bg-gray-200 rounded"></div>
+            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Global Admin Notifications Toggle */}
-      <div className="bg-white dark:bg-gray-800 shadow sm:rounded-lg p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center">
-            <Bell className="h-5 w-5 text-indigo-500 mr-2" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-              Admin Push Notifications
-            </h3>
+    <div className="bg-white rounded-lg shadow">
+      <div className="px-6 py-4 border-b border-gray-200">
+        <h3 className="text-lg font-medium text-gray-900 flex items-center">
+          Admin Notifications
+        </h3>
+      </div>
+
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+          <div className="flex-1">
+            <h4 className="text-sm font-medium text-gray-900">Global Admin Notifications</h4>
+            <p className="text-sm text-gray-500 mt-1">
+              Turn on/off all push notifications for admin functions
+            </p>
           </div>
           <button
-            onClick={() => handleGlobalToggle(!settings?.push_notifications)}
-            className={`${
-              settings?.push_notifications ? 'bg-indigo-600' : 'bg-gray-200'
-            } relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
+            onClick={() => handleGlobalToggle(!globalEnabled)}
+            disabled={togglingGlobal}
+            className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed ${
+              globalEnabled ? 'bg-blue-600' : 'bg-gray-200'
+            }`}
           >
             <span
-              className={`${
-                settings?.push_notifications ? 'translate-x-6' : 'translate-x-1'
-              } inline-block w-4 h-4 transform bg-white rounded-full transition-transform`}
+              className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${
+                globalEnabled ? 'translate-x-6' : 'translate-x-1'
+              }`}
             />
           </button>
         </div>
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          Receive push notifications for rental events, user verifications, and other admin activities.
-        </p>
-      </div>
 
-      {/* Device Management */}
-      <div className="bg-white dark:bg-gray-800 shadow sm:rounded-lg p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-            Admin Devices
-          </h3>
-        </div>
-        
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          Manage push notifications for each of your admin devices. You can enable or disable notifications per device.
-        </p>
-
-        {loading ? (
-          <div className="flex items-center justify-center py-8">
-            <RefreshCw className="h-6 w-6 animate-spin text-gray-400" />
-            <span className="ml-2 text-gray-600 dark:text-gray-400">Loading devices...</span>
-          </div>
-        ) : devices.length === 0 ? (
-          <div className="text-center py-8">
-            <Bell className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-            <p className="text-gray-600 dark:text-gray-400 mb-2">No admin devices found</p>
-            <p className="text-sm text-gray-500 dark:text-gray-500 mb-4">
-              {!settings?.push_notifications 
-                ? "Enable admin push notifications above to register this device."
-                : "Enable notifications on this device to see it listed here."
-              }
+        <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+          <div className="flex-1">
+            <h4 className="text-sm font-medium text-gray-900">Admin Email Notifications</h4>
+            <p className="text-sm text-gray-500 mt-1">
+              Receive emails about system events and admin activities
             </p>
-            {!settings?.push_notifications && (
-              <button
-                onClick={() => handleGlobalToggle(true)}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              >
-                <Bell className="h-4 w-4 mr-2" />
-                Enable Admin Notifications
-              </button>
-            )}
           </div>
-        ) : (
-          <div className="space-y-3">
-            {devices.map((device) => (
-              <div
-                key={device.id}
-                className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-600 rounded-lg"
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="flex-shrink-0 text-gray-400">
-                    {getDeviceIcon(device.platform)}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      {device.device_name}
-                      {device.is_current_device && (
-                        <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100">
-                          Current Device
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {getPlatformLabel(device.platform)} • Last active {device.relative_time}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">
-                    {device.is_active ? 'Enabled' : 'Disabled'}
-                  </span>
-                  <button
-                    onClick={() => handleDeviceToggle(device, !device.is_active)}
-                    className={`${
-                      device.is_active ? 'bg-indigo-600' : 'bg-gray-200'
-                    } relative inline-flex items-center h-5 rounded-full w-9 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
-                  >
-                    <span
-                      className={`${
-                        device.is_active ? 'translate-x-5' : 'translate-x-1'
-                      } inline-block w-3 h-3 transform bg-white rounded-full transition-transform`}
-                    />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+          <button
+            onClick={() => handleToggle('email_notifications', !settings?.email_notifications)}
+            className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+              settings?.email_notifications ? 'bg-blue-600' : 'bg-gray-200'
+            }`}
+          >
+            <span
+              className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${
+                settings?.email_notifications ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
 
-      {/* Notification Types */}
-      <div className="bg-white dark:bg-gray-800 shadow sm:rounded-lg p-6">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
-          Admin Notification Types
-        </h3>
-        <div className="space-y-3">
-          {[
-            { title: 'New Rental Requests', description: 'When users submit new rental requests' },
-            { title: 'Rental Status Changes', description: 'When rentals become active or overdue' },
-            { title: 'Delivery Updates', description: 'When items are delivered or returned' },
-            { title: 'User Verification Appeals', description: 'When users appeal verification decisions' },
-            { title: 'Return Reminders', description: 'When users need to return equipment' },
-          ].map((type, index) => (
-            <div key={index} className="flex items-start space-x-3 text-sm">
-              <div className="flex-shrink-0 w-2 h-2 bg-indigo-500 rounded-full mt-2"></div>
-              <div>
-                <p className="font-medium text-gray-900 dark:text-gray-100">{type.title}</p>
-                <p className="text-gray-600 dark:text-gray-400">{type.description}</p>
+        <div>
+          <h4 className="text-sm font-medium text-gray-900 mb-3">This Device</h4>
+          {devices.filter(device => device.is_current_device).map(device => (
+            <div key={device.fcm_token} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg bg-blue-50">
+              <div className="flex items-center space-x-3">
+                <span className="text-xl">{getPlatformIcon(device.platform)}</span>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">
+                    {device.device_name} <span className="text-blue-600">(current)</span>
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Last active: {device.relative_time}
+                  </p>
+                </div>
               </div>
+              <button
+                onClick={() => handleDeviceToggle(device, !device.is_active)}
+                disabled={!globalEnabled || togglingDevice.has(device.fcm_token)}
+                className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed ${
+                  device.is_active && globalEnabled ? 'bg-blue-600' : 'bg-gray-200'
+                }`}
+              >
+                <span
+                  className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${
+                    device.is_active && globalEnabled ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
             </div>
           ))}
         </div>
+
+        {devices.filter(device => !device.is_current_device).length > 0 && (
+          <div>
+            <h4 className="text-sm font-medium text-gray-900 mb-3">Other Devices</h4>
+            <div className="space-y-2">
+              {devices.filter(device => !device.is_current_device).map(device => (
+                <div key={device.fcm_token} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <span className="text-xl">{getPlatformIcon(device.platform)}</span>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        {device.device_name}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Last active: {device.relative_time}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleDeviceToggle(device, !device.is_active)}
+                    disabled={!globalEnabled || togglingDevice.has(device.fcm_token)}
+                    className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed ${
+                      device.is_active && globalEnabled ? 'bg-blue-600' : 'bg-gray-200'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${
+                        device.is_active && globalEnabled ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!globalEnabled && (
+          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p className="text-sm text-yellow-800">
+              Enable global admin notifications to manage devices individually.
+            </p>
+          </div>
+        )}
+
+        {devices.length === 0 && (
+          <div className="text-center py-6 text-gray-500">
+            <p className="text-sm">No admin devices found with push notification support.</p>
+          </div>
+        )}
       </div>
     </div>
   );
-};
-
-export default AdminNotificationSettings;
+}

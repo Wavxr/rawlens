@@ -1,7 +1,7 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import useAuthStore from '../stores/useAuthStore';
 import { useEffect } from 'react';
-import { registerPushForUser, isPushSupported } from '../services/pushService';
+import { registerUserPushNotifications, registerAdminPushNotifications, isPushSupported } from '../services/pushService';
 import PushMigrationPrompt from './PushMigrationPrompt';
 
 const ProtectedRoute = ({ requiredRole }) => {
@@ -9,13 +9,17 @@ const ProtectedRoute = ({ requiredRole }) => {
 
   useEffect(() => {
     const userId = session?.user?.id;
-    if (userId && isPushSupported()) {
+    if (userId && isPushSupported() && role) {
       // Auto-register FCM token if permission is already granted
       if (Notification.permission === 'granted') {
-        registerPushForUser(userId).catch(console.error);
+        if (role === 'admin') {
+          registerAdminPushNotifications(userId).catch(console.error);
+        } else {
+          registerUserPushNotifications(userId).catch(console.error);
+        }
       }
     }
-  }, [session?.user?.id]);
+  }, [session?.user?.id, role]);
 
   if (loading || roleLoading) return <div>Loading... protected</div>;
   if (!session) return <Navigate to="/login" replace />;

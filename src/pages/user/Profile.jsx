@@ -10,7 +10,7 @@ import useSettingsStore from "../../stores/settingsStore";
 import { usePushNotifications } from "../../hooks/usePushNotifications";
 import PushPermissionModal from "../../components/PushPermissionModal";
 import PushNotificationPrompt from "../../components/PushNotificationPrompt";
-import NotificationSettings from "../../components/NotificationSettings";
+import UserNotificationSettings from "../../components/UserNotificationSettings";
 import { Settings } from "lucide-react";
 
 export default function Profile() {
@@ -637,7 +637,7 @@ export default function Profile() {
               </div>
             </div>
             <div className="p-8">
-              <NotificationSettings />
+              <UserNotificationSettings />
             </div>
           </form>
         </div>

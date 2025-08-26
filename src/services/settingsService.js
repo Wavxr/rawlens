@@ -1,20 +1,18 @@
 import { supabase } from "../lib/supabaseClient";
 
 /**
- * Get user settings with role awareness
+ * Get user settings from user_settings table
  * @param {string} userId - User ID
- * @param {string} role - User role ('user' or 'admin')
  * @returns {Promise<Object|null>} Settings object or null if not found
  */
-export const getUserSettings = async (userId, role = 'user') => {
+export const getUserSettings = async (userId) => {
   const { data, error } = await supabase
-    .from("settings")
+    .from("user_settings")
     .select("*")
     .eq("user_id", userId)
-    .eq("role", role)
     .single();
 
-  if (error && error.code !== 'PGRST116') { // Ignore 'not found' error, will be handled as null
+  if (error && error.code !== 'PGRST116') {
     console.error("Error fetching user settings:", error);
     throw error;
   }
@@ -22,23 +20,38 @@ export const getUserSettings = async (userId, role = 'user') => {
 };
 
 /**
- * Update user settings with role awareness
+ * Get admin settings from admin_settings table
+ * @param {string} userId - User ID
+ * @returns {Promise<Object|null>} Settings object or null if not found
+ */
+export const getAdminSettings = async (userId) => {
+  const { data, error } = await supabase
+    .from("admin_settings")
+    .select("*")
+    .eq("user_id", userId)
+    .single();
+
+  if (error && error.code !== 'PGRST116') {
+    console.error("Error fetching admin settings:", error);
+    throw error;
+  }
+  return data;
+};
+
+/**
+ * Update user settings in user_settings table
  * @param {string} userId - User ID
  * @param {Object} updates - Settings to update
- * @param {string} role - User role ('user' or 'admin')
  * @returns {Promise<Object>} Updated settings object
  */
-export const updateUserSettings = async (userId, updates, role = 'user') => {
-  // First check if settings exist
-  const existing = await getUserSettings(userId, role);
+export const updateUserSettings = async (userId, updates) => {
+  const existing = await getUserSettings(userId);
   
   if (existing) {
-    // Update existing settings
     const { data, error } = await supabase
-      .from("settings")
+      .from("user_settings")
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq("user_id", userId)
-      .eq("role", role)
       .select()
       .single();
 
@@ -48,57 +61,94 @@ export const updateUserSettings = async (userId, updates, role = 'user') => {
     }
     return data;
   } else {
-    // Create new settings if they don't exist
-    return await createUserSettings(userId, role, updates);
+    return await createUserSettings(userId, updates);
   }
 };
 
 /**
- * Create new user settings with role awareness
+ * Update admin settings in admin_settings table
  * @param {string} userId - User ID
- * @param {string} role - User role ('user' or 'admin')
+ * @param {Object} updates - Settings to update
+ * @returns {Promise<Object>} Updated settings object
+ */
+export const updateAdminSettings = async (userId, updates) => {
+  const existing = await getAdminSettings(userId);
+  
+  if (existing) {
+    const { data, error } = await supabase
+      .from("admin_settings")
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq("user_id", userId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error updating admin settings:", error);
+      throw error;
+    }
+    return data;
+  } else {
+    return await createAdminSettings(userId, updates);
+  }
+};
+
+/**
+ * Create new user settings in user_settings table
+ * @param {string} userId - User ID
  * @param {Object} initialSettings - Initial settings to set
  * @returns {Promise<Object>} Created settings object
  */
-export const createUserSettings = async (userId, role = 'user', initialSettings = {}) => {
-    const { data, error } = await supabase
-        .from('settings')
-        .insert({ 
-          user_id: userId, 
-          role: role,
-          ...initialSettings
-        })
-        .select()
-        .single();
-    
-    if (error) {
-        console.error("Error creating user settings:", error);
-        throw error;
-    }
-    return data;
-}
-
-/**
- * Get settings for both user and admin roles
- * @param {string} userId - User ID
- * @returns {Promise<Object>} Object with user and admin settings
- */
-export const getAllUserSettings = async (userId) => {
+export const createUserSettings = async (userId, initialSettings = {}) => {
   const { data, error } = await supabase
-    .from("settings")
-    .select("*")
-    .eq("user_id", userId);
-
+    .from('user_settings')
+    .insert({ 
+      user_id: userId, 
+      ...initialSettings
+    })
+    .select()
+    .single();
+  
   if (error) {
-    console.error("Error fetching all user settings:", error);
+    console.error("Error creating user settings:", error);
     throw error;
   }
+  return data;
+};
 
-  const userSettings = data?.find(s => s.role === 'user') || null;
-  const adminSettings = data?.find(s => s.role === 'admin') || null;
+/**
+ * Create new admin settings in admin_settings table
+ * @param {string} userId - User ID
+ * @param {Object} initialSettings - Initial settings to set
+ * @returns {Promise<Object>} Created settings object
+ */
+export const createAdminSettings = async (userId, initialSettings = {}) => {
+  const { data, error } = await supabase
+    .from('admin_settings')
+    .insert({ 
+      user_id: userId, 
+      ...initialSettings
+    })
+    .select()
+    .single();
+  
+  if (error) {
+    console.error("Error creating admin settings:", error);
+    throw error;
+  }
+  return data;
+};
 
-  return {
-    user: userSettings,
-    admin: adminSettings
-  };
-}
+/**
+ * Context-aware saving based on current user role
+ * @param {string} userId - User ID
+ * @param {Object} updates - Settings to update
+ * @param {string} userRole - User role ('user' or 'admin')
+ * @returns {Promise<Object>} Updated settings object
+ */
+export const saveSettingsForCurrentContext = async (userId, updates, userRole) => {
+  if (userRole === 'admin') {
+    return await updateAdminSettings(userId, updates);
+  } else {
+    return await updateUserSettings(userId, updates);
+  }
+};

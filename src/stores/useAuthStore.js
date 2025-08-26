@@ -69,7 +69,6 @@ const useAuthStore = create((set, get) => ({
   fetchUserData: async (userId) => {
     set({ roleLoading: true });
     try {
-      // Fetch role and full profile in one go
       const { data, error } = await supabase
         .from('users')
         .select('*')
@@ -81,21 +80,25 @@ const useAuthStore = create((set, get) => ({
         set({ role: 'user', profile: null });
       } else {
         set({ role: data.role || 'user', profile: data });
-        useUserStore.getState().setUser(data); // Also update the userStore
+        useUserStore.getState().setUser(data);
       }
 
-      // Fetch settings and set theme (role-aware)
-      const currentRole = get().role; // Get the current role from the store
-      await useSettingsStore.getState().init(userId, currentRole || 'user');
+      const currentRole = get().role;
+      if (currentRole === 'admin') {
+        await useSettingsStore.getState().initAdminSettings(userId);
+      } else {
+        await useSettingsStore.getState().initUserSettings(userId);
+      }
+      
       const settings = useSettingsStore.getState().settings;
       if (settings) {
         useThemeStore.getState().setTheme(settings.dark_mode);
       }
     } catch (e) {
       console.error('Critical error in fetchUserData:', e);
-      set({ role: 'user', profile: null }); // Set a default state
+      set({ role: 'user', profile: null });
     } finally {
-      set({ roleLoading: false }); // Ensure roleLoading is always set to false
+      set({ roleLoading: false });
     }
   },
 

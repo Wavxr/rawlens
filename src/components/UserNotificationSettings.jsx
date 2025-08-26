@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import useAuthStore from '../stores/useAuthStore';
 import useSettingsStore from '../stores/settingsStore';
-import { getUserDevices, toggleDeviceNotifications, updateDeviceActivity } from '../services/pushService';
-import { updatePushNotificationSetting, isPushNotificationEnabled } from '../utils/tokenLifecycle';
+import { getUserDevices, toggleUserDeviceNotifications, updateUserDeviceActivity } from '../services/pushService';
+import { updateUserPushNotificationSetting, isUserPushNotificationEnabled } from '../utils/tokenLifecycle';
 
-export default function NotificationSettings({ userRole = 'user' }) {
-  const { user, role: authRole } = useAuthStore();
+export default function UserNotificationSettings() {
+  const { user } = useAuthStore();
   const { settings, loading: settingsLoading } = useSettingsStore();
   const userId = user?.id;
-  const currentRole = userRole || authRole || 'user';
 
   const [devices, setDevices] = useState([]);
   const [loadingDevices, setLoadingDevices] = useState(false);
@@ -16,16 +15,14 @@ export default function NotificationSettings({ userRole = 'user' }) {
   const [togglingGlobal, setTogglingGlobal] = useState(false);
   const [togglingDevice, setTogglingDevice] = useState(new Set());
 
-  // Load initial data
   useEffect(() => {
     if (userId) {
       loadNotificationSettings();
       loadUserDevices();
-      updateDeviceActivity(userId, currentRole); // Update current device activity
+      updateUserDeviceActivity(userId);
     }
-  }, [userId, currentRole]);
+  }, [userId]);
 
-  // Update global setting when settings change
   useEffect(() => {
     if (settings) {
       setGlobalEnabled(!!settings.push_notifications);
@@ -36,7 +33,7 @@ export default function NotificationSettings({ userRole = 'user' }) {
     if (!userId) return;
     
     try {
-      const enabled = await isPushNotificationEnabled(userId, currentRole);
+      const enabled = await isUserPushNotificationEnabled(userId);
       setGlobalEnabled(enabled);
     } catch (error) {
       console.error('Error loading notification settings:', error);
@@ -48,7 +45,7 @@ export default function NotificationSettings({ userRole = 'user' }) {
     
     setLoadingDevices(true);
     try {
-      const userDevices = await getUserDevices(userId, currentRole);
+      const userDevices = await getUserDevices(userId);
       setDevices(userDevices);
     } catch (error) {
       console.error('Error loading user devices:', error);
@@ -62,10 +59,9 @@ export default function NotificationSettings({ userRole = 'user' }) {
     
     setTogglingGlobal(true);
     try {
-      const success = await updatePushNotificationSetting(userId, enabled, currentRole);
+      const success = await updateUserPushNotificationSetting(userId, enabled);
       if (success) {
         setGlobalEnabled(enabled);
-        // Reload devices to see updated status
         await loadUserDevices();
       }
     } catch (error) {
@@ -80,9 +76,8 @@ export default function NotificationSettings({ userRole = 'user' }) {
     
     setTogglingDevice(prev => new Set([...prev, device.fcm_token]));
     try {
-      const success = await toggleDeviceNotifications(userId, device.fcm_token, enabled, currentRole);
+      const success = await toggleUserDeviceNotifications(userId, device.fcm_token, enabled);
       if (success) {
-        // Update local state
         setDevices(prev => prev.map(d => 
           d.fcm_token === device.fcm_token 
             ? { ...d, is_active: enabled }
@@ -104,11 +99,9 @@ export default function NotificationSettings({ userRole = 'user' }) {
     if (!userId) return;
     
     try {
-      // Handle email notifications and other settings
       if (key === 'email_notifications') {
-        // Use settings store for email notifications
         const settingsStore = useSettingsStore.getState();
-        await settingsStore.update(userId, { [key]: value }, currentRole);
+        await settingsStore.updateUserSettings(userId, { [key]: value });
       }
     } catch (error) {
       console.error(`Error updating ${key}:`, error);
@@ -141,18 +134,16 @@ export default function NotificationSettings({ userRole = 'user' }) {
 
   return (
     <div className="bg-white rounded-lg shadow">
-      {/* Header */}
       <div className="px-6 py-4 border-b border-gray-200">
         <h3 className="text-lg font-medium text-gray-900 flex items-center">
-          ⚡ Notifications
+          Notifications
         </h3>
       </div>
 
       <div className="p-6 space-y-6">
-        {/* Global Notifications */}
         <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
           <div className="flex-1">
-            <h4 className="text-sm font-medium text-gray-900">🔘 Global Notifications</h4>
+            <h4 className="text-sm font-medium text-gray-900">Global Notifications</h4>
             <p className="text-sm text-gray-500 mt-1">
               Turn on/off all push notifications for this account
             </p>
@@ -172,10 +163,9 @@ export default function NotificationSettings({ userRole = 'user' }) {
           </button>
         </div>
 
-        {/* Email Notifications */}
         <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
           <div className="flex-1">
-            <h4 className="text-sm font-medium text-gray-900">📧 Email Notifications</h4>
+            <h4 className="text-sm font-medium text-gray-900">Email Notifications</h4>
             <p className="text-sm text-gray-500 mt-1">
               Receive emails about your rentals and account activity
             </p>
@@ -194,9 +184,8 @@ export default function NotificationSettings({ userRole = 'user' }) {
           </button>
         </div>
 
-        {/* Current Device */}
         <div>
-          <h4 className="text-sm font-medium text-gray-900 mb-3">📱 This Device</h4>
+          <h4 className="text-sm font-medium text-gray-900 mb-3">This Device</h4>
           {devices.filter(device => device.is_current_device).map(device => (
             <div key={device.fcm_token} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg bg-blue-50">
               <div className="flex items-center space-x-3">
@@ -227,10 +216,9 @@ export default function NotificationSettings({ userRole = 'user' }) {
           ))}
         </div>
 
-        {/* Other Devices */}
         {devices.filter(device => !device.is_current_device).length > 0 && (
           <div>
-            <h4 className="text-sm font-medium text-gray-900 mb-3">💻 Other Devices</h4>
+            <h4 className="text-sm font-medium text-gray-900 mb-3">Other Devices</h4>
             <div className="space-y-2">
               {devices.filter(device => !device.is_current_device).map(device => (
                 <div key={device.fcm_token} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
@@ -264,11 +252,10 @@ export default function NotificationSettings({ userRole = 'user' }) {
           </div>
         )}
 
-        {/* Help Text */}
         {!globalEnabled && (
           <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
             <p className="text-sm text-yellow-800">
-              💡 Enable global notifications to manage devices individually.
+              Enable global notifications to manage devices individually.
             </p>
           </div>
         )}
