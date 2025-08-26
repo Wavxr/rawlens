@@ -14,13 +14,29 @@ export default function UserDashboard() {
   const handleLogout = async () => {
     try {
       console.log('🎯 User handleLogout starting...');
-      await logout();
+      
+      // Always clear local state first as a safety measure
+      const authStore = useAuthStore.getState();
+      
+      await authStore.logout();
       console.log('✅ User logout completed, navigating...');
-      navigate("/login");
+      
+      // Force navigation with replace to prevent back button issues
+      navigate("/login", { replace: true });
+      
+      // Additional cleanup - clear any remaining browser state
+      if ('caches' in window) {
+        caches.keys().then(names => {
+          names.forEach(name => caches.delete(name));
+        });
+      }
+      
     } catch (error) {
       console.error('❌ User logout error:', error);
-      // Still navigate on error to ensure user gets to login page
-      navigate("/login");
+      
+      // Force cleanup and navigation even on error
+      useAuthStore.getState().forceCleanup();
+      navigate("/login", { replace: true });
     }
   }
 
