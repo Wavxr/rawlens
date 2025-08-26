@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import useAuthStore from '../stores/useAuthStore';
 import useSettingsStore from '../stores/settingsStore';
-import { getAdminDevices, toggleAdminDeviceNotifications, updateAdminDeviceActivity } from '../services/pushService';
+import { getAdminDevices, toggleAdminDeviceNotifications, updateAdminDeviceActivity, deduplicateAdminTokens } from '../services/pushService';
 import { updateAdminPushNotificationSetting, isAdminPushNotificationEnabled } from '../utils/tokenLifecycle';
 
 export default function AdminNotificationSettings() {
@@ -20,6 +20,9 @@ export default function AdminNotificationSettings() {
       loadNotificationSettings();
       loadAdminDevices();
       updateAdminDeviceActivity(userId);
+      
+      // Clean up any duplicate devices on component mount
+      deduplicateAdminTokens(userId);
     }
   }, [userId]);
 

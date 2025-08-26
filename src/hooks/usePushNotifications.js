@@ -7,8 +7,6 @@ import {
   registerAdminPushNotifications
 } from '../services/pushService';
 import { 
-  deactivateCurrentUserDeviceToken,
-  deactivateCurrentAdminDeviceToken,
   updatePushNotificationSetting,
   debouncedRefreshUserToken 
 } from '../utils/tokenLifecycle';

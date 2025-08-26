@@ -5,9 +5,9 @@ import useAuthStore from '../stores/useAuthStore';
 import { supabase } from '../lib/supabaseClient';
 
 const PushMigrationPrompt = () => {
-  const { session } = useAuthStore();
+  const { session, role } = useAuthStore();
   const userId = session?.user?.id;
-  const userRole = 'user'; // Default role for regular users
+  const userRole = role || 'user'; // Use actual user role from auth store
   
   const {
     isSupported,
@@ -40,11 +40,11 @@ const PushMigrationPrompt = () => {
       const currentPermission = Notification.permission;
       
       // Check if user already has FCM tokens in database
+      const tableName = userRole === 'admin' ? 'admin_fcm_tokens' : 'user_fcm_tokens';
       const { data: tokens } = await supabase
-        .from('fcm_tokens')
+        .from(tableName)
         .select('id')
         .eq('user_id', userId)
-        .eq('role', userRole)
         .eq('is_active', true)
         .limit(1);
 

@@ -2,6 +2,7 @@
 import { supabase } from "../lib/supabaseClient";
 import { messaging } from "../lib/firebaseClient";
 import { getToken } from "firebase/messaging";
+import { generateDeviceId, getBrowserType, getDeviceName } from "../utils/deviceFingerprint";
 
 /**
  * Check if push notifications are supported in this browser
@@ -76,9 +77,9 @@ function detectPlatform() {
 }
 
 /**
- * Generate a human-readable device name from user agent
+ * Generate a human-readable device name from user agent (legacy function)
  */
-function getDeviceName(userAgent, platform) {
+function getLegacyDeviceName(userAgent, platform) {
   const ua = userAgent.toLowerCase();
   
   // Browser detection
@@ -119,7 +120,7 @@ const tokenSaveCache = new Map();
 const TOKEN_SAVE_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
 
 /**
- * Save or update FCM token in user_fcm_tokens table
+ * Save or update FCM token in user_fcm_tokens table with device deduplication
  * @param {string} userId - User ID
  * @param {string} token - FCM token
  * @returns {Promise<Object>} Saved token data
@@ -138,30 +139,69 @@ export async function saveUserFcmToken(userId, token) {
   }
 
   try {
+    const deviceId = generateDeviceId();
+    const browserType = getBrowserType();
+    const deviceName = getDeviceName();
     const platform = detectPlatform();
-    const deviceName = getDeviceName(navigator.userAgent, platform);
 
-    const { data, error } = await supabase
+    // Check if device already exists
+    const { data: existingDevice } = await supabase
       .from("user_fcm_tokens")
-      .upsert(
-        {
+      .select("*")
+      .eq("user_id", userId)
+      .eq("device_id", deviceId)
+      .eq("is_active", true)
+      .single();
+
+    let data, error;
+
+    if (existingDevice) {
+      // Update existing device with new token
+      const result = await supabase
+        .from("user_fcm_tokens")
+        .update({
+          fcm_token: token,
+          last_seen: new Date().toISOString(),
+          device_info: {
+            ...existingDevice.device_info,
+            deviceName,
+            userAgent: navigator.userAgent,
+            timestamp: new Date().toISOString(),
+          },
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existingDevice.id)
+        .select()
+        .single();
+
+      data = result.data;
+      error = result.error;
+      console.log(`Updated user device token: ${deviceName}`);
+    } else {
+      // Create new device entry
+      const result = await supabase
+        .from("user_fcm_tokens")
+        .insert({
           user_id: userId,
           fcm_token: token,
           platform: platform,
+          device_id: deviceId,
+          browser_type: browserType,
+          last_seen: new Date().toISOString(),
           is_active: true,
           device_info: {
             userAgent: navigator.userAgent,
-            deviceName: deviceName,
+            deviceName,
             timestamp: new Date().toISOString(),
           },
-        },
-        {
-          onConflict: "user_id,fcm_token",
-          ignoreDuplicates: false,
-        }
-      )
-      .select()
-      .single();
+        })
+        .select()
+        .single();
+
+      data = result.data;
+      error = result.error;
+      console.log(`Created new user device: ${deviceName}`);
+    }
 
     if (error) {
       console.error("Error saving user FCM token:", error);
@@ -200,30 +240,69 @@ export async function saveAdminFcmToken(userId, token) {
   }
 
   try {
+    const deviceId = generateDeviceId();
+    const browserType = getBrowserType();
+    const deviceName = getDeviceName();
     const platform = detectPlatform();
-    const deviceName = getDeviceName(navigator.userAgent, platform);
 
-    const { data, error } = await supabase
+    // Check if device already exists
+    const { data: existingDevice } = await supabase
       .from("admin_fcm_tokens")
-      .upsert(
-        {
+      .select("*")
+      .eq("user_id", userId)
+      .eq("device_id", deviceId)
+      .eq("is_active", true)
+      .single();
+
+    let data, error;
+
+    if (existingDevice) {
+      // Update existing device with new token
+      const result = await supabase
+        .from("admin_fcm_tokens")
+        .update({
+          fcm_token: token,
+          last_seen: new Date().toISOString(),
+          device_info: {
+            ...existingDevice.device_info,
+            deviceName,
+            userAgent: navigator.userAgent,
+            timestamp: new Date().toISOString(),
+          },
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existingDevice.id)
+        .select()
+        .single();
+
+      data = result.data;
+      error = result.error;
+      console.log(`Updated admin device token: ${deviceName}`);
+    } else {
+      // Create new device entry
+      const result = await supabase
+        .from("admin_fcm_tokens")
+        .insert({
           user_id: userId,
           fcm_token: token,
           platform: platform,
+          device_id: deviceId,
+          browser_type: browserType,
+          last_seen: new Date().toISOString(),
           is_active: true,
           device_info: {
             userAgent: navigator.userAgent,
-            deviceName: deviceName,
+            deviceName,
             timestamp: new Date().toISOString(),
           },
-        },
-        {
-          onConflict: "user_id,fcm_token",
-          ignoreDuplicates: false,
-        }
-      )
-      .select()
-      .single();
+        })
+        .select()
+        .single();
+
+      data = result.data;
+      error = result.error;
+      console.log(`Created new admin device: ${deviceName}`);
+    }
 
     if (error) {
       console.error("Error saving admin FCM token:", error);
@@ -454,7 +533,7 @@ export async function updateUserDeviceActivity(userId) {
       .update({
         device_info: {
           userAgent: navigator.userAgent,
-          deviceName: getDeviceName(navigator.userAgent, detectPlatform()),
+          deviceName: getLegacyDeviceName(navigator.userAgent, detectPlatform()),
           timestamp: new Date().toISOString(),
         },
         updated_at: new Date().toISOString()
@@ -484,7 +563,7 @@ export async function updateAdminDeviceActivity(userId) {
       .update({
         device_info: {
           userAgent: navigator.userAgent,
-          deviceName: getDeviceName(navigator.userAgent, detectPlatform()),
+          deviceName: getLegacyDeviceName(navigator.userAgent, detectPlatform()),
           timestamp: new Date().toISOString(),
         },
         updated_at: new Date().toISOString()
@@ -642,17 +721,10 @@ export async function registerAdminPushNotifications(userId) {
  * @returns {Promise<Object>} Saved token data
  */
 export async function saveFcmTokenForCurrentContext(userId, token, userRole) {
-  const platform = detectPlatform();
-  const deviceInfo = {
-    userAgent: navigator.userAgent,
-    deviceName: getDeviceName(navigator.userAgent, platform),
-    timestamp: new Date().toISOString(),
-  };
-  
   if (userRole === 'admin') {
-    return await saveAdminFcmToken(userId, token, platform, deviceInfo);
+    return await saveAdminFcmToken(userId, token);
   } else {
-    return await saveUserFcmToken(userId, token, platform, deviceInfo);
+    return await saveUserFcmToken(userId, token);
   }
 }
 
@@ -667,5 +739,93 @@ export async function updateDeviceActivity(userId, userRole = 'user') {
     await updateAdminDeviceActivity(userId);
   } else {
     await updateUserDeviceActivity(userId);
+  }
+}
+
+/**
+ * Clean up duplicate tokens for the same user device
+ * @param {string} userId - User ID
+ */
+export async function deduplicateUserTokens(userId) {
+  if (!userId) return;
+
+  try {
+    const { data: devices } = await supabase
+      .from('user_fcm_tokens')
+      .select('*')
+      .eq('user_id', userId)
+      .order('last_seen', { ascending: false });
+
+    if (!devices || devices.length <= 1) return;
+
+    // Group by device_id and keep most recent
+    const deviceGroups = new Map();
+    devices.forEach(device => {
+      const deviceId = device.device_id || 'unknown';
+      if (!deviceGroups.has(deviceId)) {
+        deviceGroups.set(deviceId, []);
+      }
+      deviceGroups.get(deviceId).push(device);
+    });
+
+    // Deactivate duplicates
+    for (const [deviceId, deviceList] of deviceGroups) {
+      if (deviceList.length > 1) {
+        const duplicates = deviceList.slice(1); // Keep first (most recent)
+        for (const duplicate of duplicates) {
+          await supabase
+            .from('user_fcm_tokens')
+            .update({ is_active: false })
+            .eq('id', duplicate.id);
+        }
+        console.log(`Deactivated ${duplicates.length} duplicate user tokens for device ${deviceId}`);
+      }
+    }
+  } catch (error) {
+    console.error('Error deduplicating user tokens:', error);
+  }
+}
+
+/**
+ * Clean up duplicate tokens for the same admin device
+ * @param {string} userId - User ID
+ */
+export async function deduplicateAdminTokens(userId) {
+  if (!userId) return;
+
+  try {
+    const { data: devices } = await supabase
+      .from('admin_fcm_tokens')
+      .select('*')
+      .eq('user_id', userId)
+      .order('last_seen', { ascending: false });
+
+    if (!devices || devices.length <= 1) return;
+
+    // Group by device_id and keep most recent
+    const deviceGroups = new Map();
+    devices.forEach(device => {
+      const deviceId = device.device_id || 'unknown';
+      if (!deviceGroups.has(deviceId)) {
+        deviceGroups.set(deviceId, []);
+      }
+      deviceGroups.get(deviceId).push(device);
+    });
+
+    // Deactivate duplicates
+    for (const [deviceId, deviceList] of deviceGroups) {
+      if (deviceList.length > 1) {
+        const duplicates = deviceList.slice(1); // Keep first (most recent)
+        for (const duplicate of duplicates) {
+          await supabase
+            .from('admin_fcm_tokens')
+            .update({ is_active: false })
+            .eq('id', duplicate.id);
+        }
+        console.log(`Deactivated ${duplicates.length} duplicate admin tokens for device ${deviceId}`);
+      }
+    }
+  } catch (error) {
+    console.error('Error deduplicating admin tokens:', error);
   }
 }

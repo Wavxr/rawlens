@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import useAuthStore from '../stores/useAuthStore';
 import useSettingsStore from '../stores/settingsStore';
-import { getUserDevices, toggleUserDeviceNotifications, updateUserDeviceActivity } from '../services/pushService';
+import { getUserDevices, toggleUserDeviceNotifications, updateUserDeviceActivity, deduplicateUserTokens } from '../services/pushService';
 import { updateUserPushNotificationSetting, isUserPushNotificationEnabled } from '../utils/tokenLifecycle';
 
 export default function UserNotificationSettings() {
@@ -20,6 +20,9 @@ export default function UserNotificationSettings() {
       loadNotificationSettings();
       loadUserDevices();
       updateUserDeviceActivity(userId);
+      
+      // Clean up any duplicate devices on component mount
+      deduplicateUserTokens(userId);
     }
   }, [userId]);
 

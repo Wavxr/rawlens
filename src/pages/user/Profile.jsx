@@ -1,17 +1,13 @@
 import { useEffect, useState, useRef } from "react";
-import { getUserById, updateUserProfile } from "../../services/userService";
+import { updateUserProfile } from "../../services/userService";
 import { getSignedUrl } from "../../services/storageService";
 import { subscribeToUserUpdates, unsubscribeFromUserUpdates } from "../../services/realtimeService";
-import { supabase } from "../../lib/supabaseClient";
-import { getFcmToken } from "../../services/pushService";
 import useAuthStore from "../../stores/useAuthStore";
-import useUserStore from "../../stores/userStore";
 import useSettingsStore from "../../stores/settingsStore";
 import { usePushNotifications } from "../../hooks/usePushNotifications";
 import PushPermissionModal from "../../components/PushPermissionModal";
 import PushNotificationPrompt from "../../components/PushNotificationPrompt";
 import UserNotificationSettings from "../../components/UserNotificationSettings";
-import { Settings } from "lucide-react";
 
 export default function Profile() {
     // State Management
@@ -36,7 +32,6 @@ export default function Profile() {
     disablePushNotifications 
   } = usePushNotifications(userId, userRole);
   const [showPushModal, setShowPushModal] = useState(false);
-  const [devicePushEnabled, setDevicePushEnabled] = useState(true);
 
   // Video Recording State
   const [showVideoModal, setShowVideoModal] = useState(false);
@@ -99,35 +94,6 @@ export default function Profile() {
       };
     }
   }, [userId]);
-
-  // Load device-specific push setting on mount
-  useEffect(() => {
-    const loadDevicePushSetting = async () => {
-      if (userId && isPushSupported) {
-        // Check if current device has an active FCM token
-        const currentToken = await getFcmToken();
-        if (currentToken) {
-          try {
-            const { data, error } = await supabase
-              .from('fcm_tokens')
-              .select('is_active')
-              .eq('user_id', userId)
-              .eq('role', userRole)
-              .eq('fcm_token', currentToken)
-              .single();
-            
-            if (!error && data) {
-              setDevicePushEnabled(data.is_active);
-            }
-          } catch (err) {
-            console.warn('Could not check device FCM token status');
-          }
-        }
-      }
-    };
-    
-    loadDevicePushSetting();
-  }, [userId, isPushSupported]);
 
   // Media URL Generator
   async function refreshMediaUrls(data) {

@@ -1,6 +1,13 @@
 // src/utils/tokenLifecycle.js
 import { supabase } from '../lib/supabaseClient';
-import { getFcmToken, saveUserFcmToken, saveAdminFcmToken, isPushSupported } from '../services/pushService';
+import { 
+  getFcmToken, 
+  saveUserFcmToken, 
+  saveAdminFcmToken, 
+  isPushSupported,
+  deduplicateUserTokens,
+  deduplicateAdminTokens
+} from '../services/pushService';
 
 // Cache to prevent redundant token refreshes
 const tokenRefreshCache = new Map();
@@ -37,6 +44,9 @@ export async function refreshUserToken(userId) {
     }
 
     await saveUserFcmToken(userId, newToken);
+    
+    // Clean up any duplicates after saving
+    await deduplicateUserTokens(userId);
     
     const result = { success: true, timestamp: Date.now() };
     tokenRefreshCache.set(cacheKey, result);
@@ -83,6 +93,9 @@ export async function refreshAdminToken(userId) {
     }
 
     await saveAdminFcmToken(userId, newToken);
+    
+    // Clean up any duplicates after saving
+    await deduplicateAdminTokens(userId);
     
     const result = { success: true, timestamp: Date.now() };
     tokenRefreshCache.set(cacheKey, result);
