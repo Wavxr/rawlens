@@ -150,7 +150,6 @@ export async function saveUserFcmToken(userId, token) {
       .select("*")
       .eq("user_id", userId)
       .eq("device_id", deviceId)
-      .eq("is_active", true)
       .single();
 
     let data, error;
@@ -162,6 +161,8 @@ export async function saveUserFcmToken(userId, token) {
         .update({
           fcm_token: token,
           last_seen: new Date().toISOString(),
+          mapped: true,
+          enabled: true,
           device_info: {
             ...existingDevice.device_info,
             deviceName,
@@ -188,7 +189,8 @@ export async function saveUserFcmToken(userId, token) {
           device_id: deviceId,
           browser_type: browserType,
           last_seen: new Date().toISOString(),
-          is_active: true,
+          mapped: true,
+          enabled: true,
           device_info: {
             userAgent: navigator.userAgent,
             deviceName,
@@ -251,7 +253,6 @@ export async function saveAdminFcmToken(userId, token) {
       .select("*")
       .eq("user_id", userId)
       .eq("device_id", deviceId)
-      .eq("is_active", true)
       .single();
 
     let data, error;
@@ -263,6 +264,8 @@ export async function saveAdminFcmToken(userId, token) {
         .update({
           fcm_token: token,
           last_seen: new Date().toISOString(),
+          mapped: true,
+          enabled: true,
           device_info: {
             ...existingDevice.device_info,
             deviceName,
@@ -289,7 +292,8 @@ export async function saveAdminFcmToken(userId, token) {
           device_id: deviceId,
           browser_type: browserType,
           last_seen: new Date().toISOString(),
-          is_active: true,
+          mapped: true,
+          enabled: true,
           device_info: {
             userAgent: navigator.userAgent,
             deviceName,
@@ -336,7 +340,8 @@ export const getUserDevices = async (userId) => {
         fcm_token,
         platform,
         device_info,
-        is_active,
+        mapped,
+        enabled,
         created_at,
         updated_at
       `)
@@ -401,7 +406,8 @@ export const getAdminDevices = async (userId) => {
         fcm_token,
         platform,
         device_info,
-        is_active,
+        mapped,
+        enabled,
         created_at,
         updated_at
       `)
@@ -465,7 +471,7 @@ export async function toggleUserDeviceNotifications(userId, fcmToken, enabled) {
     const { error } = await supabase
       .from("user_fcm_tokens")
       .update({ 
-        is_active: enabled,
+        enabled: enabled,
         updated_at: new Date().toISOString()
       })
       .eq("user_id", userId)
@@ -498,7 +504,7 @@ export async function toggleAdminDeviceNotifications(userId, fcmToken, enabled) 
     const { error } = await supabase
       .from("admin_fcm_tokens")
       .update({ 
-        is_active: enabled,
+        enabled: enabled,
         updated_at: new Date().toISOString()
       })
       .eq("user_id", userId)
@@ -610,7 +616,7 @@ export async function deactivateUserFcmToken(userId, token) {
   try {
     const { error } = await supabase
       .from("user_fcm_tokens")
-      .update({ is_active: false })
+      .update({ mapped: false })
       .eq("user_id", userId)
       .eq("fcm_token", token);
 
@@ -637,7 +643,7 @@ export async function deactivateAdminFcmToken(userId, token) {
   try {
     const { error } = await supabase
       .from("admin_fcm_tokens")
-      .update({ is_active: false })
+      .update({ mapped: false })
       .eq("user_id", userId)
       .eq("fcm_token", token);
 
@@ -775,7 +781,7 @@ export async function deduplicateUserTokens(userId) {
         for (const duplicate of duplicates) {
           await supabase
             .from('user_fcm_tokens')
-            .update({ is_active: false })
+            .update({ mapped: false })
             .eq('id', duplicate.id);
         }
         console.log(`Deactivated ${duplicates.length} duplicate user tokens for device ${deviceId}`);
@@ -819,7 +825,7 @@ export async function deduplicateAdminTokens(userId) {
         for (const duplicate of duplicates) {
           await supabase
             .from('admin_fcm_tokens')
-            .update({ is_active: false })
+            .update({ mapped: false })
             .eq('id', duplicate.id);
         }
         console.log(`Deactivated ${duplicates.length} duplicate admin tokens for device ${deviceId}`);

@@ -4,8 +4,6 @@ import { getSignedUrl } from "../../services/storageService";
 import { subscribeToUserUpdates, unsubscribeFromUserUpdates } from "../../services/realtimeService";
 import useAuthStore from "../../stores/useAuthStore";
 import useSettingsStore from "../../stores/settingsStore";
-import { usePushNotifications } from "../../hooks/usePushNotifications";
-import PushPermissionModal from "../../components/PushPermissionModal";
 import PushNotificationPrompt from "../../components/PushNotificationPrompt";
 import UserNotificationSettings from "../../components/UserNotificationSettings";
 
@@ -22,16 +20,6 @@ export default function Profile() {
   const [savingPersonal, setSavingPersonal] = useState(false);
   const [appealing, setAppealing] = useState(false);
   const [error, setError] = useState(null);
-
-  // Push Notification State
-  const { 
-    isSupported: isPushSupported, 
-    permission: pushPermission, 
-    isProcessing: isPushProcessing, 
-    enablePushNotifications, 
-    disablePushNotifications 
-  } = usePushNotifications(userId, userRole);
-  const [showPushModal, setShowPushModal] = useState(false);
 
   // Video Recording State
   const [showVideoModal, setShowVideoModal] = useState(false);
@@ -118,64 +106,9 @@ export default function Profile() {
   // Toggle Handler
   const handleToggle = async (key, value) => {
     if (!userId) return;
-
-    // Special handling for push notifications
-    if (key === 'push_notifications') {
-      await handlePushToggle(value);
-      return;
-    }
-
-    // Handle other settings normally
+    
+    // Handle settings normally
     await updateSettings(userId, { [key]: value });
-  };
-
-  /**
-   * Handle push notification toggle with proper permission checking
-   */
-  const handlePushToggle = async (enablePush) => {
-    if (!isPushSupported) {
-      alert('Push notifications are not supported in this browser.');
-      return;
-    }
-
-    if (enablePush) {
-      // User wants to enable push notifications
-      const result = await enablePushNotifications();
-      
-      if (result.success) {
-        // Successfully enabled, update device state
-        setDevicePushEnabled(true);
-      } else if (result.reason === 'permission_denied') {
-        // Permission denied, show modal with instructions
-        setShowPushModal(true);
-      } else {
-        // Other error
-        console.error('Failed to enable push notifications:', result);
-        alert('Failed to enable push notifications. Please try again later.');
-      }
-    } else {
-      // User wants to disable push notifications
-      const result = await disablePushNotifications();
-      
-      if (result.success) {
-        // Successfully disabled, update device state
-        setDevicePushEnabled(false);
-      } else {
-        console.error('Failed to disable push notifications:', result);
-        alert('Failed to update notification settings. Please try again later.');
-      }
-    }
-  };
-
-  /**
-   * Handle retry from permission modal
-   */
-  const handlePushRetryFromModal = async () => {
-    setShowPushModal(false);
-    // Wait a bit for modal to close, then try again
-    setTimeout(async () => {
-      await handlePushToggle(true);
-    }, 300);
   };
 
   // Form Handlers
@@ -713,14 +646,6 @@ export default function Profile() {
           </div>
         </div>
       )}
-      
-      {/* Push Permission Modal */}
-      <PushPermissionModal
-        isOpen={showPushModal}
-        onClose={() => setShowPushModal(false)}
-        permissionState={pushPermission}
-        onRetry={handlePushRetryFromModal}
-      />
     </>
   );
 }

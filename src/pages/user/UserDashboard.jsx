@@ -12,8 +12,16 @@ export default function UserDashboard() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   const handleLogout = async () => {
-    await logout()
-    navigate("/login")
+    try {
+      console.log('🎯 User handleLogout starting...');
+      await logout();
+      console.log('✅ User logout completed, navigating...');
+      navigate("/login");
+    } catch (error) {
+      console.error('❌ User logout error:', error);
+      // Still navigate on error to ensure user gets to login page
+      navigate("/login");
+    }
   }
 
   const navItems = [

@@ -175,7 +175,7 @@ export async function cleanupInactiveUserTokens(userId, olderThanDays = 30) {
       .from('user_fcm_tokens')
       .delete()
       .eq('user_id', userId)
-      .eq('is_active', false)
+      .eq('mapped', false)
       .lt('updated_at', cutoffDate.toISOString());
 
     if (error) {
@@ -204,7 +204,7 @@ export async function cleanupInactiveAdminTokens(userId, olderThanDays = 30) {
       .from('admin_fcm_tokens')
       .delete()
       .eq('user_id', userId)
-      .eq('is_active', false)
+      .eq('mapped', false)
       .lt('updated_at', cutoffDate.toISOString());
 
     if (error) {
@@ -235,7 +235,7 @@ export async function deactivateCurrentUserDeviceToken(userId) {
     const { error } = await supabase
       .from('user_fcm_tokens')
       .update({ 
-        is_active: false, 
+        mapped: false, 
         updated_at: new Date().toISOString() 
       })
       .eq('user_id', userId)
@@ -272,7 +272,7 @@ export async function deactivateCurrentAdminDeviceToken(userId) {
     const { error } = await supabase
       .from('admin_fcm_tokens')
       .update({ 
-        is_active: false, 
+        mapped: false, 
         updated_at: new Date().toISOString() 
       })
       .eq('user_id', userId)
@@ -303,7 +303,7 @@ export async function deactivateAllUserTokens(userId) {
     const { error } = await supabase
       .from('user_fcm_tokens')
       .update({ 
-        is_active: false, 
+        enabled: false, 
         updated_at: new Date().toISOString() 
       })
       .eq('user_id', userId);
@@ -333,7 +333,7 @@ export async function deactivateAllAdminTokens(userId) {
     const { error } = await supabase
       .from('admin_fcm_tokens')
       .update({ 
-        is_active: false, 
+        enabled: false, 
         updated_at: new Date().toISOString() 
       })
       .eq('user_id', userId);
@@ -364,7 +364,8 @@ export async function getUserActiveTokenCount(userId) {
       .from('user_fcm_tokens')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
-      .eq('is_active', true);
+      .eq('mapped', true)
+      .eq('enabled', true);
 
     if (error) {
       console.error('Failed to get user token count:', error);
@@ -391,7 +392,8 @@ export async function getAdminActiveTokenCount(userId) {
       .from('admin_fcm_tokens')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
-      .eq('is_active', true);
+      .eq('mapped', true)
+      .eq('enabled', true);
 
     if (error) {
       console.error('Failed to get admin token count:', error);
@@ -588,5 +590,153 @@ export async function updatePushNotificationSetting(userId, enabled, userRole = 
     return await updateAdminPushNotificationSetting(userId, enabled);
   } else {
     return await updateUserPushNotificationSetting(userId, enabled);
+  }
+}
+
+/**
+ * Mark current device's user token as mapped=true for login (session mapping)
+ * @param {string} userId - User ID
+ * @returns {Promise<boolean>} Success status
+ */
+export async function mapUserTokenOnLogin(userId) {
+  if (!userId) return false;
+
+  try {
+    const currentToken = await getFcmToken();
+    if (!currentToken) {
+      console.warn('No FCM token found for current device');
+      return false;
+    }
+
+    const { error } = await supabase
+      .from('user_fcm_tokens')
+      .update({ 
+        mapped: true,
+        updated_at: new Date().toISOString() 
+      })
+      .eq('user_id', userId)
+      .eq('fcm_token', currentToken);
+
+    if (error) {
+      console.error('Failed to map user token on login:', error);
+      return false;
+    }
+
+    console.log('Successfully mapped user token on login for current device');
+    return true;
+  } catch (error) {
+    console.error('Error mapping user token on login:', error);
+    return false;
+  }
+}
+
+/**
+ * Mark current device's admin token as mapped=true for login (session mapping)
+ * @param {string} userId - User ID
+ * @returns {Promise<boolean>} Success status
+ */
+export async function mapAdminTokenOnLogin(userId) {
+  if (!userId) return false;
+
+  try {
+    const currentToken = await getFcmToken();
+    if (!currentToken) {
+      console.warn('No FCM token found for current device');
+      return false;
+    }
+
+    const { error } = await supabase
+      .from('admin_fcm_tokens')
+      .update({ 
+        mapped: true,
+        updated_at: new Date().toISOString() 
+      })
+      .eq('user_id', userId)
+      .eq('fcm_token', currentToken);
+
+    if (error) {
+      console.error('Failed to map admin token on login:', error);
+      return false;
+    }
+
+    console.log('Successfully mapped admin token on login for current device');
+    return true;
+  } catch (error) {
+    console.error('Error mapping admin token on login:', error);
+    return false;
+  }
+}
+
+/**
+ * Mark current device's user token as mapped=false for logout (session unmapping)
+ * @param {string} userId - User ID
+ * @returns {Promise<boolean>} Success status
+ */
+export async function unmapUserTokenOnLogout(userId) {
+  if (!userId) return false;
+
+  try {
+    const currentToken = await getFcmToken();
+    if (!currentToken) {
+      console.warn('No FCM token found for current device');
+      return false;
+    }
+
+    const { error } = await supabase
+      .from('user_fcm_tokens')
+      .update({ 
+        mapped: false,
+        updated_at: new Date().toISOString() 
+      })
+      .eq('user_id', userId)
+      .eq('fcm_token', currentToken);
+
+    if (error) {
+      console.error('Failed to unmap user token on logout:', error);
+      return false;
+    }
+
+    console.log('Successfully unmapped user token on logout for current device');
+    return true;
+  } catch (error) {
+    console.error('Error unmapping user token on logout:', error);
+    return false;
+  }
+}
+
+/**
+ * Mark current device's admin token as mapped=false for logout (session unmapping)
+ * @param {string} userId - User ID
+ * @returns {Promise<boolean>} Success status
+ */
+export async function unmapAdminTokenOnLogout(userId) {
+  if (!userId) return false;
+
+  try {
+    const currentToken = await getFcmToken();
+    if (!currentToken) {
+      console.warn('No FCM token found for current device');
+      return false;
+    }
+
+    const { error } = await supabase
+      .from('admin_fcm_tokens')
+      .update({ 
+        mapped: false,
+        updated_at: new Date().toISOString() 
+      })
+      .eq('user_id', userId)
+      .eq('fcm_token', currentToken);
+
+    if (error) {
+      console.error('Failed to unmap admin token on logout:', error);
+      return false;
+    }
+
+    console.log('Successfully unmapped admin token on logout for current device');
+    return true;
+  } catch (error) {
+    console.error('Error unmapping admin token on logout:', error);
+    return false;
   }
 }

@@ -37,8 +37,16 @@ export default function AdminDashboard() {
   const [userMenuOpen, setUserMenuOpen] = useState(false)
 
   const handleLogout = async () => {
-    await logout()
-    navigate("/login")
+    try {
+      console.log('🎯 Admin handleLogout starting...');
+      await logout();
+      console.log('✅ Admin logout completed, navigating...');
+      navigate("/login");
+    } catch (error) {
+      console.error('❌ Admin logout error:', error);
+      // Still navigate on error to ensure user gets to login page
+      navigate("/login");
+    }
   }
 
   // Main navigation items for desktop sidebar

@@ -200,14 +200,14 @@ async function sendFCMToToken(
 async function markUserTokenInactive(token: string) {
   await supabase
     .from("user_fcm_tokens")
-    .update({ is_active: false })
+    .update({ mapped: false })
     .eq("fcm_token", token);
 }
 
 async function markAdminTokenInactive(token: string) {
   await supabase
     .from("admin_fcm_tokens")
-    .update({ is_active: false })
+    .update({ mapped: false })
     .eq("fcm_token", token);
 }
 
@@ -299,7 +299,8 @@ serve(async (req: Request) => {
       const { data: adminTokens, error: tokensError } = await supabase
         .from("admin_fcm_tokens")
         .select("id, fcm_token, platform, device_info, user_id")
-        .eq("is_active", true);
+        .eq("mapped", true)
+        .eq("enabled", true);
 
       if (tokensError) {
         console.error("❌ Error fetching admin FCM tokens:", tokensError);
@@ -388,7 +389,8 @@ serve(async (req: Request) => {
         .from("user_fcm_tokens")
         .select("id, fcm_token, platform, device_info")
         .eq("user_id", user_id)
-        .eq("is_active", true);
+        .eq("mapped", true)
+        .eq("enabled", true);
 
       if (tokensError) {
         console.error("❌ Error fetching user FCM tokens:", tokensError);
