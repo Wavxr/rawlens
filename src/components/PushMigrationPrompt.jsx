@@ -45,7 +45,7 @@ const PushMigrationPrompt = () => {
         .from(tableName)
         .select('id')
         .eq('user_id', userId)
-        .eq('is_active', true)
+        .eq('enabled', true)  // ✅ Change from 'is_active' to 'enabled'
         .limit(1);
 
       // If user has permission granted but no FCM tokens, show migration prompt

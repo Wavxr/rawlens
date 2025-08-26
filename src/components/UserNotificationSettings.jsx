@@ -83,7 +83,7 @@ export default function UserNotificationSettings() {
       if (success) {
         setDevices(prev => prev.map(d => 
           d.fcm_token === device.fcm_token 
-            ? { ...d, is_active: enabled }
+            ? { ...d, enabled: enabled }
             : d
         ));
       }
@@ -203,15 +203,15 @@ export default function UserNotificationSettings() {
                 </div>
               </div>
               <button
-                onClick={() => handleDeviceToggle(device, !device.is_active)}
+                onClick={() => handleDeviceToggle(device, !device.enabled)}  
                 disabled={!globalEnabled || togglingDevice.has(device.fcm_token)}
                 className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed ${
-                  device.is_active && globalEnabled ? 'bg-blue-600' : 'bg-gray-200'
+                  device.enabled && globalEnabled ? 'bg-blue-600' : 'bg-gray-200' 
                 }`}
               >
                 <span
                   className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${
-                    device.is_active && globalEnabled ? 'translate-x-6' : 'translate-x-1'
+                    device.enabled && globalEnabled ? 'translate-x-6' : 'translate-x-1' 
                   }`}
                 />
               </button>
@@ -237,15 +237,15 @@ export default function UserNotificationSettings() {
                     </div>
                   </div>
                   <button
-                    onClick={() => handleDeviceToggle(device, !device.is_active)}
+                    onClick={() => handleDeviceToggle(device, !device.enabled)} 
                     disabled={!globalEnabled || togglingDevice.has(device.fcm_token)}
                     className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed ${
-                      device.is_active && globalEnabled ? 'bg-blue-600' : 'bg-gray-200'
+                      device.enabled && globalEnabled ? 'bg-blue-600' : 'bg-gray-200' 
                     }`}
                   >
                     <span
                       className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${
-                        device.is_active && globalEnabled ? 'translate-x-6' : 'translate-x-1'
+                        device.enabled && globalEnabled ? 'translate-x-6' : 'translate-x-1'  
                       }`}
                     />
                   </button>
