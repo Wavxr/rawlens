@@ -178,7 +178,12 @@ export async function getRentalsByStatus(status = null) {
     const { data, error } = await query;
     if (error) throw error;
 
-    return { data, error: null };
+    // Filter out temporary bookings with pending status
+    const filteredData = data.filter(rental =>
+      !(rental.booking_type === 'temporary' && rental.rental_status === 'pending')
+    );
+
+    return { data: filteredData, error: null };
   } catch (error) {
     console.error("Error in getRentalsByStatus:", error);
     return { data: null, error: error.message || "Failed to fetch rentals by status." };
