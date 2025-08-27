@@ -4,8 +4,10 @@ import { getAllCameras } from '../../services/cameraService';
 import { getCalendarBookings, getPotentialBookings } from '../../services/bookingService';
 import BookingCalendarGrid from '../../components/bookings/BookingCalendarGrid';
 import PotentialBookingsSidebar from '../../components/bookings/PotentialBookingsSidebar';
+import MobilePotentialBookingsPanel from '../../components/bookings/MobilePotentialBookingsPanel';
 import CreateBookingModal from '../../components/bookings/CreateBookingModal';
 import BookingDetailsModal from '../../components/bookings/BookingDetailsModal';
+import EditPotentialBookingModal from '../../components/bookings/EditPotentialBookingModal';
 
 // Date helper functions
 function startOfMonth(date) {
@@ -77,6 +79,7 @@ const Bookings = () => {
     booking: null,
     camera: null
   });
+  const [editingBooking, setEditingBooking] = useState(null);
 
   // Calculate date range for current month
   const monthStartIso = useMemo(() => formatISODate(startOfMonth(monthDate)), [monthDate]);
@@ -128,6 +131,11 @@ const Bookings = () => {
       camera,
       dateRange: { startDate, endDate }
     });
+    // Close mobile panel when date is selected
+    if (window.innerWidth < 1024) { // lg breakpoint
+      setShowPotentialSidebar(false);
+      clearPotentialSelection();
+    }
   };
 
   // Handle calendar day click to view booking details
@@ -145,6 +153,11 @@ const Bookings = () => {
     } else {
       // No bookings, could initiate booking creation
       handleDateRangeSelect(camera, date, date);
+    }
+    // Close mobile panel when calendar is interacted with
+    if (window.innerWidth < 1024) { // lg breakpoint
+      setShowPotentialSidebar(false);
+      clearPotentialSelection();
     }
   };
 
@@ -180,6 +193,16 @@ const Bookings = () => {
     setBookingDetailsModal({ open: false, booking: null, camera: null });
   };
 
+  // Handle edit booking
+  const handleEditBooking = (booking) => {
+    setEditingBooking(booking);
+  };
+
+  const handleEditSuccess = () => {
+    setEditingBooking(null);
+    handleBookingUpdate(); // Refresh the bookings list
+  };
+
   const monthLabel = formatDisplay(monthDate);
 
   // Theme classes
@@ -193,10 +216,11 @@ const Bookings = () => {
   const loadingTextColor = isDarkMode ? 'text-gray-400' : 'text-slate-600';
 
   return (
-    <div className={`p-6 min-h-screen transition-colors ${bgColor}`}>
+    <div className={`p-4 sm:p-6 min-h-screen transition-colors ${bgColor}`}>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        {/* Top row - Month Navigation and Create Button */}
+        <div className="flex items-center justify-between sm:justify-start gap-4">
           {/* Month Navigation */}
           <div className="flex items-center gap-2">
             <button
@@ -205,7 +229,9 @@ const Bookings = () => {
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <div className={`text-xl font-semibold ${textColor}`}>{monthLabel}</div>
+            <div className={`text-lg sm:text-xl font-semibold ${textColor} min-w-0 text-center`}>
+              {monthLabel}
+            </div>
             <button
               className={`p-2 rounded border transition ${buttonBg} ${buttonBorder} ${buttonTextColor}`}
               onClick={() => setMonthDate(prev => addMonths(prev, 1))}
@@ -214,20 +240,22 @@ const Bookings = () => {
             </button>
           </div>
 
-          {/* Create Booking Button */}
+          {/* Create Booking Button - Mobile optimized */}
           <button
-            className={`flex items-center gap-2 px-4 py-2 rounded border transition ${buttonBg} ${buttonBorder} ${buttonTextColor}`}
+            className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded border transition ${buttonBg} ${buttonBorder} ${buttonTextColor} text-sm sm:text-base`}
             onClick={() => setCreateBookingModal({ open: true, camera: null, dateRange: null })}
           >
             <Plus className="w-4 h-4" />
-            Create Booking
+            <span className="hidden xs:inline">Create</span>
+            <span className="hidden sm:inline">Booking</span>
           </button>
         </div>
 
-        <div className="flex items-center gap-4">
+        {/* Bottom row - Control buttons */}
+        <div className="flex items-center gap-2 sm:gap-4">
           {/* Potential Bookings Toggle */}
           <button
-            className={`flex items-center gap-2 px-4 py-2 rounded border transition ${
+            className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded border transition text-sm sm:text-base ${
               showPotentialSidebar 
                 ? (isDarkMode ? 'bg-blue-900 border-blue-700 text-blue-200' : 'bg-blue-100 border-blue-300 text-blue-800')
                 : `${buttonBg} ${buttonBorder} ${buttonTextColor}`
@@ -240,7 +268,8 @@ const Bookings = () => {
             }}
           >
             <Menu className="w-4 h-4" />
-            Potential Bookings
+            <span className="hidden xs:inline">Potential</span>
+            <span className="hidden sm:inline">Bookings</span>
             {potentialBookings.length > 0 && (
               <span className={`px-2 py-0.5 text-xs rounded-full ${
                 isDarkMode ? 'bg-blue-800 text-blue-200' : 'bg-blue-200 text-blue-800'
@@ -269,9 +298,13 @@ const Bookings = () => {
       )}
 
       {/* Main Content */}
-      <div className="flex gap-6">
+      <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
         {/* Calendar Grid */}
-        <div className={`transition-all duration-300 ${showPotentialSidebar ? 'w-2/3' : 'w-full'}`}>
+        <div className={`transition-all duration-300 ${
+          showPotentialSidebar 
+            ? 'lg:w-2/3' // On large screens with sidebar
+            : 'w-full' // Full width when no sidebar
+        }`}>
           {loading ? (
             <div className={`flex items-center justify-center py-20 ${loadingTextColor}`}>
               <Loader2 className="w-5 h-5 animate-spin mr-2" />
@@ -292,21 +325,41 @@ const Bookings = () => {
           )}
         </div>
 
-        {/* Potential Bookings Sidebar */}
+        {/* Desktop Potential Bookings Sidebar - Hidden on mobile */}
         {showPotentialSidebar && (
-          <div className="w-1/3 transition-all duration-300">
-            <PotentialBookingsSidebar
-              potentialBookings={potentialBookings}
-              selectedBooking={selectedPotentialBooking}
-              onSelectBooking={handlePotentialBookingSelect}
-              onClearSelection={clearPotentialSelection}
-              onBookingUpdate={handleBookingUpdate}
-              cameras={cameras}
-              isDarkMode={isDarkMode}
-            />
+          <div className={`hidden lg:block lg:w-1/3 transition-all duration-300`}>
+            <div className="lg:sticky lg:top-6">
+              <PotentialBookingsSidebar
+                potentialBookings={potentialBookings}
+                selectedBooking={selectedPotentialBooking}
+                onSelectBooking={handlePotentialBookingSelect}
+                onClearSelection={clearPotentialSelection}
+                onBookingUpdate={handleBookingUpdate}
+                onEditBooking={handleEditBooking}
+                cameras={cameras}
+                isDarkMode={isDarkMode}
+              />
+            </div>
           </div>
         )}
       </div>
+
+      {/* Mobile Potential Bookings Panel - Only visible on mobile */}
+      <MobilePotentialBookingsPanel
+        potentialBookings={potentialBookings}
+        selectedBooking={selectedPotentialBooking}
+        onSelectBooking={handlePotentialBookingSelect}
+        onClearSelection={clearPotentialSelection}
+        onBookingUpdate={handleBookingUpdate}
+        onEditBooking={handleEditBooking}
+        cameras={cameras}
+        isDarkMode={isDarkMode}
+        isOpen={showPotentialSidebar}
+        onClose={() => {
+          setShowPotentialSidebar(false);
+          clearPotentialSelection();
+        }}
+      />
 
       {/* Modals */}
       <CreateBookingModal
@@ -325,6 +378,15 @@ const Bookings = () => {
         booking={bookingDetailsModal.booking}
         camera={bookingDetailsModal.camera}
         onBookingUpdate={handleBookingUpdate}
+        isDarkMode={isDarkMode}
+      />
+
+      <EditPotentialBookingModal
+        open={!!editingBooking}
+        onClose={() => setEditingBooking(null)}
+        booking={editingBooking}
+        cameras={cameras || []}
+        onSuccess={handleEditSuccess}
         isDarkMode={isDarkMode}
       />
     </div>

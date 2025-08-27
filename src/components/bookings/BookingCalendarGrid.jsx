@@ -116,28 +116,28 @@ const CameraMiniCalendar = ({
           <img 
             src={camera.image_url} 
             alt={camera.name} 
-            className="w-10 h-10 rounded object-cover" 
+            className="w-8 h-8 sm:w-10 sm:h-10 rounded object-cover flex-shrink-0" 
             onError={(e) => { e.currentTarget.style.display = 'none'; }} 
           />
         ) : (
-          <div className={`w-10 h-10 rounded ${isDarkMode ? 'bg-gray-700' : 'bg-slate-100'}`} />
+          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded flex-shrink-0 ${isDarkMode ? 'bg-gray-700' : 'bg-slate-100'}`} />
         )}
-        <div className="flex-1">
-          <div className={`font-medium ${textColor}`}>{camera.name}</div>
+        <div className="flex-1 min-w-0">
+          <div className={`font-medium text-sm sm:text-base truncate ${textColor}`}>{camera.name}</div>
           <div className={`text-xs ${secondaryTextColor}`}>{label}</div>
         </div>
-        <CalendarIcon className={`w-4 h-4 ${iconColor}`} />
+        <CalendarIcon className={`w-4 h-4 flex-shrink-0 ${iconColor}`} />
       </div>
 
       {/* Days of Week Header */}
-      <div className={`grid grid-cols-7 text-xs px-3 pt-3 ${isDarkMode ? 'text-gray-400' : 'text-slate-600'}`}>
+      <div className={`grid grid-cols-7 text-xs px-2 sm:px-3 pt-2 sm:pt-3 ${isDarkMode ? 'text-gray-400' : 'text-slate-600'}`}>
         {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
-          <div key={day} className="text-center font-medium pb-2">{day}</div>
+          <div key={day} className="text-center font-medium pb-1 sm:pb-2">{day}</div>
         ))}
       </div>
 
       {/* Calendar Grid */}
-      <div className="grid grid-cols-7 gap-1 p-3 pt-1">
+      <div className="grid grid-cols-7 gap-0.5 sm:gap-1 p-2 sm:p-3 pt-1">
         {cells.map((date, idx) => {
           const dayBookings = date ? displayBookings.filter(booking => overlaps(date, booking)) : [];
           const isHighlighted = isDateHighlighted(date);
@@ -174,11 +174,19 @@ const BookingCalendarGrid = ({
   isDarkMode,
   showPotentialSidebar
 }) => {
-  // Determine grid columns based on sidebar state
-  const gridCols = showPotentialSidebar ? 'md:grid-cols-2' : 'md:grid-cols-2 lg:grid-cols-3';
+  // Responsive grid columns based on screen size and sidebar state
+  const getGridCols = () => {
+    if (showPotentialSidebar) {
+      // When sidebar is shown: 1 col on mobile, 2 on large screens
+      return 'grid-cols-1 lg:grid-cols-2';
+    } else {
+      // When no sidebar: 1 col on mobile, 2 on tablet, 3 on desktop
+      return 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3';
+    }
+  };
 
   return (
-    <div className={`grid gap-4 ${gridCols} transition-all duration-300`}>
+    <div className={`grid gap-3 sm:gap-4 ${getGridCols()} transition-all duration-300`}>
       {cameras.map((camera) => (
         <CameraMiniCalendar
           key={camera.id}

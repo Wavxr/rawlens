@@ -107,7 +107,7 @@ const PotentialBookingCard = ({
 
   return (
     <div 
-      className={`border rounded-lg p-3 cursor-pointer transition ${cardBg} ${
+      className={`border rounded-lg p-2 sm:p-3 cursor-pointer transition ${cardBg} ${
         isSelected ? selectedBorder : cardBorder
       } ${hasConflicts ? conflictBg : ''} ${
         isSelected ? 'ring-2 ring-orange-400/20' : ''
@@ -116,36 +116,38 @@ const PotentialBookingCard = ({
     >
       {/* Header with customer name and conflict indicator */}
       <div className="flex items-center justify-between mb-2">
-        <h4 className={`font-medium ${textColor}`}>{booking.customer_name}</h4>
+        <h4 className={`font-medium text-sm sm:text-base truncate ${textColor}`}>{booking.customer_name}</h4>
         {hasConflicts && (
-          <AlertTriangle className={`w-4 h-4 ${conflictIcon}`} title="Booking conflicts with confirmed booking" />
+          <AlertTriangle className={`w-4 h-4 flex-shrink-0 ml-2 ${conflictIcon}`} title="Booking conflicts with confirmed booking" />
         )}
       </div>
 
       {/* Camera info */}
       <div className="flex items-center gap-2 mb-2">
-        <Camera className={`w-4 h-4 ${mutedTextColor}`} />
-        <span className={`text-sm ${secondaryTextColor}`}>
+        <Camera className={`w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0 ${mutedTextColor}`} />
+        <span className={`text-xs sm:text-sm truncate ${secondaryTextColor}`}>
           {booking.cameras?.name || 'Camera'}
         </span>
       </div>
 
       {/* Date range */}
       <div className="flex items-center gap-2 mb-2">
-        <Calendar className={`w-4 h-4 ${mutedTextColor}`} />
-        <span className={`text-sm ${secondaryTextColor}`}>
-          {dateRange} ({days} day{days !== 1 ? 's' : ''})
+        <Calendar className={`w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0 ${mutedTextColor}`} />
+        <span className={`text-xs sm:text-sm ${secondaryTextColor}`}>
+          <span className="hidden sm:inline">{dateRange}</span>
+          <span className="sm:hidden">{startDate.toLocaleDateString()} - {endDate.toLocaleDateString()}</span>
+          <span className="ml-1">({days} day{days !== 1 ? 's' : ''})</span>
         </span>
       </div>
 
       {/* Pricing */}
       {booking.total_price && (
-        <div className="flex items-center gap-2 mb-3">
-          <DollarSign className={`w-4 h-4 ${mutedTextColor}`} />
-          <span className={`text-sm ${secondaryTextColor}`}>
+        <div className="flex items-center gap-2 mb-2 sm:mb-3">
+          <DollarSign className={`w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0 ${mutedTextColor}`} />
+          <span className={`text-xs sm:text-sm ${secondaryTextColor}`}>
             ₱{booking.total_price.toFixed(2)}
             {booking.price_per_day && (
-              <span className={`text-xs ${mutedTextColor} ml-1`}>
+              <span className={`text-xs ${mutedTextColor} ml-1 hidden sm:inline`}>
                 (₱{booking.price_per_day}/day)
               </span>
             )}
@@ -154,22 +156,22 @@ const PotentialBookingCard = ({
       )}
 
       {/* Contact info */}
-      <div className={`text-xs ${mutedTextColor} mb-3`}>
-        {booking.customer_contact}
+      <div className={`text-xs ${mutedTextColor} mb-2 sm:mb-3`}>
+        <div className="truncate">{booking.customer_contact}</div>
         {booking.customer_email && (
-          <span className="block">{booking.customer_email}</span>
+          <div className="truncate">{booking.customer_email}</div>
         )}
       </div>
 
       {/* Action buttons */}
-      <div className="flex gap-2">
+      <div className="flex gap-1 sm:gap-2">
         <button
           onClick={(e) => {
             e.stopPropagation();
             handleConvertToConfirmed();
           }}
           disabled={loading || hasConflicts}
-          className={`flex-1 flex items-center justify-center gap-1 px-3 py-1.5 text-xs rounded transition ${
+          className={`flex-1 flex items-center justify-center gap-1 px-2 sm:px-3 py-1.5 text-xs rounded transition ${
             hasConflicts 
               ? (isDarkMode ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed')
               : `${confirmBg} text-white`
@@ -177,7 +179,8 @@ const PotentialBookingCard = ({
           title={hasConflicts ? 'Cannot confirm due to conflicts' : 'Convert to confirmed booking'}
         >
           <CheckCircle className="w-3 h-3" />
-          {loading ? 'Converting...' : 'Confirm'}
+          <span className="hidden xs:inline">{loading ? 'Converting...' : 'Confirm'}</span>
+          <span className="xs:hidden">✓</span>
         </button>
 
         <button
@@ -186,7 +189,7 @@ const PotentialBookingCard = ({
             onEdit(booking);
           }}
           disabled={loading}
-          className={`px-3 py-1.5 text-xs rounded transition ${buttonBg} ${buttonText}`}
+          className={`px-2 sm:px-3 py-1.5 text-xs rounded transition ${buttonBg} ${buttonText}`}
           title="Edit booking details"
         >
           <Edit className="w-3 h-3" />
@@ -198,7 +201,7 @@ const PotentialBookingCard = ({
             handleDelete();
           }}
           disabled={loading}
-          className={`px-3 py-1.5 text-xs rounded transition ${deleteBg} text-white`}
+          className={`px-2 sm:px-3 py-1.5 text-xs rounded transition ${deleteBg} text-white`}
           title="Delete booking"
         >
           <Trash2 className="w-3 h-3" />

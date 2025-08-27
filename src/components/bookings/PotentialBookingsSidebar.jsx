@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, User, Phone, Mail } from 'lucide-react';
 import PotentialBookingCard from './PotentialBookingCard';
-import EditPotentialBookingModal from './EditPotentialBookingModal';
 import { checkBookingConflicts } from '../../services/bookingService';
 
 const PotentialBookingsSidebar = ({
@@ -10,11 +9,11 @@ const PotentialBookingsSidebar = ({
   onSelectBooking,
   onClearSelection,
   onBookingUpdate,
+  onEditBooking,
   cameras,
   isDarkMode
 }) => {
   const [filter, setFilter] = useState('all'); // 'all', 'conflicts', 'no-conflicts'
-  const [editingBooking, setEditingBooking] = useState(null);
   const [conflictInfo, setConflictInfo] = useState({}); // Store conflict info for each booking
 
   // Check conflicts for all potential bookings
@@ -69,14 +68,8 @@ const PotentialBookingsSidebar = ({
     return true;
   });
 
-  const handleEditBooking = (booking) => {
-    setEditingBooking(booking);
-  };
-
-  const handleEditSuccess = () => {
-    setEditingBooking(null);
-    onBookingUpdate(); // Refresh the bookings list
-  };
+  // Use the passed edit handler instead of local state
+  const handleEditBooking = onEditBooking;
 
   // Theme classes
   const bgColor = isDarkMode ? 'bg-gray-800' : 'bg-white';
@@ -86,13 +79,13 @@ const PotentialBookingsSidebar = ({
   const headerBg = isDarkMode ? 'bg-gray-900/50' : 'bg-slate-50';
 
   return (
-    <div className={`h-full flex flex-col border rounded-xl ${bgColor} ${borderColor}`}>
+    <div className={`h-full lg:h-auto lg:max-h-[calc(100vh-8rem)] flex flex-col border rounded-xl ${bgColor} ${borderColor}`}>
       {/* Header */}
-      <div className={`p-4 border-b ${borderColor} ${headerBg}`}>
+      <div className={`p-3 sm:p-4 border-b ${borderColor} ${headerBg}`}>
         <div className="flex items-center justify-between">
           <div>
-            <h3 className={`font-semibold ${textColor}`}>Potential Bookings</h3>
-            <p className={`text-sm ${secondaryTextColor}`}>
+            <h3 className={`font-semibold text-sm sm:text-base ${textColor}`}>Potential Bookings</h3>
+            <p className={`text-xs sm:text-sm ${secondaryTextColor}`}>
               {filter === 'all' 
                 ? `${potentialBookings.length} pending bookings`
                 : `${filteredBookings.length} of ${potentialBookings.length} bookings`
@@ -112,7 +105,7 @@ const PotentialBookingsSidebar = ({
 
         {/* Filter Options */}
         {potentialBookings.length > 0 && (
-          <div className="flex gap-2 mt-3">
+          <div className="flex gap-1 sm:gap-2 mt-3">
             {[
               { 
                 key: 'all', 
@@ -133,13 +126,15 @@ const PotentialBookingsSidebar = ({
               <button
                 key={key}
                 onClick={() => setFilter(key)}
-                className={`px-3 py-1 text-xs rounded transition ${
+                className={`px-2 sm:px-3 py-1 text-xs rounded transition ${
                   filter === key
                     ? (isDarkMode ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-800')
                     : (isDarkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200')
                 }`}
               >
-                {label} ({count})
+                <span className="hidden sm:inline">{label} </span>
+                <span className="sm:hidden">{label.charAt(0)}</span>
+                ({count})
               </button>
             ))}
           </div>
@@ -149,25 +144,25 @@ const PotentialBookingsSidebar = ({
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
         {potentialBookings.length === 0 ? (
-          <div className="p-6 text-center">
-            <Calendar className={`w-12 h-12 mx-auto mb-3 ${secondaryTextColor}`} />
-            <p className={`${secondaryTextColor}`}>No potential bookings</p>
-            <p className={`text-sm mt-1 ${secondaryTextColor}`}>
+          <div className="p-4 sm:p-6 text-center">
+            <Calendar className={`w-8 h-8 sm:w-12 sm:h-12 mx-auto mb-3 ${secondaryTextColor}`} />
+            <p className={`text-sm sm:text-base ${secondaryTextColor}`}>No potential bookings</p>
+            <p className={`text-xs sm:text-sm mt-1 ${secondaryTextColor}`}>
               Create a new booking to get started
             </p>
           </div>
         ) : filteredBookings.length === 0 ? (
-          <div className="p-6 text-center">
-            <Calendar className={`w-12 h-12 mx-auto mb-3 ${secondaryTextColor}`} />
-            <p className={`${secondaryTextColor}`}>
+          <div className="p-4 sm:p-6 text-center">
+            <Calendar className={`w-8 h-8 sm:w-12 sm:h-12 mx-auto mb-3 ${secondaryTextColor}`} />
+            <p className={`text-sm sm:text-base ${secondaryTextColor}`}>
               No bookings in "{filter === 'conflicts' ? 'Conflicts' : filter === 'no-conflicts' ? 'Available' : 'All'}" filter
             </p>
-            <p className={`text-sm mt-1 ${secondaryTextColor}`}>
+            <p className={`text-xs sm:text-sm mt-1 ${secondaryTextColor}`}>
               Try changing the filter to see other bookings
             </p>
           </div>
         ) : (
-          <div className="p-4 space-y-3">
+          <div className="p-3 sm:p-4 space-y-2 sm:space-y-3">
             {filteredBookings.map(booking => (
               <PotentialBookingCard
                 key={booking.id}
@@ -183,17 +178,7 @@ const PotentialBookingsSidebar = ({
         )}
       </div>
 
-    
-
-      {/* Edit Modal */}
-      <EditPotentialBookingModal
-        open={!!editingBooking}
-        onClose={() => setEditingBooking(null)}
-        booking={editingBooking}
-        cameras={cameras || []}
-        onSuccess={handleEditSuccess}
-        isDarkMode={isDarkMode}
-      />
+      
     </div>
   );
 };

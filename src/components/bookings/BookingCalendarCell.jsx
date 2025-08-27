@@ -25,7 +25,7 @@ const BookingCalendarCell = ({
   if (!date) {
     // Empty cell for padding
     const emptyBg = isDarkMode ? 'bg-gray-900' : 'bg-slate-50';
-    return <div className={`h-16 ${emptyBg}`} />;
+    return <div className={`h-12 sm:h-14 md:h-16 ${emptyBg}`} />;
   }
 
   const dayNumber = date.getDate();
@@ -153,30 +153,30 @@ const BookingCalendarCell = ({
 
   return (
     <button
-      className={`h-16 rounded-lg border flex flex-col items-center justify-between p-1 transition ${cellClass}`}
+      className={`h-12 sm:h-14 md:h-16 rounded-md sm:rounded-lg border flex flex-col items-center justify-between p-0.5 sm:p-1 transition ${cellClass}`}
       onMouseDown={handleMouseDown}
       onMouseEnter={handleMouseEnter}
       onMouseUp={handleMouseUp}
       onClick={handleClick}
     >
       {/* Day number and booking indicator */}
-      <div className={`w-full flex justify-between items-center text-[11px] ${dayTextColor}`}>
-        <span>{dayNumber}</span>
+      <div className={`w-full flex justify-between items-center text-[10px] sm:text-[11px] ${dayTextColor}`}>
+        <span className="font-medium">{dayNumber}</span>
         {hasBookings && (
-          <span className="inline-flex items-center gap-1">
-            <span className={`w-1.5 h-1.5 rounded-full ${
+          <span className="inline-flex items-center gap-0.5 sm:gap-1">
+            <span className={`w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full ${
               bookings.some(b => b.rental_status === 'active') 
                 ? getDotColor('active')
                 : bookings.some(b => b.rental_status === 'confirmed')
                 ? getDotColor('confirmed')
                 : getDotColor('completed')
             }`} />
-            {bookings.length}
+            <span className="text-[9px] sm:text-[10px]">{bookings.length}</span>
           </span>
         )}
       </div>
 
-      {/* Booking details */}
+      {/* Booking details - adapted for mobile */}
       <div className="w-full space-y-0.5 overflow-hidden">
         {bookings.slice(0, 2).map(booking => {
           const customerName = booking.customer_name || 
@@ -188,19 +188,20 @@ const BookingCalendarCell = ({
           return (
             <div 
               key={booking.id} 
-              className={`truncate text-[10px] px-1 py-0.5 rounded border ${
+              className={`truncate text-[8px] sm:text-[9px] md:text-[10px] px-0.5 sm:px-1 py-0.5 rounded border ${
                 isDarkMode ? 'bg-gray-700' : 'bg-white'
               } ${bookingTextColor(booking.rental_status)} ${bookingBorderColor(booking.rental_status)}`}
               title={`${customerName} (${startDay}-${endDay})`}
             >
-              {startDay}–{endDay} {customerName}
+              <span className="hidden sm:inline">{startDay}–{endDay} </span>
+              <span className="truncate">{customerName.split(' ')[0]}</span>
             </div>
           );
         })}
         
         {bookings.length > 2 && (
-          <div className={`text-[10px] ${isDarkMode ? 'text-gray-500' : 'text-slate-500'}`}>
-            +{bookings.length - 2} more
+          <div className={`text-[8px] sm:text-[9px] md:text-[10px] ${isDarkMode ? 'text-gray-500' : 'text-slate-500'}`}>
+            +{bookings.length - 2}
           </div>
         )}
       </div>

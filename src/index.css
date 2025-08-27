@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+@theme {
+  --breakpoint-xs: 475px;
+}
+
 :root {
   --color-bg-primary: #ffffff;
   --color-bg-secondary: #f3f4f6;
@@ -9,11 +13,11 @@
 }
 
 .dark {
-  /* --color-bg-primary: #111827;
+  --color-bg-primary: #111827;
   --color-bg-secondary: #1f2937;
   --color-text-primary: #f9fafb;
   --color-text-secondary: #9ca3af;
-  --color-border: #374151; */
+  --color-border: #374151;
 }
 
 body {
