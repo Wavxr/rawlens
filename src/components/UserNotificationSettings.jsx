@@ -168,7 +168,7 @@ export default function UserNotificationSettings() {
 
         <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
           <div className="flex-1">
-            <h4 className="text-sm font-medium text-gray-900">Email Notifications</h4>
+            <h4 className="text-sm font-medium text-gray-900">Account Email Notifications</h4>
             <p className="text-sm text-gray-500 mt-1">
               Receive emails about your rentals and account activity
             </p>
