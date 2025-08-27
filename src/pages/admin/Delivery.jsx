@@ -106,6 +106,19 @@ function formatDate(dateString) {
   })
 }
 
+function doesRentalOverlapMonth(rental, monthString) {
+  if (!monthString) return true; // No month filter, show all
+  
+  const rentalStart = new Date(rental.start_date);
+  const rentalEnd = new Date(rental.end_date);
+  const [year, month] = monthString.split('-').map(Number);
+  const filterMonthStart = new Date(year, month - 1, 1); // month is 0-indexed
+  const filterMonthEnd = new Date(year, month, 0); // Last day of the month
+  
+  // Check if rental overlaps with the selected month
+  return rentalStart <= filterMonthEnd && rentalEnd >= filterMonthStart;
+}
+
 export default function Delivery() {
   const { user } = useAuthStore();
   const navigate = useNavigate(); // Initialize navigate
@@ -123,6 +136,9 @@ export default function Delivery() {
   })
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedShippingFilter, setSelectedShippingFilter] = useState("needs_action")
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    return searchParams.get("month") || "";
+  });
   const cardRefs = useRef({})
   const [highlightId, setHighlightId] = useState(null)
   const [selectedRental, setSelectedRental] = useState(null)
@@ -196,7 +212,14 @@ export default function Delivery() {
     const needsAdminAction = (r) =>
       (r.rental_status === "confirmed" && (!r.shipping_status || r.shipping_status === "ready_to_ship")) ||
       r.shipping_status === "in_transit_to_owner"
-    rentals.forEach(rental => {
+    
+    // First apply month filter if selected
+    let filteredRentals = rentals;
+    if (selectedMonth) {
+      filteredRentals = rentals.filter((rental) => doesRentalOverlapMonth(rental, selectedMonth));
+    }
+    
+    filteredRentals.forEach(rental => {
       if (needsAdminAction(rental)) {
         counts.needs_action++
       } else if (["ready_to_ship", "in_transit_to_user"].includes(rental.shipping_status)) {
@@ -254,8 +277,16 @@ export default function Delivery() {
         )
       })
     }
+
+    // Apply month filter
+    if (selectedMonth) {
+      filtered = filtered.filter((rental) => 
+        doesRentalOverlapMonth(rental, selectedMonth)
+      );
+    }
+
     setRentals(filtered)
-  }, [allRentals, selectedShippingFilter, searchTerm])
+  }, [allRentals, selectedShippingFilter, searchTerm, selectedMonth])
 
   const shippingCounts = useMemo(() => {
     const counts = {
@@ -281,6 +312,33 @@ export default function Delivery() {
       delete copy[id]
       return copy
     })
+
+  const handleMonthChange = (month) => {
+    setSelectedMonth(month);
+    const newParams = new URLSearchParams(searchParams);
+    if (month) {
+      newParams.set("month", month);
+    } else {
+      newParams.delete("month");
+    }
+    // Update URL without triggering navigation
+    window.history.replaceState(null, '', `${window.location.pathname}?${newParams}`);
+  };
+
+  // Generate month options for the current and next 12 months
+  const getMonthOptions = () => {
+    const options = [{ value: "", label: "All Months" }];
+    const currentDate = new Date();
+    
+    for (let i = -6; i <= 12; i++) {
+      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() + i, 1);
+      const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const label = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+      options.push({ value, label });
+    }
+    
+    return options;
+  };
 
   const handleReadyToShip = async (rentalId) => {
     setBusy(rentalId, "ready")
@@ -699,6 +757,19 @@ export default function Delivery() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
+            </div>
+            <div className="lg:w-64">
+              <select
+                value={selectedMonth}
+                onChange={(e) => handleMonthChange(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-600 rounded-lg bg-gray-700 text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              >
+                {getMonthOptions().map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">

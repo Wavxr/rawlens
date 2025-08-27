@@ -49,6 +49,9 @@ export default function Rentals() {
     return searchParams.get("status") || "needs_action";
   });
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    return searchParams.get("month") || "";
+  });
   const [selectedRental, setSelectedRental] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
@@ -114,6 +117,19 @@ export default function Rentals() {
     );
   };
 
+  const doesRentalOverlapMonth = (rental, monthString) => {
+    if (!monthString) return true; // No month filter, show all
+    
+    const rentalStart = new Date(rental.start_date);
+    const rentalEnd = new Date(rental.end_date);
+    const [year, month] = monthString.split('-').map(Number);
+    const filterMonthStart = new Date(year, month - 1, 1); // month is 0-indexed
+    const filterMonthEnd = new Date(year, month, 0); // Last day of the month
+    
+    // Check if rental overlaps with the selected month
+    return rentalStart <= filterMonthEnd && rentalEnd >= filterMonthStart;
+  };
+
   const handleViewDetails = async (rental) => {
     setSelectedRental(rental);
     try {
@@ -129,6 +145,7 @@ export default function Rentals() {
     console.log("Rental filter effect running with:", {
       selectedStatus,
       searchTerm,
+      selectedMonth,
       allRentalsCount: allRentals.length,
       highlightId: searchParams.get("highlightId"),
       currentURL: window.location.href,
@@ -243,6 +260,13 @@ export default function Rentals() {
         });
       }
 
+      // Apply month filter
+      if (selectedMonth) {
+        filtered = filtered.filter((rental) => 
+          doesRentalOverlapMonth(rental, selectedMonth)
+        );
+      }
+
       if (
         !filtered.some(
           (r) => String(r.id) === String(targetRentalForHighlight.id)
@@ -277,6 +301,13 @@ export default function Rentals() {
           );
         });
       }
+
+      // Apply month filter
+      if (selectedMonth) {
+        filtered = filtered.filter((rental) => 
+          doesRentalOverlapMonth(rental, selectedMonth)
+        );
+      }
     }
 
     setRentals(filtered);
@@ -288,7 +319,7 @@ export default function Rentals() {
     ) {
       setHighlightId(rentalIdFromParams);
     }
-  }, [selectedStatus, searchTerm, allRentals, searchParams, highlightId]);
+  }, [selectedStatus, searchTerm, selectedMonth, allRentals, searchParams, highlightId]);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -927,32 +958,44 @@ export default function Rentals() {
     {
       key: "needs_action",
       label: "Needs Action",
-      count: allRentals.filter((r) => needsAdminAction(r)).length,
+      count: allRentals
+        .filter((r) => !selectedMonth || doesRentalOverlapMonth(r, selectedMonth))
+        .filter((r) => needsAdminAction(r)).length,
     },
     {
       key: "pending",
       label: "Pending",
-      count: allRentals.filter((r) => r.rental_status === "pending").length,
+      count: allRentals
+        .filter((r) => !selectedMonth || doesRentalOverlapMonth(r, selectedMonth))
+        .filter((r) => r.rental_status === "pending").length,
     },
     {
       key: "confirmed",
       label: "Confirmed",
-      count: allRentals.filter((r) => r.rental_status === "confirmed").length,
+      count: allRentals
+        .filter((r) => !selectedMonth || doesRentalOverlapMonth(r, selectedMonth))
+        .filter((r) => r.rental_status === "confirmed").length,
     },
     {
       key: "active",
       label: "Active",
-      count: allRentals.filter((r) => r.rental_status === "active").length,
+      count: allRentals
+        .filter((r) => !selectedMonth || doesRentalOverlapMonth(r, selectedMonth))
+        .filter((r) => r.rental_status === "active").length,
     },
     {
       key: "completed",
       label: "Completed",
-      count: allRentals.filter((r) => r.rental_status === "completed").length,
+      count: allRentals
+        .filter((r) => !selectedMonth || doesRentalOverlapMonth(r, selectedMonth))
+        .filter((r) => r.rental_status === "completed").length,
     },
     {
       key: "cancelled",
       label: "Cancelled",
-      count: allRentals.filter((r) => r.rental_status === "cancelled").length,
+      count: allRentals
+        .filter((r) => !selectedMonth || doesRentalOverlapMonth(r, selectedMonth))
+        .filter((r) => r.rental_status === "cancelled").length,
     },
   ];
 
@@ -961,6 +1004,32 @@ export default function Rentals() {
     const newParams = new URLSearchParams(searchParams);
     newParams.set("status", status);
     setSearchParams(newParams);
+  };
+
+  const handleMonthChange = (month) => {
+    setSelectedMonth(month);
+    const newParams = new URLSearchParams(searchParams);
+    if (month) {
+      newParams.set("month", month);
+    } else {
+      newParams.delete("month");
+    }
+    setSearchParams(newParams);
+  };
+
+  // Generate month options for the current and next 12 months
+  const getMonthOptions = () => {
+    const options = [{ value: "", label: "All Months" }];
+    const currentDate = new Date();
+    
+    for (let i = -6; i <= 12; i++) {
+      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() + i, 1);
+      const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const label = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+      options.push({ value, label });
+    }
+    
+    return options;
   };
 
   const RentalDetailModal = ({ rental, onClose }) => {
@@ -1253,6 +1322,19 @@ export default function Rentals() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
+            </div>
+            <div className="lg:w-64">
+              <select
+                value={selectedMonth}
+                onChange={(e) => handleMonthChange(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-600 rounded-lg bg-gray-700 text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              >
+                {getMonthOptions().map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
