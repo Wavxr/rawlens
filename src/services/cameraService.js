@@ -235,3 +235,59 @@ export async function deleteCamera(id) {
     return { error };
   }
 }
+
+// --- Camera Availability Functions ---
+
+// Check if a specific camera is available for a given date range.
+export async function checkCameraAvailability(cameraId, startDate, endDate) {
+  try {
+    // Prefer secure RPC that runs with SECURITY DEFINER and returns only a boolean
+    const { data: isAvailable, error } = await supabase.rpc('check_camera_availability', {
+      p_camera_id: cameraId,
+      p_start_date: startDate,
+      p_end_date: endDate,
+      p_block_statuses: ['confirmed', 'active'],
+    });
+
+    if (error) {
+      console.error("Availability check error (RPC):", error);
+      throw error;
+    }
+
+    return {
+      isAvailable,
+      conflictingBookings: [] // RPC does not expose bookings to the client
+    };
+  } catch (error) {
+    console.error("Error in checkCameraAvailability:", error);
+    return { isAvailable: false, error: error.message || "Failed to check availability." };
+  }
+}
+
+// Find all cameras available for a specific date range.
+export async function getAvailableCamerasForDates(startDate, endDate) {
+  try {
+    // 1. Get all cameras that are not marked as unavailable
+    const { data: allCameras, error: cameraError } = await supabase
+      .from('cameras')
+      .select('id, name, image_url, description, camera_status')
+      .neq('camera_status', 'unavailable');
+
+    if (cameraError) throw cameraError;
+
+    // 2. Check availability for each camera
+    const availabilityChecks = allCameras.map(async (camera) => {
+      const { isAvailable } = await checkCameraAvailability(camera.id, startDate, endDate);
+      return {
+        ...camera,
+        isAvailable
+      };
+    });
+
+    const camerasWithAvailability = await Promise.all(availabilityChecks);
+    return { data: camerasWithAvailability, error: null };
+  } catch (error) {
+    console.error("Error in getAvailableCamerasForDates:", error);
+    return { data: null, error: error.message || "Failed to fetch available cameras." };
+  }
+}

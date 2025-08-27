@@ -1,9 +1,8 @@
 // src/pages/user/Cameras.jsx
 import React, { useState, useEffect } from 'react'; // Removed useRef as sigCanvasRef is now local to RentalFlowSection
 import { supabase } from '../../lib/supabaseClient';
-import { getAllCameras } from '../../services/cameraService';
+import { getAllCameras, getAvailableCamerasForDates } from '../../services/cameraService';
 import { getCameraWithInclusions } from '../../services/inclusionService';
-import { getAvailableCamerasForDates } from '../../services/calendarService';
 // Removed individual service imports related to rental flow as they are now in RentalFlowSection
 import ContractSigningModal from '../../components/ContractSigningModal'; // This might need adjustment depending on how it uses state
 import CameraBrowserSection from '../../components/CameraBrowserSection';

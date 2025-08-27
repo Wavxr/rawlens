@@ -19,7 +19,7 @@ import Dashboard from './pages/admin/Dashboard';
 import AdminCameras from './pages/admin/Cameras';
 import AdminUsers from './pages/admin/Users';
 import AdminInclusions from './pages/admin/Inclusions';
-import AdminCalendar from './pages/admin/Calendar';
+import AdminBookings from './pages/admin/Bookings';
 import AdminRentals from './pages/admin/Rental';
 import AdminDelivery from './pages/admin/Delivery';
 import AdminFeedbacks from './pages/admin/Feedbacks';
@@ -61,7 +61,7 @@ function App() {
               <Route path="cameras" element={<AdminCameras />} />
               <Route path="users" element={<AdminUsers />} />
               <Route path="inclusions" element={<AdminInclusions/>} />
-              <Route path="calendar" element={<AdminCalendar />} />
+              <Route path="bookings" element={<AdminBookings />} />
               <Route path="rentals" element={<AdminRentals />} />
               <Route path="delivery" element={<AdminDelivery />} />
               <Route path="feedbacks" element={<AdminFeedbacks />} />

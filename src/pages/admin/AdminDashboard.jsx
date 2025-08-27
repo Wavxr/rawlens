@@ -71,7 +71,6 @@ const navigationSections = [
     title: "Statistics & Metrics",
     items: [
       { name: "Dashboard", path: "/admin", icon: LayoutDashboard, exact: true },
-      { name: "Calendar", path: "/admin/calendar", icon: Calendar },
       { name: "Booking Trends", path: "/admin/booking-trends", icon: TrendingUp },
       { name: "Monthly Heatmaps", path: "/admin/heatmaps", icon: Map },
       { name: "Revenue", path: "/admin/revenue", icon: PhilippinePeso },
@@ -84,6 +83,7 @@ const navigationSections = [
       { name: "Cameras", path: "/admin/cameras", icon: Camera },
       { name: "Inclusions", path: "/admin/inclusions", icon: Layers },
       { name: "Users", path: "/admin/users", icon: Users },
+      { name: "Bookings", path: "/admin/bookings", icon: Calendar },
       { name: "Rentals", path: "/admin/rentals", icon: Package },
       { name: "Delivery", path: "/admin/delivery", icon: Truck },
       { name: "Settings", path: "/admin/settings", icon: Settings }
@@ -98,9 +98,9 @@ const navigationItems = navigationSections.flatMap(section => section.items);
 const mobileNavigationItems = [
   { name: "Home", path: "/admin", icon: Home, exact: true },
   { name: "Cameras", path: "/admin/cameras", icon: Camera },
+  { name: "Bookings", path: "/admin/bookings", icon: Calendar },
   { name: "Rentals", path: "/admin/rentals", icon: Package },
-  { name: "Delivery", path: "/admin/delivery", icon: Truck },
-  { name: "Calendar", path: "/admin/calendar", icon: Calendar }
+  { name: "Delivery", path: "/admin/delivery", icon: Truck }
 ];
 
   const isActiveRoute = (path, exact = false) => {

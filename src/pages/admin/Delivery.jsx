@@ -19,6 +19,11 @@ import {
 } from "lucide-react";
 import RentalStepper from "../../components/RentalStepper";
 import { adminReadyCamera, adminTransitToUser, adminConfirmReturned } from "../../services/deliveryService";
+import { 
+  adminConfirmReceived,
+  adminConfirmReturned as adminConfirmReturnedBooking,
+  adminMarkDelivered
+} from "../../services/bookingService";
 import { getUserById } from "../../services/userService";
 import useAuthStore from "../../stores/useAuthStore";
 
@@ -376,6 +381,12 @@ export default function Delivery() {
       rentalStatus === "confirmed" && (shippingStatus === "none" || shippingStatus === "ready_to_ship")
     const canTransitToUser = rentalStatus === "confirmed" && shippingStatus === "ready_to_ship"
     const canConfirmReturned = shippingStatus === "in_transit_to_owner"
+    
+    const isTemporaryBooking = rental.booking_type === 'temporary';
+    const customerName = rental.customer_name || 
+                        (rental.users ? `${rental.users.first_name} ${rental.users.last_name}`.trim() : '') ||
+                        'Unknown Customer';
+    
     return (
       <div
         ref={(el) => {
@@ -388,17 +399,25 @@ export default function Delivery() {
               ? "border-blue-500 shadow-lg ring-4 ring-blue-900/50"
               : "border-gray-700 hover:border-gray-600"
           }
+          ${isTemporaryBooking ? 'ring-2 ring-orange-600/30' : ''}
         `}
       >
         <div className="p-4 md:p-6">
+          {isTemporaryBooking && (
+            <div className="mb-3 px-3 py-2 bg-orange-900/20 border border-orange-700 rounded-lg">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-orange-400 rounded-full"></div>
+                <span className="text-orange-200 text-sm font-medium">Admin Managed (Instagram Customer)</span>
+              </div>
+            </div>
+          )}
+          
           <div className="flex justify-between items-start mb-4">
             <div className="flex-1">
               <h3 className="text-xl font-semibold text-white mb-1">{rental.cameras?.name || "Camera Equipment"}</h3>
             <div className="flex items-center space-x-2 text-sm text-gray-300">
                 <User className="h-4 w-4" />
-                <span>
-                  {rental.users?.first_name} {rental.users?.last_name}
-                </span>
+                <span>{customerName}</span>
               </div>
             {(() => {
               const { now, next } = getNowNextLabels(rental)
@@ -482,6 +501,111 @@ export default function Delivery() {
                 <span>Confirm Returned</span>
               </button>
             )}
+            
+            {/* Admin Proxy Actions for Temporary Bookings */}
+            {isTemporaryBooking && (
+              <>
+                {rental.rental_status === 'confirmed' && (
+                  <button
+                    onClick={async () => {
+                      setActionLoading((prev) => ({ ...prev, [rental.id]: "received" }));
+                      try {
+                        const result = await adminConfirmReceived(rental.id);
+                        if (result.success) {
+                          toast.success("Customer receipt confirmed!");
+                        } else {
+                          toast.error(`Failed to confirm receipt: ${result.error}`);
+                        }
+                      } catch (error) {
+                        toast.error("Failed to confirm receipt");
+                      } finally {
+                        setActionLoading((prev) => {
+                          const newLoading = { ...prev };
+                          delete newLoading[rental.id];
+                          return newLoading;
+                        });
+                      }
+                    }}
+                    disabled={actionLoading[rental.id] === "received"}
+                    className="inline-flex items-center space-x-1 md:space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {actionLoading[rental.id] === "received" ? (
+                      <Loader2 className="h-3 w-3 md:h-4 md:w-4 animate-spin" />
+                    ) : (
+                      <CheckCircle className="h-3 w-3 md:h-4 md:w-4" />
+                    )}
+                    <span>Customer Received</span>
+                  </button>
+                )}
+                
+                {rental.rental_status === 'active' && (
+                  <button
+                    onClick={async () => {
+                      setActionLoading((prev) => ({ ...prev, [rental.id]: "returned_proxy" }));
+                      try {
+                        const result = await adminConfirmReturnedBooking(rental.id);
+                        if (result.success) {
+                          toast.success("Customer return confirmed!");
+                        } else {
+                          toast.error(`Failed to confirm return: ${result.error}`);
+                        }
+                      } catch (error) {
+                        toast.error("Failed to confirm return");
+                      } finally {
+                        setActionLoading((prev) => {
+                          const newLoading = { ...prev };
+                          delete newLoading[rental.id];
+                          return newLoading;
+                        });
+                      }
+                    }}
+                    disabled={actionLoading[rental.id] === "returned_proxy"}
+                    className="inline-flex items-center space-x-1 md:space-x-2 bg-purple-600 hover:bg-purple-700 text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {actionLoading[rental.id] === "returned_proxy" ? (
+                      <Loader2 className="h-3 w-3 md:h-4 md:w-4 animate-spin" />
+                    ) : (
+                      <Package className="h-3 w-3 md:h-4 md:w-4" />
+                    )}
+                    <span>Customer Returned</span>
+                  </button>
+                )}
+                
+                {(rental.rental_status === 'confirmed' || rental.rental_status === 'active') && (
+                  <button
+                    onClick={async () => {
+                      setActionLoading((prev) => ({ ...prev, [rental.id]: "delivered_proxy" }));
+                      try {
+                        const result = await adminMarkDelivered(rental.id);
+                        if (result.success) {
+                          toast.success("Marked as delivered!");
+                        } else {
+                          toast.error(`Failed to mark as delivered: ${result.error}`);
+                        }
+                      } catch (error) {
+                        toast.error("Failed to mark as delivered");
+                      } finally {
+                        setActionLoading((prev) => {
+                          const newLoading = { ...prev };
+                          delete newLoading[rental.id];
+                          return newLoading;
+                        });
+                      }
+                    }}
+                    disabled={actionLoading[rental.id] === "delivered_proxy"}
+                    className="inline-flex items-center space-x-1 md:space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {actionLoading[rental.id] === "delivered_proxy" ? (
+                      <Loader2 className="h-3 w-3 md:h-4 md:w-4 animate-spin" />
+                    ) : (
+                      <Truck className="h-3 w-3 md:h-4 md:w-4" />
+                    )}
+                    <span>Mark Delivered</span>
+                  </button>
+                )}
+              </>
+            )}
+            
             {/* --- Added Manage Rental Button to ShippingCard --- */}
             <button
               onClick={(e) => {
@@ -665,20 +789,34 @@ export default function Delivery() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold text-white">Customer Information</h3>
+                    {selectedRental?.booking_type === 'temporary' && (
+                      <div className="mb-3 px-3 py-2 bg-orange-900/20 border border-orange-700 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 bg-orange-400 rounded-full"></div>
+                          <span className="text-orange-200 text-sm font-medium">Admin Managed (Instagram Customer)</span>
+                        </div>
+                      </div>
+                    )}
                     <div className="bg-gray-700 rounded-lg p-4 space-y-4">
                       <div className="flex items-center space-x-3">
                         <User className="h-5 w-5 text-gray-400" />
                         <div>
                           <p className="font-medium text-white">
-                            {selectedUser?.first_name} {selectedUser?.last_name}
+                            {selectedRental?.customer_name || 
+                             (selectedUser ? `${selectedUser.first_name} ${selectedUser.last_name}`.trim() : '') ||
+                             'Unknown Customer'}
                           </p>
-                          <p className="text-sm text-gray-300">{selectedUser?.email}</p>
+                          <p className="text-sm text-gray-300">
+                            {selectedRental?.customer_email || selectedUser?.email || 'No email'}
+                          </p>
                         </div>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-gray-600">
                         <div>
                           <p className="text-xs text-gray-400 uppercase tracking-wide">Phone</p>
-                          <p className="text-sm text-white">{selectedUser?.contact_number || "Not provided"}</p>
+                          <p className="text-sm text-white">
+                            {selectedRental?.customer_contact || selectedUser?.contact_number || "Not provided"}
+                          </p>
                         </div>
                         <div>
                           <p className="text-xs text-gray-400 uppercase tracking-wide">Address</p>
