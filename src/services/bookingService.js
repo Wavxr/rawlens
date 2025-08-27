@@ -349,8 +349,6 @@ export async function checkBookingConflicts(cameraId, startDate, endDate, exclud
       .select('id, rental_status, start_date, end_date, customer_name, booking_type')
       .eq('camera_id', cameraId);
 
-    console.log('ALL bookings for camera:', cameraId, allBookings);
-
     let query = supabase
       .from('rentals')
       .select('id, rental_status, start_date, end_date, customer_name, booking_type')
@@ -369,10 +367,6 @@ export async function checkBookingConflicts(cameraId, startDate, endDate, exclud
     if (error) {
       throw new Error(`Failed to check conflicts: ${error.message}`);
     }
-
-    // Debug logging
-    console.log('Conflict check for:', { cameraId, startDate, endDate, excludeBookingId });
-    console.log('Found conflicts:', conflicts);
 
     return {
       success: true,
