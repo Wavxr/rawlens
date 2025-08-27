@@ -15,6 +15,8 @@ import {
   User,
   DollarSign,
   ArrowRight,
+  ChevronLeft,
+  ChevronRight,
   X,
 } from "lucide-react";
 import RentalStepper from "../../components/RentalStepper";
@@ -104,6 +106,18 @@ function formatDate(dateString) {
     day: "numeric",
     year: "numeric",
   })
+}
+
+// Inclusive day count between two date strings (counts both start and end dates)
+function inclusiveDays(startDateString, endDateString) {
+  if (!startDateString || !endDateString) return 0;
+  const s = new Date(startDateString);
+  const e = new Date(endDateString);
+  if (isNaN(s) || isNaN(e)) return 0;
+  const utcStart = Date.UTC(s.getFullYear(), s.getMonth(), s.getDate());
+  const utcEnd = Date.UTC(e.getFullYear(), e.getMonth(), e.getDate());
+  const diff = Math.floor((utcEnd - utcStart) / (24 * 60 * 60 * 1000));
+  return diff >= 0 ? diff + 1 : 0;
 }
 
 function doesRentalOverlapMonth(rental, monthString) {
@@ -323,6 +337,37 @@ export default function Delivery() {
     }
     // Update URL without triggering navigation
     window.history.replaceState(null, '', `${window.location.pathname}?${newParams}`);
+  };
+
+  // Helpers to navigate months with arrow buttons
+  const monthStringFromDate = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}`;
+  };
+
+  const handlePrevMonth = () => {
+    let base;
+    if (selectedMonth) {
+      const [y, m] = selectedMonth.split('-').map(Number);
+      base = new Date(y, m - 1, 1);
+    } else {
+      base = new Date();
+    }
+    const prev = new Date(base.getFullYear(), base.getMonth() - 1, 1);
+    handleMonthChange(monthStringFromDate(prev));
+  };
+
+  const handleNextMonth = () => {
+    let base;
+    if (selectedMonth) {
+      const [y, m] = selectedMonth.split('-').map(Number);
+      base = new Date(y, m - 1, 1);
+    } else {
+      base = new Date();
+    }
+    const next = new Date(base.getFullYear(), base.getMonth() + 1, 1);
+    handleMonthChange(monthStringFromDate(next));
   };
 
   // Generate month options for the current and next 12 months
@@ -758,11 +803,19 @@ export default function Delivery() {
                 />
               </div>
             </div>
-            <div className="lg:w-64">
+            <div className="lg:w-64 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handlePrevMonth}
+                title="Previous month"
+                className="p-2 rounded-md bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-700 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
               <select
                 value={selectedMonth}
                 onChange={(e) => handleMonthChange(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-600 rounded-lg bg-gray-700 text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                className="flex-1 px-4 py-2 border border-gray-700 rounded-md bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
               >
                 {getMonthOptions().map((option) => (
                   <option key={option.value} value={option.value}>
@@ -770,6 +823,14 @@ export default function Delivery() {
                   </option>
                 ))}
               </select>
+              <button
+                type="button"
+                onClick={handleNextMonth}
+                title="Next month"
+                className="p-2 rounded-md bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-700 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
             </div>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -949,7 +1010,7 @@ export default function Delivery() {
                           <div>
                             <p className="text-xs text-gray-400 uppercase tracking-wide">Duration</p>
                             <p className="text-sm font-medium text-white">
-                              {Math.ceil((new Date(selectedRental.end_date) - new Date(selectedRental.start_date)) / (1000 * 3600 * 24))} days
+                              {inclusiveDays(selectedRental.start_date, selectedRental.end_date)} days
                             </p>
                           </div>
                         </div>
