@@ -1,14 +1,13 @@
 // src/pages/user/Cameras.jsx
-import React, { useState, useEffect } from 'react'; // Removed useRef as sigCanvasRef is now local to RentalFlowSection
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { getAllCameras, getAvailableCamerasForDates } from '../../services/cameraService';
 import { getCameraWithInclusions } from '../../services/inclusionService';
-// Removed individual service imports related to rental flow as they are now in RentalFlowSection
-import ContractSigningModal from '../../components/ContractSigningModal'; // This might need adjustment depending on how it uses state
+import ContractSigningModal from '../../components/ContractSigningModal';
 import CameraBrowserSection from '../../components/CameraBrowserSection';
-import RentalFlowSection from '../../components/RentalFlowSection'; // Import the new component
-import useCameraStore from '../../stores/cameraStore'; // Import the store
-import { X } from 'lucide-react'; // Keep X for error display
+import RentalFlowSection from '../../components/RentalFlowSection';
+import useCameraStore from '../../stores/cameraStore';
+import { X, Camera, Bell } from 'lucide-react';
 
 export default function UserCameras() {
   // --- Get state and actions from the store ---
@@ -182,30 +181,97 @@ export default function UserCameras() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      {/* --- RENTAL FLOW SECTION --- */}
-      {/* Show Rental Flow if a camera is selected */}
-      {rentalFlowCamera && (
-        <RentalFlowSection onBackToBrowse={handleBackToBrowse} />
-      )}
+    <div className="min-h-screen lg:max-w-6xl lg:mx-auto lg:px-8">
+      {/* Header Section - Mobile First */}
+        <div className="px-4 py-4 ">
+          <div className="flex justify-between items-center mb-4">
+            <div>
+              <p className="text-lg font-semibold text-gray-900">Hello👋, John Davis</p>
+              <p className="text-sm text-gray-600 flex items-center">
+                📍 United Kingdom
+              </p>
+            </div>
+            <button className="p-2 text-gray-600 hover:text-gray-800 bg-gray-100 rounded-lg">
+              <Bell size={20} />
+            </button>
+          </div>
+          
+          {/* Promo Banner */}
+          <div className="bg-gradient-to-r from-blue-900 to-blue-800 rounded-xl p-4 mb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <p className="text-white text-sm font-medium mb-2">Get high quality images with expert lenses</p>
+                <button className="bg-yellow-500 hover:bg-yellow-600 text-black px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
+                  Get It Now
+                </button>
+              </div>
+              <div className="ml-4">
+                <Camera className="text-white opacity-20" size={32} />
+              </div>
+            </div>
+          </div>
 
-      {/* --- CAMERA BROWSER SECTION --- */}
-      {/* Show Camera Browser if no camera is selected for rental */}
-      {!rentalFlowCamera && (
-        <CameraBrowserSection
-          startDate={startDate}
-          endDate={endDate}
-          isFilterActive={isFilterActive}
-          displayedCameras={displayedCameras}
-          filterLoading={filterLoading}
-          filterError={error} // Pass main error state, or a specific filter error if you add one to the store
-          onDateChange={handleBrowseDateChange} // Use the combined store action
-          onApplyFilter={handleApplyFilter}
-          onClearFilter={handleClearFilter}
-          onRentClick={handleRentClick}
-        />
-      )}
+          {/* Top Brands */}
+          <div className="mb-4">
+            <h3 className="text-base font-semibold text-gray-900 mb-3">Top Brands</h3>
+            <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide">
+              {['Canon', 'Sony', 'Fujifilm', 'Nikon', 'GoPro'].map((brand) => (
+                <button
+                  key={brand}
+                  className={`px-4 py-2 text-sm font-medium rounded-full whitespace-nowrap transition-colors ${
+                    brand === 'Nikon' 
+                      ? 'bg-blue-900 text-white shadow-lg' 
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {brand}
+                </button>
+              ))}
+            </div>
+          </div>
 
+          {/* Category Navigation */}
+          <div className="mb-2">
+            <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide">
+              {['Cameras', 'Lenses', 'Tripods', 'Lighting', 'Accessories'].map((category) => (
+                <button
+                  key={category}
+                  className={`px-4 py-2 text-sm font-medium rounded-full whitespace-nowrap transition-colors ${
+                    category === 'Cameras'
+                      ? 'bg-blue-100 text-blue-900 border border-blue-200'
+                      : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
+                  }`}
+                >
+                  {category}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      
+      {/* Main Content */}
+      <div className="px-4 py-6 lg:max-w-6xl lg:mx-auto lg:px-8">
+        {/* --- RENTAL FLOW SECTION --- */}
+        {rentalFlowCamera && (
+          <RentalFlowSection onBackToBrowse={handleBackToBrowse} />
+        )}
+
+        {/* --- CAMERA BROWSER SECTION --- */}
+        {!rentalFlowCamera && (
+          <CameraBrowserSection
+            startDate={startDate}
+            endDate={endDate}
+            isFilterActive={isFilterActive}
+            displayedCameras={displayedCameras}
+            filterLoading={filterLoading}
+            filterError={error}
+            onDateChange={handleBrowseDateChange}
+            onApplyFilter={handleApplyFilter}
+            onClearFilter={handleClearFilter}
+            onRentClick={handleRentClick}
+          />
+        )}
+      </div>
     </div>
   );
 }

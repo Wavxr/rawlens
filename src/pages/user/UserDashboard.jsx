@@ -1,44 +1,13 @@
-"use client"
-
+// src/components/UserDashboard.jsx
 import { Outlet, useNavigate, useLocation } from "react-router-dom"
 import useAuthStore from "../../stores/useAuthStore"
-import { Camera, Calendar, BookOpen, User, LogOut, Menu, X} from "lucide-react"
+import { Camera, Calendar, BookOpen, User, Menu, X, Bell } from "lucide-react"
 import { useState } from "react"
 
 export default function UserDashboard() {
   const navigate = useNavigate()
   const location = useLocation()
-  const logout = useAuthStore((state) => state.logout)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-
-  const handleLogout = async () => {
-    try {
-      console.log('🎯 User handleLogout starting...');
-      
-      // Always clear local state first as a safety measure
-      const authStore = useAuthStore.getState();
-      
-      await authStore.logout();
-      console.log('✅ User logout completed, navigating...');
-      
-      // Force navigation with replace to prevent back button issues
-      navigate("/login", { replace: true });
-      
-      // Additional cleanup - clear any remaining browser state
-      if ('caches' in window) {
-        caches.keys().then(names => {
-          names.forEach(name => caches.delete(name));
-        });
-      }
-      
-    } catch (error) {
-      console.error('❌ User logout error:', error);
-      
-      // Force cleanup and navigation even on error
-      useAuthStore.getState().forceCleanup();
-      navigate("/login", { replace: true });
-    }
-  }
 
   const navItems = [
     { path: "/user/cameras", label: "Browse Cameras", icon: Camera, shortLabel: "Browse" },
@@ -52,8 +21,8 @@ export default function UserDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Modern Top Navigation Bar */}
-      <nav className="bg-white/95 backdrop-blur-xl border-b border-gray-200/80 sticky top-0 z-50 shadow-sm">
+      {/* Modern Top Navigation Bar - Desktop Only */}
+      <nav className="bg-white/95 backdrop-blur-xl border-b border-gray-200/80 sticky top-0 z-50 shadow-sm hidden lg:block">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Modern Logo */}
@@ -105,65 +74,11 @@ export default function UserDashboard() {
                   <div className="text-xs text-gray-500">Profile</div>
                 </div>
               </button>
-
-              {/* Modern Logout */}
-              <button
-                onClick={handleLogout}
-                className="hidden lg:flex items-center space-x-2 px-3 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl transition-all duration-200 text-sm font-medium"
-              >
-                <LogOut className="h-4 w-4" />
-                <span>Logout</span>
-              </button>
-
-              {/* Modern Mobile Menu Button */}
-              <button
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="lg:hidden p-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all duration-200"
-              >
-                {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-              </button>
             </div>
           </div>
         </div>
-
-        {/* Modern Mobile Menu Dropdown */}
-        {isMobileMenuOpen && (
-          <div className="lg:hidden border-t border-gray-200">
-            <div className="bg-white px-4 py-4 space-y-1 shadow-lg">
-              {navItems.map((item) => {
-                const Icon = item.icon
-                const active = isActive(item.path)
-                return (
-                  <button
-                    key={item.path}
-                    onClick={() => {
-                      navigate(item.path)
-                      setIsMobileMenuOpen(false)
-                    }}
-                    className={`flex items-center space-x-3 w-full px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                      active
-                        ? "bg-blue-600 text-white"
-                        : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
-                    }`}
-                  >
-                    <Icon className="h-5 w-5" />
-                    <span>{item.label}</span>
-                  </button>
-                )
-              })}
-              <div className="border-t border-gray-200 pt-3 mt-3">
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center space-x-3 w-full px-4 py-3 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl transition-all duration-200 text-sm font-medium"
-                >
-                  <LogOut className="h-5 w-5" />
-                  <span>Logout</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </nav>
+
 
       {/* Modern Bottom Navigation (Mobile) */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-gray-200/80 z-40 shadow-lg">
@@ -196,7 +111,7 @@ export default function UserDashboard() {
       </div>
 
       {/* Modern Main Content */}
-      <main className="pb-20 lg:pb-6">
+      <main className="pb-20 lg:pb-6 pt-0 lg:pt-0">
         <Outlet />
       </main>
     </div>

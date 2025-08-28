@@ -1,3 +1,4 @@
+// src/pages/Profile.jsx
 import { useEffect, useState, useRef } from "react";
 import { updateUserProfile } from "../../services/userService";
 import { getSignedUrl } from "../../services/storageService";
@@ -6,10 +7,11 @@ import useAuthStore from "../../stores/useAuthStore";
 import useSettingsStore from "../../stores/settingsStore";
 import PushNotificationPrompt from "../../components/PushNotificationPrompt";
 import UserNotificationSettings from "../../components/UserNotificationSettings";
+import { LogOut } from "lucide-react";
 
 export default function Profile() {
     // State Management
-  const { user, profile, role, loading: authLoading } = useAuthStore();
+  const { user, profile, role, loading: authLoading, logout } = useAuthStore();
   const { settings, init: initSettings, update: updateSettings, loading: settingsLoading } = useSettingsStore();
   const userId = user?.id;
   const userRole = role || 'user'; // Default to 'user' if role is not set yet
@@ -305,6 +307,36 @@ export default function Profile() {
     recordedBlobRef.current = null;
   };
 
+  // Logout Handler
+  const handleLogout = async () => {
+    try {
+      console.log('🎯 User handleLogout starting...');
+      
+      // Always clear local state first as a safety measure
+      const authStore = useAuthStore.getState();
+      
+      await authStore.logout();
+      console.log('✅ User logout completed, navigating...');
+      
+      // Force navigation with replace to prevent back button issues
+      window.location.href = "/login";
+      
+      // Additional cleanup - clear any remaining browser state
+      if ('caches' in window) {
+        caches.keys().then(names => {
+          names.forEach(name => caches.delete(name));
+        });
+      }
+      
+    } catch (error) {
+      console.error('❌ User logout error:', error);
+      
+      // Force cleanup and navigation even on error
+      useAuthStore.getState().forceCleanup();
+      window.location.href = "/login";
+    }
+  };
+
   // Loading States
   if (authLoading && !profile) {
     return (
@@ -337,9 +369,18 @@ export default function Profile() {
     <>
       <div className="min-h-screen bg-gray-50 py-12 px-4">
         <div className="max-w-4xl mx-auto">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Profile Settings</h1>
-            <p className="text-gray-600">Manage your personal information and verification documents</p>
+          <div className="mb-8 flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Profile Settings</h1>
+              <p className="text-gray-600">Manage your personal information and verification documents</p>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="flex items-center space-x-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="font-medium">Logout</span>
+            </button>
           </div>
           
           {/* Post-Migration Push Notification Prompt */}
