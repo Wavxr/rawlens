@@ -250,7 +250,7 @@ export default function UserCameras() {
         </div>
       
       {/* Main Content */}
-      <div className="px-4 py-6 lg:max-w-6xl lg:mx-auto lg:px-8">
+      <div className="px-4 py-6">
         {/* --- RENTAL FLOW SECTION --- */}
         {rentalFlowCamera && (
           <RentalFlowSection onBackToBrowse={handleBackToBrowse} />
