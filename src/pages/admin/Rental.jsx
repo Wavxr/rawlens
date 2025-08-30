@@ -32,7 +32,9 @@ import {
   findConflictingRentals,
   getAvailableUnitsOfModel,
 } from "../../services/rentalService";
+import { adminVerifyPayment, adminRejectPayment } from "../../services/paymentService";
 import ConflictResolutionModal from "../../components/ConflictResolutionModal";
+import { PaymentVerificationModal, PaymentStatusBadge } from "../../components/PaymentVerificationComponents";
 import {
   adminConfirmReceived,
   adminConfirmReturned,
@@ -69,6 +71,10 @@ export default function Rentals() {
   const [showConflictModal, setShowConflictModal] = useState(false);
   const [conflictData, setConflictData] = useState(null);
   const [conflictLoading, setConflictLoading] = useState(false);
+
+  // Payment verification state
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedPaymentRental, setSelectedPaymentRental] = useState(null);
 
   useEffect(() => {
     loadAllRentals();
@@ -188,6 +194,10 @@ export default function Rentals() {
 
         if (selectedStatus === "needs_action") {
           tempFiltered = tempFiltered.filter(needsAdminAction);
+        } else if (selectedStatus === "payment_pending") {
+          tempFiltered = tempFiltered.filter(
+            (rental) => rental.rental_status === "confirmed" && rental.payment_status === "submitted"
+          );
         } else {
           tempFiltered = tempFiltered.filter(
             (rental) => rental.rental_status === selectedStatus
@@ -294,6 +304,10 @@ export default function Rentals() {
     } else {
       if (selectedStatus === "needs_action") {
         filtered = filtered.filter(needsAdminAction);
+      } else if (selectedStatus === "payment_pending") {
+        filtered = filtered.filter(
+          (rental) => rental.rental_status === "confirmed" && rental.payment_status === "submitted"
+        );
       } else {
         filtered = filtered.filter(
           (rental) => rental.rental_status === selectedStatus
@@ -708,6 +722,40 @@ export default function Rentals() {
     }
   };
 
+  // Payment verification handlers
+  const handleOpenPaymentVerification = (rental) => {
+    setSelectedPaymentRental(rental);
+    setShowPaymentModal(true);
+  };
+
+  const handleVerifyPayment = async (rentalId) => {
+    try {
+      const result = await adminVerifyPayment(rentalId);
+      if (result.success) {
+        await loadAllRentals(); // Refresh data
+        return result;
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const handleRejectPayment = async (rentalId, reason) => {
+    try {
+      const result = await adminRejectPayment(rentalId, reason);
+      if (result.success) {
+        await loadAllRentals(); // Refresh data
+        return result;
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      throw error;
+    }
+  };
+
   const viewContract = async (rentalId, contractFilePath) => {
     if (!contractFilePath) {
       setContractViewError((prev) => ({
@@ -800,13 +848,21 @@ export default function Rentals() {
                 )}
               </div>
             </div>
-            <span
-              className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(
-                rental.rental_status
-              )}`}
-            >
-              {getStatusText(rental.rental_status)}
-            </span>
+            <div className="flex flex-col items-end gap-2">
+              <span
+                className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(
+                  rental.rental_status
+                )}`}
+              >
+                {getStatusText(rental.rental_status)}
+              </span>
+              {rental.rental_status === "confirmed" && (
+                <PaymentStatusBadge 
+                  rental={rental} 
+                  onOpenVerification={() => handleOpenPaymentVerification(rental)}
+                />
+              )}
+            </div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 mb-4 md:mb-6">
             <div className="flex items-center space-x-2 md:space-x-3 p-2 md:p-3 bg-gray-700 rounded-lg">
@@ -1153,6 +1209,13 @@ export default function Rentals() {
       count: allRentals
         .filter((r) => !selectedMonth || doesRentalOverlapMonth(r, selectedMonth))
         .filter((r) => r.rental_status === "confirmed").length,
+    },
+    {
+      key: "payment_pending",
+      label: "Payment Pending",
+      count: allRentals
+        .filter((r) => !selectedMonth || doesRentalOverlapMonth(r, selectedMonth))
+        .filter((r) => r.rental_status === "confirmed" && r.payment_status === "submitted").length,
     },
     {
       key: "active",
@@ -1647,6 +1710,18 @@ export default function Rentals() {
             onConfirmWithCurrentUnit={handleConfirmWithCurrentUnit}
             onTransferToUnit={handleTransferToUnit}
             onRejectConflicts={handleRejectConflicts}
+          />
+        )}
+        {showPaymentModal && selectedPaymentRental && (
+          <PaymentVerificationModal
+            rental={selectedPaymentRental}
+            isOpen={showPaymentModal}
+            onClose={() => {
+              setShowPaymentModal(false);
+              setSelectedPaymentRental(null);
+            }}
+            onVerify={handleVerifyPayment}
+            onReject={handleRejectPayment}
           />
         )}
       </div>

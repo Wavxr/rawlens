@@ -3,6 +3,9 @@ import useAuthStore from '../../stores/useAuthStore';
 import useRentalStore from '../../stores/rentalStore';
 import { subscribeToRentalUpdates, unsubscribeFromRentalUpdates } from '../../services/realtimeService';
 import { Loader2, Calendar, Camera as CameraIcon, AlertCircle } from 'lucide-react';
+import PaymentUploadSection from '../../components/PaymentUploadSection';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 function formatDate(dateStr) {
   if (!dateStr) return '';
@@ -41,41 +44,46 @@ const Section = ({ title, count, children }) => (
   </section>
 );
 
-const RequestRow = ({ rental }) => {
+const RequestRow = ({ rental, onUploadComplete }) => {
   const camera = rental.cameras || {};
   const dateRange = `${formatDate(rental.start_date)} — ${formatDate(rental.end_date)}`;
   return (
-    <div className="px-4 py-3 flex items-center gap-4 border-b last:border-b-0 hover:bg-gray-50 transition">
-      <div className="w-14 h-14 rounded overflow-hidden bg-gray-100 flex items-center justify-center border">
-        {camera.image_url ? (
-          <img
-            src={camera.image_url}
-            alt={camera.name}
-            className="w-full h-full object-cover"
-            onError={(e) => { e.currentTarget.style.display = 'none'; }}
-          />
-        ) : (
-          <CameraIcon className="w-6 h-6 text-gray-400" />
-        )}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <div className="font-medium text-gray-900 truncate">{camera.name || 'Camera'}</div>
-          <StatusPill status={rental.rental_status} />
+    <div className="px-4 py-3 border-b last:border-b-0 hover:bg-gray-50 transition">
+      <div className="flex items-start gap-4">
+        <div className="w-14 h-14 rounded overflow-hidden bg-gray-100 flex items-center justify-center border flex-shrink-0">
+          {camera.image_url ? (
+            <img
+              src={camera.image_url}
+              alt={camera.name}
+              className="w-full h-full object-cover"
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+            />
+          ) : (
+            <CameraIcon className="w-6 h-6 text-gray-400" />
+          )}
         </div>
-        <div className="mt-1 text-sm text-gray-600 flex items-center gap-1">
-          <Calendar className="w-3.5 h-3.5 text-gray-400" />
-          <span>{dateRange}</span>
-        </div>
-        {rental.rental_status === 'rejected' && rental.rejection_reason && (
-          <div className="mt-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1">
-            <span className="font-medium">Rejection reason:</span> {rental.rejection_reason}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <div className="font-medium text-gray-900 truncate">{camera.name || 'Camera'}</div>
+            <StatusPill status={rental.rental_status} />
           </div>
-        )}
-      </div>
-      <div className="text-right text-sm text-gray-500">
-        <div>Submitted</div>
-        <div className="font-medium text-gray-700">{formatDate(rental.created_at)}</div>
+          <div className="mt-1 text-sm text-gray-600 flex items-center gap-1">
+            <Calendar className="w-3.5 h-3.5 text-gray-400" />
+            <span>{dateRange}</span>
+          </div>
+          {rental.rental_status === 'rejected' && rental.rejection_reason && (
+            <div className="mt-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1">
+              <span className="font-medium">Rejection reason:</span> {rental.rejection_reason}
+            </div>
+          )}
+          {rental.rental_status === 'confirmed' && (
+            <PaymentUploadSection rental={rental} onUploadComplete={onUploadComplete} />
+          )}
+        </div>
+        <div className="text-right text-sm text-gray-500 flex-shrink-0">
+          <div>Submitted</div>
+          <div className="font-medium text-gray-700">{formatDate(rental.created_at)}</div>
+        </div>
       </div>
     </div>
   );
@@ -95,6 +103,13 @@ const Requests = () => {
   const { user, loading: authLoading } = useAuthStore();
   const { rentals, loading, error, loadRentals } = useRentalStore();
   const subscriptionRef = useRef(null);
+
+  const handleUploadComplete = () => {
+    // Refresh rentals data after successful upload
+    if (user?.id) {
+      loadRentals(user.id);
+    }
+  };
 
   useEffect(() => {
     if (user?.id) {
@@ -162,7 +177,7 @@ const Requests = () => {
             ) : (
               <div>
                 {pending.map(r => (
-                  <RequestRow key={r.id} rental={r} />
+                  <RequestRow key={r.id} rental={r} onUploadComplete={handleUploadComplete} />
                 ))}
               </div>
             )}
@@ -174,7 +189,7 @@ const Requests = () => {
             ) : (
               <div>
                 {confirmedUpcoming.map(r => (
-                  <RequestRow key={r.id} rental={r} />
+                  <RequestRow key={r.id} rental={r} onUploadComplete={handleUploadComplete} />
                 ))}
               </div>
             )}
@@ -186,13 +201,25 @@ const Requests = () => {
             ) : (
               <div>
                 {rejected.map(r => (
-                  <RequestRow key={r.id} rental={r} />
+                  <RequestRow key={r.id} rental={r} onUploadComplete={handleUploadComplete} />
                 ))}
               </div>
             )}
           </Section>
         </div>
       )}
+      <ToastContainer
+        position="bottom-right"
+        autoClose={3000}
+        hideProgressBar
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable={false}
+        pauseOnHover
+        theme="light"
+      />
     </div>
   );
 };
