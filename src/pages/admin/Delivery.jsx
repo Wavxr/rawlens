@@ -517,7 +517,14 @@ export default function Delivery() {
           
           <div className="flex justify-between items-start mb-4">
             <div className="flex-1">
-              <h3 className="text-xl font-semibold text-white mb-1">{rental.cameras?.name || "Camera Equipment"}</h3>
+              <h3 className="text-xl font-semibold text-white mb-1">
+                {rental.cameras?.name || "Camera Equipment"}
+                {rental.cameras?.serial_number && (
+                  <span className="ml-2 text-sm font-normal text-gray-400">
+                    #{rental.cameras.serial_number}
+                  </span>
+                )}
+              </h3>
             <div className="flex items-center space-x-2 text-sm text-gray-300">
                 <User className="h-4 w-4" />
                 <span>{customerName}</span>
@@ -893,7 +900,14 @@ export default function Delivery() {
                 <div className="flex items-start justify-between mb-6">
                   <div>
                     <h2 className="text-2xl font-bold text-white">Delivery Details</h2>
-                    <p className="text-gray-300 mt-1">{selectedRental.cameras?.name || "Camera Equipment"}</p>
+                    <p className="text-gray-300 mt-1">
+                      {selectedRental.cameras?.name || "Camera Equipment"}
+                      {selectedRental.cameras?.serial_number && (
+                        <span className="ml-2 text-sm text-gray-400">
+                          #{selectedRental.cameras.serial_number}
+                        </span>
+                      )}
+                    </p>
                   </div>
                   <div className="flex items-center gap-2">
                     {/* Added Manage Rental button */}
@@ -993,7 +1007,14 @@ export default function Delivery() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
                             <p className="text-xs text-gray-400 uppercase tracking-wide">Equipment</p>
-                            <p className="text-sm font-medium text-white">{selectedRental.cameras?.name || "Camera Equipment"}</p>
+                            <p className="text-sm font-medium text-white">
+                              {selectedRental.cameras?.name || "Camera Equipment"}
+                              {selectedRental.cameras?.serial_number && (
+                                <span className="ml-2 text-xs text-gray-400">
+                                  #{selectedRental.cameras.serial_number}
+                                </span>
+                              )}
+                            </p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-400 uppercase tracking-wide">Total Price</p>

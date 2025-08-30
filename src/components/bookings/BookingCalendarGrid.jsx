@@ -123,7 +123,14 @@ const CameraMiniCalendar = ({
           <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded flex-shrink-0 ${isDarkMode ? 'bg-gray-700' : 'bg-slate-100'}`} />
         )}
         <div className="flex-1 min-w-0">
-          <div className={`font-medium text-sm sm:text-base truncate ${textColor}`}>{camera.name}</div>
+          <div className={`font-medium text-sm sm:text-base truncate ${textColor}`}>
+            {camera.name}
+            {camera.serial_number && (
+              <span className={`ml-2 text-xs font-normal ${isDarkMode ? 'text-gray-400' : 'text-slate-500'}`}>
+                #{camera.serial_number}
+              </span>
+            )}
+          </div>
           <div className={`text-xs ${secondaryTextColor}`}>{label}</div>
         </div>
         <CalendarIcon className={`w-4 h-4 flex-shrink-0 ${iconColor}`} />

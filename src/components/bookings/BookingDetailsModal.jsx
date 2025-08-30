@@ -148,7 +148,13 @@ const BookingDetailsModal = ({
           <div>
             <h3 className={`text-lg font-semibold ${textColor}`}>Booking Details</h3>
             <p className={`text-sm ${secondaryTextColor}`}>
-              {camera?.name || booking.cameras?.name} - {customerName}
+              {camera?.name || booking.cameras?.name}
+              {(camera?.serial_number || booking.cameras?.serial_number) && (
+                <span className={`ml-2 text-xs ${isDarkMode ? 'text-gray-400' : 'text-slate-500'}`}>
+                  #{camera?.serial_number || booking.cameras?.serial_number}
+                </span>
+              )}
+              {' - '}{customerName}
             </p>
           </div>
           <button onClick={onClose} className={`text-gray-400 hover:text-gray-600`}>

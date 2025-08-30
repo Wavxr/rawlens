@@ -198,6 +198,83 @@ export async function updateCamera(id, cameraData, imageFile = null) {
   }
 }
 
+export async function duplicateCamera(originalCameraId, newCameraData, imageFile = null) {
+  try {
+    // Fetch original camera with pricing tiers
+    const { data: originalCamera, error: fetchError } = await supabase
+      .from("cameras")
+      .select(`
+        *,
+        camera_pricing_tiers (
+          min_days,
+          max_days,
+          price_per_day,
+          description
+        )
+      `)
+      .eq("id", originalCameraId)
+      .maybeSingle();
+
+    if (fetchError) throw fetchError;
+    if (!originalCamera) throw new Error("Original camera not found");
+
+    // Validate required new data
+    if (!newCameraData.serial_number?.trim()) {
+      throw new Error("Serial number is required for the new camera unit");
+    }
+
+    // Handle image - use new image if provided, otherwise use original image URL
+    let imageUrl = originalCamera.image_url; // Default to original camera's image
+    if (imageFile) {
+      // Only upload new image if one was provided
+      const uploadResult = await uploadCameraImage(imageFile, originalCamera.name);
+      imageUrl = uploadResult.publicUrl;
+    }
+
+    // Insert new camera with data from form (which may include modified values) but prioritize original for unchanged fields
+    const { data: newCamera, error: cameraError } = await supabase
+      .from("cameras")
+      .insert({
+        name: newCameraData.name?.trim() || originalCamera.name,
+        description: newCameraData.description?.trim() || originalCamera.description,
+        image_url: imageUrl, // Use original URL unless new image was uploaded
+        serial_number: newCameraData.serial_number.trim(),
+        purchase_date: newCameraData.purchase_date || originalCamera.purchase_date,
+        cost: newCameraData.cost ? parseFloat(newCameraData.cost) : originalCamera.cost,
+        camera_status: newCameraData.camera_status || 'available',
+        camera_condition: newCameraData.camera_condition || originalCamera.camera_condition
+      })
+      .select()
+      .single();
+
+    if (cameraError) throw cameraError;
+
+    const newCameraId = newCamera.id;
+
+    // Replicate pricing tiers from original camera
+    if (originalCamera.camera_pricing_tiers && originalCamera.camera_pricing_tiers.length > 0) {
+      const pricingTiers = originalCamera.camera_pricing_tiers.map(tier => ({
+        camera_id: newCameraId,
+        min_days: tier.min_days,
+        max_days: tier.max_days,
+        price_per_day: tier.price_per_day,
+        description: tier.description
+      }));
+
+      const { error: pricingError } = await supabase
+        .from("camera_pricing_tiers")
+        .insert(pricingTiers);
+
+      if (pricingError) throw pricingError;
+    }
+
+    return { success: true, data: { id: newCameraId } };
+  } catch (error) {
+    console.error("Error in duplicateCamera:", error);
+    return { error };
+  }
+}
+
 export async function deleteCamera(id) {
   try {
     const { data: camera, error: fetchError } = await supabase

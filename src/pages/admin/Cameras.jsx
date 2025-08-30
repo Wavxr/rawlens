@@ -5,6 +5,7 @@ import {
   getAllCameras, 
   updateCamera,
   deleteCamera,
+  duplicateCamera,
 } from "../../services/cameraService"
 import { 
   getAllInclusionItems, 
@@ -29,6 +30,7 @@ import {
   Star,
   Package,
   Tag,
+  Copy,
 } from "lucide-react"
 
 export default function Cameras() {
@@ -52,6 +54,8 @@ export default function Cameras() {
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
   const [editMode, setEditMode] = useState(false)
+  const [duplicateMode, setDuplicateMode] = useState(false)
+  const [originalCameraId, setOriginalCameraId] = useState(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [viewMode, setViewMode] = useState("grid")
   const [showForm, setShowForm] = useState(false)
@@ -164,6 +168,8 @@ export default function Cameras() {
     setImage(null)
     setImagePreview(null)
     setEditMode(false)
+    setDuplicateMode(false)
+    setOriginalCameraId(null)
     setShowForm(false)
     setError("")
     setSuccess(false)
@@ -185,6 +191,13 @@ export default function Cameras() {
       return
     }
 
+    // Check for serial number requirement in duplication scenario
+    if (!editMode && duplicateMode && !camera.serial_number?.trim()) {
+      setError("Serial number is required for duplicating cameras.")
+      setLoading(false)
+      return
+    }
+
     let result
     let cameraIdToUse = camera.id
 
@@ -192,8 +205,13 @@ export default function Cameras() {
       if (editMode) {
         result = await updateCamera(camera.id, camera, image)
         cameraIdToUse = camera.id
+      } else if (duplicateMode && originalCameraId) {
+        // Use duplicateCamera service for duplication
+        result = await duplicateCamera(originalCameraId, camera, image)
+        cameraIdToUse = result.data?.id
       } else {
-        if (!image) {
+        // For new cameras (not duplication), image is required
+        if (!image && !camera.image_url) {
           setError("Image is required for new cameras.")
           setLoading(false)
           return
@@ -292,6 +310,68 @@ export default function Cameras() {
     setImagePreview(cam.image_url)
   }
 
+  async function handleDuplicate(cam) {
+    // Extract pricing data from the camera object
+    const standardTier = cam.camera_pricing_tiers?.find((t) => t.min_days === 1 && t.max_days === 3);
+    const discountedTier = cam.camera_pricing_tiers?.find((t) => t.min_days === 4 && t.max_days === null);
+
+    // Prepare camera data for duplication (new camera, not editing)
+    const duplicatedCameraData = {
+      id: null, // Important: We are adding, not editing
+      name: cam.name,
+      description: cam.description,
+      pricePerDay: standardTier ? standardTier.price_per_day : "",
+      discountedPricePerDay: discountedTier ? discountedTier.price_per_day : "",
+      image_url: cam.image_url, // For preview
+      serial_number: "", // Clear this - must be unique for new unit
+      purchase_date: cam.purchase_date ? cam.purchase_date.split('T')[0] : "",
+      cost: cam.cost || "",
+      camera_status: "available", // Default for new unit
+      camera_condition: cam.camera_condition || "good"
+    }
+
+    // Handle potential errors in fetching inclusions (similar to handleEdit)
+    try {
+      // Reset inclusion states first
+      setSelectedInclusionIds([])
+      setSelectedInclusionQuantities({})
+      setInclusionsError("")
+
+      // Fetch current inclusions from the original camera to pre-fill
+      if (cam.id) {
+        const { data: currentInclusionData, error: inclusionsFetchError } = await getInclusionsForCamera(cam.id)
+        if (inclusionsFetchError) {
+          console.error("Error fetching current inclusions for camera duplication:", inclusionsFetchError)
+          setInclusionsError("Failed to load inclusions from original camera. You can manually select them.")
+        } else if (Array.isArray(currentInclusionData)) {
+          const inclusionIds = currentInclusionData.map((item) => item.inclusion_item_id)
+          const inclusionQuantities = {}
+          currentInclusionData.forEach((item) => {
+            inclusionQuantities[item.inclusion_item_id] = item.quantity || 1
+          })
+          setSelectedInclusionIds(inclusionIds)
+          setSelectedInclusionQuantities(inclusionQuantities)
+        } else {
+          console.warn("Unexpected response format from getInclusionsForCamera:", currentInclusionData)
+        }
+      } else {
+        console.warn("Camera ID is missing when trying to fetch inclusions for duplication.")
+      }
+    } catch (err) {
+      console.error("Unexpected error in handleDuplicate while fetching inclusions:", err)
+      setInclusionsError("An unexpected error occurred while loading inclusions from original camera.")
+    }
+
+    // Set form state
+    setCamera(duplicatedCameraData)
+    setEditMode(false) // Important: This is an "Add" operation
+    setDuplicateMode(true) // Track that this is a duplication
+    setOriginalCameraId(cam.id) // Store original camera ID for the duplicateCamera service call
+    setShowForm(true)
+    setImage(null) // Clear file state
+    setImagePreview(cam.image_url) // Show original image as preview
+  }
+
   async function handleDelete(id) {
     if (!window.confirm("Delete this camera? This action cannot be undone.")) return
     const { error } = await deleteCamera(id)
@@ -299,12 +379,30 @@ export default function Cameras() {
     else console.error(error.message)
   }
 
-  // Filter cameras
-  const filteredCameras = cameras.filter(
-    (cam) =>
-      cam.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cam.description.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  // Filter cameras and sort by name to group similar cameras together
+  const filteredCameras = cameras
+    .filter(
+      (cam) =>
+        cam.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        cam.description.toLowerCase().includes(searchTerm.toLowerCase()),
+    )
+    .sort((a, b) => {
+      // Primary sort: by camera name (alphabetical)
+      const nameComparison = a.name.localeCompare(b.name);
+      if (nameComparison !== 0) return nameComparison;
+      
+      // Secondary sort: by serial number (if same name)
+      if (a.serial_number && b.serial_number) {
+        return a.serial_number.localeCompare(b.serial_number);
+      }
+      
+      // If one has serial number and other doesn't, prioritize the one with serial number
+      if (a.serial_number && !b.serial_number) return -1;
+      if (!a.serial_number && b.serial_number) return 1;
+      
+      // Fallback: by creation date (newest first)
+      return new Date(b.created_at) - new Date(a.created_at);
+    })
 
   return (
     <div className="space-y-4">
@@ -461,9 +559,11 @@ export default function Cameras() {
                     <Camera className="h-5 w-5 text-blue-400" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold text-white">{editMode ? "Edit Camera" : "Add New Camera"}</h2>
+                    <h2 className="text-lg font-bold text-white">
+                      {editMode ? "Edit Camera" : duplicateMode ? `Duplicate Camera: ${camera.name}` : "Add New Camera"}
+                    </h2>
                     <p className="text-gray-400 text-xs">
-                      {editMode ? "Update camera details" : "Add camera to inventory"}
+                      {editMode ? "Update camera details" : duplicateMode ? "Create new unit from existing camera" : "Add camera to inventory"}
                     </p>
                   </div>
                 </div>
@@ -520,7 +620,12 @@ export default function Cameras() {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div>
-                            <label className="text-xs font-medium text-gray-300 mb-1 block">Serial Number</label>
+                            <label className="text-xs font-medium text-gray-300 mb-1 block">
+                              Serial Number {!editMode && duplicateMode ? "*" : ""}
+                              {!editMode && duplicateMode && (
+                                <span className="text-orange-400 ml-1">(Required for new unit)</span>
+                              )}
+                            </label>
                             <input
                               name="serial_number"
                               value={camera.serial_number}
@@ -873,13 +978,22 @@ export default function Cameras() {
                         <p className="text-gray-400 text-xs line-clamp-2 leading-relaxed">{cam.description}</p>
                       </div>
                       <div className="flex items-center justify-between pt-1">
-                        <button
-                          onClick={() => handleEdit(cam)}
-                          className="flex items-center space-x-1 px-3 py-1 bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 rounded-md transition-all duration-200 text-xs font-medium"
-                        >
-                          <Edit3 className="h-3 w-3" />
-                          <span>Edit</span>
-                        </button>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => handleEdit(cam)}
+                            className="flex items-center space-x-1 px-3 py-1 bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 rounded-md transition-all duration-200 text-xs font-medium"
+                          >
+                            <Edit3 className="h-3 w-3" />
+                            <span>Edit</span>
+                          </button>
+                          <button
+                            onClick={() => handleDuplicate(cam)}
+                            className="flex items-center space-x-1 px-3 py-1 bg-gray-600/20 text-gray-400 hover:bg-gray-600/30 rounded-md transition-all duration-200 text-xs font-medium"
+                          >
+                            <Copy className="h-3 w-3" />
+                            <span>Duplicate</span>
+                          </button>
+                        </div>
                         <button
                           onClick={() => handleDelete(cam.id)}
                           className="p-1 bg-red-600/20 text-red-400 hover:bg-red-600/30 rounded-md transition-all duration-200"
@@ -938,6 +1052,12 @@ export default function Cameras() {
                             className="p-2 bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 rounded-md transition-all duration-200"
                           >
                             <Edit3 className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={() => handleDuplicate(cam)}
+                            className="p-2 bg-gray-600/20 text-gray-400 hover:bg-gray-600/30 rounded-md transition-all duration-200"
+                          >
+                            <Copy className="h-3 w-3" />
                           </button>
                           <button
                             onClick={() => handleDelete(cam.id)}

@@ -104,7 +104,13 @@ const MobilePotentialBookingCard = ({ booking, isSelected, onSelect, onUpdate, o
         <div className="flex-1 min-w-0">
           <h4 className={`font-medium text-xs truncate ${textColor}`}>{booking.customer_name}</h4>
           <p className={`text-[10px] truncate ${secondaryTextColor}`}>
-            {booking.cameras?.name || 'Camera'} • {days} day{days !== 1 ? 's' : ''}
+            {booking.cameras?.name || 'Camera'}
+            {booking.cameras?.serial_number && (
+              <span className={`ml-1 ${mutedTextColor}`}>
+                #{booking.cameras.serial_number}
+              </span>
+            )}
+            {' • '}{days} day{days !== 1 ? 's' : ''}
           </p>
         </div>
         <div className="flex items-center gap-1.5 ml-2">

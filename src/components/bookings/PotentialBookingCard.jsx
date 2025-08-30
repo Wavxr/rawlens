@@ -127,6 +127,11 @@ const PotentialBookingCard = ({
         <Camera className={`w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0 ${mutedTextColor}`} />
         <span className={`text-xs sm:text-sm truncate ${secondaryTextColor}`}>
           {booking.cameras?.name || 'Camera'}
+          {booking.cameras?.serial_number && (
+            <span className={`ml-1 text-xs ${mutedTextColor}`}>
+              #{booking.cameras.serial_number}
+            </span>
+          )}
         </span>
       </div>
 

@@ -664,6 +664,11 @@ export default function Rentals() {
             <div className="flex-1">
               <h3 className="text-xl font-semibold text-white mb-1">
                 {rental.cameras?.name || "Camera Equipment"}
+                {rental.cameras?.serial_number && (
+                  <span className="ml-2 text-sm font-normal text-gray-400">
+                    #{rental.cameras.serial_number}
+                  </span>
+                )}
               </h3>
               <div className="flex items-center space-x-2 text-sm text-gray-300">
                 <User className="h-4 w-4" />
@@ -1099,7 +1104,14 @@ export default function Rentals() {
                 <h2 className="text-2xl font-bold text-white">
                   Rental Details
                 </h2>
-                <p className="text-gray-300 mt-1">{rental.cameras?.name}</p>
+                <p className="text-gray-300 mt-1">
+                  {rental.cameras?.name}
+                  {rental.cameras?.serial_number && (
+                    <span className="ml-2 text-sm text-gray-400">
+                      #{rental.cameras.serial_number}
+                    </span>
+                  )}
+                </p>
                 {isTemporaryBooking && (
                   <div className="mt-2 px-3 py-1 bg-orange-900/20 border border-orange-700 rounded-lg inline-block">
                     <span className="text-orange-200 text-sm font-medium">
@@ -1218,6 +1230,11 @@ export default function Rentals() {
                           </p>
                           <p className="text-sm font-medium text-white">
                             {selectedRental.cameras?.name || "Camera Equipment"}
+                            {selectedRental.cameras?.serial_number && (
+                              <span className="ml-2 text-xs text-gray-400">
+                                #{selectedRental.cameras.serial_number}
+                              </span>
+                            )}
                           </p>
                         </div>
                         <div>

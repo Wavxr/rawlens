@@ -167,6 +167,7 @@ const EditPotentialBookingModal = ({
                 {cameras.map(camera => (
                   <option key={camera.id} value={camera.id}>
                     {camera.name}
+                    {camera.serial_number && ` (#${camera.serial_number})`}
                   </option>
                 ))}
               </select>

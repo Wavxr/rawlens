@@ -101,9 +101,26 @@ const Bookings = () => {
         getPotentialBookings()
       ]);
 
-      // Handle cameras
+      // Handle cameras - sort by name to group similar cameras together
       if (cameraRes.error) throw new Error(cameraRes.error);
-      setCameras(cameraRes.data || []);
+      const sortedCameras = (cameraRes.data || []).sort((a, b) => {
+        // Primary sort: by camera name (alphabetical)
+        const nameComparison = a.name.localeCompare(b.name);
+        if (nameComparison !== 0) return nameComparison;
+        
+        // Secondary sort: by serial number (if same name)
+        if (a.serial_number && b.serial_number) {
+          return a.serial_number.localeCompare(b.serial_number);
+        }
+        
+        // If one has serial number and other doesn't, prioritize the one with serial number
+        if (a.serial_number && !b.serial_number) return -1;
+        if (!a.serial_number && b.serial_number) return 1;
+        
+        // Fallback: by creation date (newest first)
+        return new Date(b.created_at) - new Date(a.created_at);
+      });
+      setCameras(sortedCameras);
 
       // Handle calendar bookings
       if (!calendarRes.success) throw new Error(calendarRes.error);
