@@ -1,7 +1,7 @@
 // src/pages/user/Cameras.jsx
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
-import { getAllCameras, getAvailableCamerasForDates } from '../../services/cameraService';
+import { getCameraModels, findAvailableUnitOfModel } from '../../services/cameraService';
 import { getCameraWithInclusions } from '../../services/inclusionService';
 import ContractSigningModal from '../../components/ContractSigningModal';
 import CameraBrowserSection from '../../components/CameraBrowserSection';
@@ -23,6 +23,7 @@ export default function UserCameras() {
     isFilterActive,
     // Rental Flow State (for conditional rendering and passing to components)
     rentalFlowCamera,
+    rentalFlowCameraModelName,
     // Browsing Actions
     setCameras,
     setDisplayedCameras,
@@ -39,25 +40,25 @@ export default function UserCameras() {
 
   // --- Effects ---
   useEffect(() => {
-    const fetchCameras = async () => {
+    const fetchCameraModels = async () => {
       try {
         setLoading(true);
         setError(null); // Clear previous errors
   
-        const { data: camerasWithPricing, error: pricingError } = await getAllCameras();
-        if (pricingError) {
-          throw new Error(pricingError.message);
+        const { data: cameraModels, error: modelsError } = await getCameraModels();
+        if (modelsError) {
+          throw new Error(modelsError.message);
         }
 
-        const sortedCameras = (camerasWithPricing || []).map(camera => ({
+        const sortedModels = (cameraModels || []).map(camera => ({
           ...camera,
           camera_pricing_tiers: [...camera.camera_pricing_tiers].sort(
             (a, b) => a.min_days - b.min_days
           )
         }));
   
-        const camerasWithFullData = await Promise.all(
-          sortedCameras.map(async (camera) => {
+        const modelsWithFullData = await Promise.all(
+          sortedModels.map(async (camera) => {
             const trimmedCamera = {
               ...camera,
               image_url: camera.image_url ? camera.image_url.trim() : null
@@ -78,17 +79,17 @@ export default function UserCameras() {
           })
         );
   
-        setCameras(camerasWithFullData);
+        setCameras(modelsWithFullData);
       } catch (err) {
-        console.error("Failed to load cameras:", err);
-        setError("Failed to load cameras. Please try again later.");
+        console.error("Failed to load camera models:", err);
+        setError("Failed to load camera models. Please try again later.");
         setDisplayedCameras([]);
       } finally {
         setLoading(false);
       }
     };
   
-    fetchCameras();
+    fetchCameraModels();
   }, [setCameras, setDisplayedCameras, setLoading, setError]);
   
 
@@ -108,25 +109,22 @@ export default function UserCameras() {
     setError(''); // Clear previous filter errors
     setFilterLoading(true);
     try {
-      const { data: availableCamerasData, error: availabilityError } = await getAvailableCamerasForDates(startDate, endDate);
-      if (availabilityError) {
-        throw new Error(availabilityError.message || "Failed to fetch availability.");
+      // Check which camera models have at least one available unit for the dates
+      const availableModelNames = new Set();
+      
+      for (const cameraModel of cameras) {
+        const { data: availableUnit } = await findAvailableUnitOfModel(cameraModel.name, startDate, endDate);
+        if (availableUnit) {
+          availableModelNames.add(cameraModel.name);
+        }
       }
-      const cleanedAvailableCamerasData = availableCamerasData.map(camera => ({
-        ...camera,
-        image_url: camera.image_url ? camera.image_url.trim() : null
-      }));
-      const availableCameraIds = new Set(
-        cleanedAvailableCamerasData
-          .filter(item => item.isAvailable)
-          .map(item => item.id)
-      );
-      const filteredCameras = cameras.filter(camera => availableCameraIds.has(camera.id));
-      setDisplayedCameras(filteredCameras);
+      
+      const filteredModels = cameras.filter(cameraModel => availableModelNames.has(cameraModel.name));
+      setDisplayedCameras(filteredModels);
       setIsFilterActive(true);
     } catch (err) {
       console.error("Error applying filter:", err);
-      setError(err.message || "An error occurred while filtering cameras.");
+      setError(err.message || "An error occurred while filtering camera models.");
       setDisplayedCameras([]);
     } finally {
       setFilterLoading(false);
@@ -138,11 +136,11 @@ export default function UserCameras() {
     // The store action handles setting startDate, endDate, isFilterActive, displayedCameras, and clearing error
   };
 
-  const handleRentClick = (camera) => {
-    // Assuming resetRentalFlowState is called within the store action setRentalFlowCamera
-    // or we call it explicitly before setting the camera
-    useCameraStore.getState().resetRentalFlowState(); // Call reset action from store
-    useCameraStore.getState().setRentalFlowCamera(camera); // Set the camera to trigger RentalFlowSection
+  const handleRentClick = (cameraModel) => {
+    // Reset rental flow state and set the selected camera model name
+    useCameraStore.getState().resetRentalFlowState();
+    useCameraStore.getState().setRentalFlowCameraModelName(cameraModel.name);
+    useCameraStore.getState().setRentalFlowCamera(cameraModel); // Keep for display purposes
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -252,12 +250,12 @@ export default function UserCameras() {
       {/* Main Content */}
       <div className="px-4 py-6">
         {/* --- RENTAL FLOW SECTION --- */}
-        {rentalFlowCamera && (
+        {(rentalFlowCamera || rentalFlowCameraModelName) && (
           <RentalFlowSection onBackToBrowse={handleBackToBrowse} />
         )}
 
         {/* --- CAMERA BROWSER SECTION --- */}
-        {!rentalFlowCamera && (
+        {!rentalFlowCamera && !rentalFlowCameraModelName && (
           <CameraBrowserSection
             startDate={startDate}
             endDate={endDate}

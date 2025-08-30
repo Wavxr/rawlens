@@ -39,6 +39,13 @@ const CameraCard = ({ camera, onRentClick, onFavoriteClick, isFavorite }) => {
         <h3 className="text-base lg:text-sm font-semibold text-gray-900 truncate">{camera.name}</h3>
         <p className="mt-1 text-xs lg:text-xs text-gray-600 line-clamp-2">{camera.description}</p>
         
+        {/* Show unit count if this is a model representative */}
+        {camera.isModelRepresentative && camera.totalUnits > 1 && (
+          <p className="mt-1 text-xs text-blue-600 font-medium">
+            {camera.totalUnits} units available
+          </p>
+        )}
+        
         <div className="mt-3 lg:mt-2">
           <div className="flex items-center text-xs text-gray-500 mb-1">
             <Tag className="mr-1 h-3 w-3 lg:h-2.5 lg:w-2.5" />

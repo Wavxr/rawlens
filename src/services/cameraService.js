@@ -368,3 +368,82 @@ export async function getAvailableCamerasForDates(startDate, endDate) {
     return { data: null, error: error.message || "Failed to fetch available cameras." };
   }
 }
+
+// Find an available unit of a specific camera model for given dates
+export async function findAvailableUnitOfModel(cameraModelName, startDate, endDate) {
+  try {
+    // 1. Get all units of this camera model that are not unavailable
+    const { data: modelUnits, error: cameraError } = await supabase
+      .from('cameras')
+      .select(CAMERA_SELECT_QUERY)
+      .eq('name', cameraModelName)
+      .neq('camera_status', 'unavailable')
+      .order('serial_number', { ascending: true }); // Prefer units with serial numbers first
+
+    if (cameraError) throw cameraError;
+
+    if (!modelUnits || modelUnits.length === 0) {
+      return { 
+        data: null, 
+        error: `No units found for camera model: ${cameraModelName}` 
+      };
+    }
+
+    // 2. Check availability for each unit until we find one that's available
+    for (const unit of modelUnits) {
+      const { isAvailable } = await checkCameraAvailability(unit.id, startDate, endDate);
+      if (isAvailable) {
+        return { 
+          data: unit, 
+          error: null 
+        };
+      }
+    }
+
+    // 3. No units of this model are available
+    return { 
+      data: null, 
+      error: `No units of ${cameraModelName} are available for the selected dates.` 
+    };
+  } catch (error) {
+    console.error("Error in findAvailableUnitOfModel:", error);
+    return { 
+      data: null, 
+      error: error.message || "Failed to find available unit of camera model." 
+    };
+  }
+}
+
+// Get grouped camera models (one representative per model name)
+export async function getCameraModels() {
+  try {
+    const { data: allCameras, error: cameraError } = await supabase
+      .from('cameras')
+      .select(CAMERA_SELECT_QUERY)
+      .neq('camera_status', 'unavailable')
+      .order('name', { ascending: true });
+
+    if (cameraError) throw cameraError;
+
+    // Group cameras by model name and pick the first unit of each model as representative
+    const modelMap = new Map();
+    
+    allCameras.forEach(camera => {
+      if (!modelMap.has(camera.name)) {
+        modelMap.set(camera.name, {
+          ...camera,
+          // Add a flag to indicate this represents a model with multiple units
+          isModelRepresentative: true,
+          // Count total units for this model
+          totalUnits: allCameras.filter(c => c.name === camera.name).length
+        });
+      }
+    });
+
+    const cameraModels = Array.from(modelMap.values());
+    return { data: cameraModels, error: null };
+  } catch (error) {
+    console.error("Error in getCameraModels:", error);
+    return { data: null, error: error.message || "Failed to fetch camera models." };
+  }
+}

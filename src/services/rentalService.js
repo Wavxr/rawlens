@@ -216,11 +216,209 @@ export async function adminConfirmApplication(rentalId) {
   });
 }
 
+// Find conflicting rentals for the same camera unit and overlapping dates
+export async function findConflictingRentals(cameraId, startDate, endDate, excludeRentalId = null) {
+  try {
+    let query = supabase
+      .from('rentals')
+      .select(`
+        id,
+        camera_id,
+        start_date,
+        end_date,
+        rental_status,
+        customer_name,
+        cameras (name, serial_number),
+        users!rentals_user_id_fkey (first_name, last_name, email)
+      `)
+      .eq('camera_id', cameraId)
+      .in('rental_status', ['pending', 'confirmed', 'active'])
+      .or(`start_date.lte.${endDate},end_date.gte.${startDate}`);
+
+    if (excludeRentalId) {
+      query = query.neq('id', excludeRentalId);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    return { data: data || [], error: null };
+  } catch (error) {
+    console.error("Error finding conflicting rentals:", error);
+    return { data: null, error: error.message || "Failed to find conflicting rentals." };
+  }
+}
+
+// Get available units of the same camera model for given dates
+export async function getAvailableUnitsOfModel(cameraModelName, startDate, endDate, excludeRentalId = null) {
+  try {
+    // First get all units of this model
+    const { data: allUnits, error: cameraError } = await supabase
+      .from('cameras')
+      .select('id, name, serial_number, camera_status')
+      .eq('name', cameraModelName)
+      .neq('camera_status', 'unavailable')
+      .order('serial_number', { ascending: true });
+
+    if (cameraError) throw cameraError;
+
+    if (!allUnits || allUnits.length === 0) {
+      return { data: [], error: null };
+    }
+
+    // Check availability for each unit
+    const availableUnits = [];
+    for (const unit of allUnits) {
+      const { isAvailable } = await checkCameraAvailability(unit.id, startDate, endDate);
+      
+      // If there's an exclude rental ID, check if this unit would be available if we exclude that rental
+      if (!isAvailable && excludeRentalId) {
+        const { data: conflicts } = await findConflictingRentals(unit.id, startDate, endDate, excludeRentalId);
+        if (conflicts && conflicts.length === 0) {
+          availableUnits.push(unit);
+        }
+      } else if (isAvailable) {
+        availableUnits.push(unit);
+      }
+    }
+
+    return { data: availableUnits, error: null };
+  } catch (error) {
+    console.error("Error getting available units of model:", error);
+    return { data: null, error: error.message || "Failed to get available units." };
+  }
+}
+
+// Transfer a rental to a different camera unit (same model)
+export async function transferRentalToUnit(rentalId, newCameraId) {
+  try {
+    // Get the rental details first
+    const { data: rental, error: rentalError } = await getRentalById(rentalId);
+    if (rentalError || !rental) {
+      throw new Error("Rental not found.");
+    }
+
+    // Verify the new camera is the same model
+    const { data: newCamera, error: cameraError } = await supabase
+      .from('cameras')
+      .select('name, serial_number')
+      .eq('id', newCameraId)
+      .single();
+
+    if (cameraError || !newCamera) {
+      throw new Error("Target camera not found.");
+    }
+
+    if (newCamera.name !== rental.cameras.name) {
+      throw new Error("Can only transfer to the same camera model.");
+    }
+
+    // Check if the new unit is available for the rental dates
+    const { isAvailable } = await checkCameraAvailability(newCameraId, rental.start_date, rental.end_date);
+    if (!isAvailable) {
+      throw new Error("Target camera unit is not available for the selected dates.");
+    }
+
+    // Update the rental to use the new camera unit
+    const { error: updateError } = await supabase
+      .from('rentals')
+      .update({ camera_id: newCameraId })
+      .eq('id', rentalId);
+
+    if (updateError) throw updateError;
+
+    return { 
+      success: true, 
+      message: `Rental transferred to ${newCamera.name} (Serial: ${newCamera.serial_number})`,
+      error: null 
+    };
+  } catch (error) {
+    console.error("Error transferring rental:", error);
+    return { 
+      success: false, 
+      error: error.message || "Failed to transfer rental to new unit.",
+      message: null 
+    };
+  }
+}
+
+// Enhanced admin confirm with conflict detection and resolution
+export async function adminConfirmApplicationWithConflictCheck(rentalId) {
+  try {
+    // Get the rental details
+    const { data: rental, error: rentalError } = await getRentalById(rentalId);
+    if (rentalError || !rental) {
+      throw new Error("Rental not found.");
+    }
+
+    // Check for conflicts
+    const { data: conflicts, error: conflictError } = await findConflictingRentals(
+      rental.camera_id,
+      rental.start_date,
+      rental.end_date,
+      rentalId
+    );
+
+    if (conflictError) {
+      throw new Error(conflictError);
+    }
+
+    // If there are conflicts, try to find an alternative unit
+    if (conflicts && conflicts.length > 0) {
+      const { data: availableUnits } = await getAvailableUnitsOfModel(
+        rental.cameras.name,
+        rental.start_date,
+        rental.end_date
+      );
+
+      return {
+        success: false,
+        hasConflicts: true,
+        conflicts: conflicts,
+        availableUnits: availableUnits || [],
+        rental: rental,
+        error: null
+      };
+    }
+
+    // No conflicts, proceed with normal confirmation
+    const result = await updateRentalStatus(rentalId, {
+      rental_status: 'confirmed'
+    });
+
+    return {
+      success: true,
+      hasConflicts: false,
+      conflicts: [],
+      availableUnits: [],
+      rental: rental,
+      error: result.error
+    };
+  } catch (error) {
+    console.error("Error in adminConfirmApplicationWithConflictCheck:", error);
+    return {
+      success: false,
+      hasConflicts: false,
+      conflicts: [],
+      availableUnits: [],
+      rental: null,
+      error: error.message || "Failed to confirm application with conflict check."
+    };
+  }
+}
+
 // Admin rejects application (contract becomes void)
-export async function adminRejectApplication(rentalId) {
-  return await updateRentalStatus(rentalId, {
+export async function adminRejectApplication(rentalId, rejectionReason = null) {
+  const updateData = {
     rental_status: 'rejected'
-  });
+  };
+  
+  // If rejection reason is provided, store it
+  if (rejectionReason) {
+    updateData.rejection_reason = rejectionReason;
+  }
+  
+  return await updateRentalStatus(rentalId, updateData);
 }
 
 // Admin marks rental as active (camera in use by customer)

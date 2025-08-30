@@ -27,7 +27,12 @@ import {
   adminCompleteRental,
   adminCancelRental,
   adminDeleteRental,
+  adminConfirmApplicationWithConflictCheck,
+  transferRentalToUnit,
+  findConflictingRentals,
+  getAvailableUnitsOfModel,
 } from "../../services/rentalService";
+import ConflictResolutionModal from "../../components/ConflictResolutionModal";
 import {
   adminConfirmReceived,
   adminConfirmReturned,
@@ -59,6 +64,11 @@ export default function Rentals() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
   const [highlightId, setHighlightId] = useState(null);
   const cardRefs = useRef({});
+  
+  // Conflict resolution state
+  const [showConflictModal, setShowConflictModal] = useState(false);
+  const [conflictData, setConflictData] = useState(null);
+  const [conflictLoading, setConflictLoading] = useState(false);
 
   useEffect(() => {
     loadAllRentals();
@@ -466,20 +476,39 @@ export default function Rentals() {
       originalRentalStatus = rentalToApprove.rental_status;
     }
     try {
-      const result = await adminConfirmApplication(rentalId);
+      // Use enhanced conflict detection
+      const result = await adminConfirmApplicationWithConflictCheck(rentalId);
+      
       if (result.error) {
         toast.error(`Failed to approve rental: ${result.error}`);
         return;
       }
-      toast.success("Rental approved successfully!");
-      if (originalRentalStatus === "pending") {
-        const newParams = new URLSearchParams(searchParams);
-        newParams.set("status", "confirmed");
-        newParams.set("highlightId", rentalId);
-        setSearchParams(newParams);
-        setSelectedStatus("confirmed");
+
+      if (result.hasConflicts) {
+        // Show conflict resolution modal
+        setConflictData({
+          rental: result.rental,
+          conflicts: result.conflicts,
+          availableUnits: result.availableUnits
+        });
+        setShowConflictModal(true);
+        return;
+      }
+
+      // No conflicts, normal approval
+      if (result.success) {
+        toast.success("Rental approved successfully!");
+        await loadAllRentals(); // Refresh data
+        if (originalRentalStatus === "pending") {
+          const newParams = new URLSearchParams(searchParams);
+          newParams.set("status", "confirmed");
+          newParams.set("highlightId", rentalId);
+          setSearchParams(newParams);
+          setSelectedStatus("confirmed");
+        }
       }
     } catch (error) {
+      console.error("Error approving rental:", error);
       toast.error("Failed to approve rental");
     } finally {
       setActionLoading((prev) => {
@@ -588,6 +617,94 @@ export default function Rentals() {
         delete newLoading[rentalId];
         return newLoading;
       });
+    }
+  };
+
+  // Conflict resolution handlers
+  const handleConfirmWithCurrentUnit = async (rentalId) => {
+    setConflictLoading(true);
+    try {
+      const result = await adminConfirmApplication(rentalId);
+      if (result.error) {
+        toast.error(`Failed to confirm rental: ${result.error}`);
+        return;
+      }
+      toast.success("Rental confirmed with current unit (conflicts remain)!");
+      setShowConflictModal(false);
+      setConflictData(null);
+      await loadAllRentals(); // Refresh data
+    } catch (error) {
+      console.error("Error confirming with current unit:", error);
+      toast.error("Failed to confirm rental");
+    } finally {
+      setConflictLoading(false);
+    }
+  };
+
+  const handleTransferToUnit = async (rentalId, newUnitId) => {
+    setConflictLoading(true);
+    try {
+      const transferResult = await transferRentalToUnit(rentalId, newUnitId);
+      if (transferResult.error) {
+        toast.error(`Failed to transfer rental: ${transferResult.error}`);
+        return;
+      }
+
+      const confirmResult = await adminConfirmApplication(rentalId);
+      if (confirmResult.error) {
+        toast.error(`Failed to confirm rental after transfer: ${confirmResult.error}`);
+        return;
+      }
+
+      toast.success(transferResult.message + " and confirmed!");
+      setShowConflictModal(false);
+      setConflictData(null);
+      await loadAllRentals(); // Refresh data
+    } catch (error) {
+      console.error("Error transferring rental:", error);
+      toast.error("Failed to transfer rental");
+    } finally {
+      setConflictLoading(false);
+    }
+  };
+
+  const handleRejectConflicts = async (conflictIds, rejectionReason) => {
+    setConflictLoading(true);
+    try {
+      // Reject all specified bookings
+      const rejectPromises = conflictIds.map(id => adminRejectApplication(id, rejectionReason));
+      const rejectResults = await Promise.all(rejectPromises);
+      
+      const failedRejections = rejectResults.filter(result => result.error);
+      if (failedRejections.length > 0) {
+        toast.error(`Failed to reject ${failedRejections.length} booking(s)`);
+        return;
+      }
+
+      // Check if we're rejecting the current rental (the one being approved)
+      const isRejectingCurrentRental = conflictIds.includes(conflictData.rental.id);
+      
+      if (isRejectingCurrentRental) {
+        // We rejected the current rental, so don't try to confirm it
+        toast.success("Rental application rejected successfully!");
+      } else {
+        // We rejected other conflicting rentals, now confirm the current one
+        const confirmResult = await adminConfirmApplication(conflictData.rental.id);
+        if (confirmResult.error) {
+          toast.error(`Failed to confirm rental: ${confirmResult.error}`);
+          return;
+        }
+        toast.success(`Rejected ${conflictIds.length} conflicting booking(s) and confirmed the new rental!`);
+      }
+
+      setShowConflictModal(false);
+      setConflictData(null);
+      await loadAllRentals(); // Refresh data
+    } catch (error) {
+      console.error("Error rejecting conflicts:", error);
+      toast.error("Failed to reject conflicting bookings");
+    } finally {
+      setConflictLoading(false);
     }
   };
 
@@ -933,6 +1050,51 @@ export default function Rentals() {
                   <FileText className="h-3 w-3 md:h-4 md:w-4" />
                 )}
                 <span>View Contract</span>
+              </button>
+            )}
+            {/* Transfer button for pending rentals only */}
+            {rental.rental_status === "pending" && (
+              <button
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  setConflictLoading(true);
+                  try {
+                    // Get available units for this camera model
+                    const { data: availableUnits } = await getAvailableUnitsOfModel(
+                      rental.cameras?.name,
+                      rental.start_date,
+                      rental.end_date,
+                      rental.id // Exclude current rental
+                    );
+
+                    if (!availableUnits || availableUnits.length === 0) {
+                      toast.error("No available units of the same model found for transfer.");
+                      return;
+                    }
+
+                    // Set up conflict modal for transfer
+                    setConflictData({
+                      rental: rental,
+                      conflicts: [],
+                      availableUnits: availableUnits
+                    });
+                    setShowConflictModal(true);
+                  } catch (error) {
+                    console.error("Error checking available units:", error);
+                    toast.error("Failed to check available units for transfer.");
+                  } finally {
+                    setConflictLoading(false);
+                  }
+                }}
+                disabled={conflictLoading}
+                className="inline-flex items-center space-x-1 md:space-x-2 bg-yellow-600 hover:bg-yellow-700 text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {conflictLoading ? (
+                  <Loader2 className="h-3 w-3 md:h-4 md:w-4 animate-spin" />
+                ) : (
+                  <Truck className="h-3 w-3 md:h-4 md:w-4" />
+                )}
+                <span>Transfer Unit</span>
               </button>
             )}
             <button
@@ -1469,6 +1631,22 @@ export default function Rentals() {
             rentalId={showDeleteConfirm}
             onClose={() => setShowDeleteConfirm(null)}
             onConfirm={handleDeleteRental}
+          />
+        )}
+        {showConflictModal && conflictData && (
+          <ConflictResolutionModal
+            isOpen={showConflictModal}
+            rental={conflictData.rental}
+            conflicts={conflictData.conflicts}
+            availableUnits={conflictData.availableUnits}
+            loading={conflictLoading}
+            onClose={() => {
+              setShowConflictModal(false);
+              setConflictData(null);
+            }}
+            onConfirmWithCurrentUnit={handleConfirmWithCurrentUnit}
+            onTransferToUnit={handleTransferToUnit}
+            onRejectConflicts={handleRejectConflicts}
           />
         )}
       </div>

@@ -8,6 +8,7 @@ import useAuthStore from '../stores/useAuthStore';
 import { Camera, FileText, CheckCircle, AlertCircle, Loader2, ArrowLeft, Eye } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { checkCameraAvailability, createUserRentalRequest, calculateTotalPrice } from '../services/rentalService';
+import { findAvailableUnitOfModel } from '../services/cameraService';
 import { generateSignedContractPdf, uploadContractPdf, getSignedContractUrl } from '../services/pdfService';
 import { getUserById } from '../services/userService';
 import { isUserVerified } from '../services/verificationService';
@@ -15,6 +16,8 @@ import { isUserVerified } from '../services/verificationService';
 const RentalFlowSection = ({ onBackToBrowse }) => {
   const {
     rentalFlowCamera,
+    rentalFlowCameraModelName,
+    selectedCameraUnitId,
     startDate,
     endDate,
     isCheckingAvailability,
@@ -38,6 +41,7 @@ const RentalFlowSection = ({ onBackToBrowse }) => {
     setIsAvailable,
     setAvailabilityError,
     setCalculatedPrice,
+    setSelectedCameraUnitId,
     setIsSubmitting,
     setRequestError,
     setRequestSuccess,
@@ -81,13 +85,13 @@ const RentalFlowSection = ({ onBackToBrowse }) => {
   };
 
   const handleCheckAvailability = async () => {
-    if (!rentalFlowCamera || !startDate || !endDate) {
-      setAvailabilityError("Please select a camera and both start and end dates.");
+    if ((!rentalFlowCamera && !rentalFlowCameraModelName) || !startDate || !endDate) {
+      setAvailabilityError("Please select a camera model and both start and end dates.");
       return;
     }
+    
     // Enforce verification before proceeding
     try {
-      
       const canRent = await isUserVerified(user.id);
       if (!canRent) {
         setAvailabilityError("Your account is not verified. Please complete verification in your Profile before renting.");
@@ -97,25 +101,41 @@ const RentalFlowSection = ({ onBackToBrowse }) => {
       setAvailabilityError(e.message || "Unable to verify your account status. Please try again or check your Profile.");
       return;
     }
+    
     const start = new Date(new Date(startDate).setHours(0, 0, 0, 0));
     const end = new Date(new Date(endDate).setHours(0, 0, 0, 0));
     if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) {
       setAvailabilityError("Please select valid dates. End date must be on or after start date.");
       return;
     }
+    
     setAvailabilityError('');
     setIsCheckingAvailability(true);
     setIsAvailabilityChecked(false);
     setIsAvailable(false);
+    setSelectedCameraUnitId(null);
+    
     try {
-      const { isAvailable: avail, error } = await checkCameraAvailability(rentalFlowCamera.id, startDate, endDate);
-      if (error) throw new Error(error.message || "Failed to check availability.");
-      setIsAvailable(avail);
-      if (!avail) {
-        setAvailabilityError("Sorry, this camera is no longer available for the selected dates.");
-      } else {
-        await calculateAndSetPrice(rentalFlowCamera.id, startDate, endDate);
+      // Use the model name to find an available unit
+      const modelName = rentalFlowCameraModelName || rentalFlowCamera?.name;
+      if (!modelName) {
+        throw new Error("Camera model name not found.");
       }
+      
+      const { data: availableUnit, error } = await findAvailableUnitOfModel(modelName, startDate, endDate);
+      
+      if (error) {
+        setAvailabilityError(error);
+        setIsAvailable(false);
+      } else if (availableUnit) {
+        setSelectedCameraUnitId(availableUnit.id);
+        setIsAvailable(true);
+        await calculateAndSetPrice(availableUnit.id, startDate, endDate);
+      } else {
+        setAvailabilityError(`No units of ${modelName} are available for the selected dates.`);
+        setIsAvailable(false);
+      }
+      
       setIsAvailabilityChecked(true);
     } catch (err) {
       setAvailabilityError(err.message || "An error occurred while checking availability.");
@@ -155,8 +175,8 @@ const RentalFlowSection = ({ onBackToBrowse }) => {
       setRequestError(e.message || "Unable to verify your account status.");
       return;
     }
-    if (!rentalFlowCamera || !startDate || !endDate || !calculatedPrice) {
-      setRequestError("Missing required information (camera, dates, price, or signature).");
+    if (!rentalFlowCameraModelName && !selectedCameraUnitId && !calculatedPrice) {
+      setRequestError("Missing required information (camera model, available unit, dates, price, or signature).");
       return;
     }
     if (!isAvailabilityChecked || !isAvailable) {
@@ -167,9 +187,14 @@ const RentalFlowSection = ({ onBackToBrowse }) => {
     setIsGeneratingContract(true);
     setShowContractModal(false);
     try {
-      const { isAvailable: finalCheck } = await checkCameraAvailability(rentalFlowCamera.id, startDate, endDate);
+      // Perform a final availability check on the specific unit we found
+      if (!selectedCameraUnitId) {
+        throw new Error("No camera unit selected. Please check availability first.");
+      }
+      
+      const { isAvailable: finalCheck } = await checkCameraAvailability(selectedCameraUnitId, startDate, endDate);
       if (!finalCheck) {
-        throw new Error("Camera is no longer available. Please select different dates.");
+        throw new Error("The selected camera unit is no longer available. Please check availability again.");
       }
       let customerName = "User";
       let customerEmail = "user_email_placeholder";
@@ -185,20 +210,20 @@ const RentalFlowSection = ({ onBackToBrowse }) => {
           console.error("Error fetching user ", userFetchError);
       }
       const rentalDetails = {
-        cameraName: rentalFlowCamera.name,
+        cameraName: rentalFlowCameraModelName || rentalFlowCamera?.name,
         startDate: new Date(startDate).toLocaleDateString(),
         endDate: new Date(endDate).toLocaleDateString(),
         customerName: customerName,
       };
       const pdfBytes = await generateSignedContractPdf(signatureDataUrlFromModal, rentalDetails);
-      const fileName = `contract_${rentalFlowCamera.id}_${Date.now()}.pdf`;
+      const fileName = `contract_${selectedCameraUnitId}_${Date.now()}.pdf`;
       const { success, filePath } = await uploadContractPdf(pdfBytes, fileName);
       if (!success || !filePath) {
          throw new Error("Contract upload did not return a valid file path.");
       }
       setIsSubmitting(true);
       const { data: rentalData, error } = await createUserRentalRequest({
-        cameraId: rentalFlowCamera.id,
+        cameraId: selectedCameraUnitId, // Use the specific unit ID we found
         startDate,
         endDate,
         contractPdfUrl: filePath,
@@ -253,9 +278,12 @@ const RentalFlowSection = ({ onBackToBrowse }) => {
   const handleStartDateChange = (e) => handleRentalFlowDateChange(e, 'start');
   const handleEndDateChange = (e) => handleRentalFlowDateChange(e, 'end');
 
-  if (!rentalFlowCamera) {
+  if (!rentalFlowCamera && !rentalFlowCameraModelName) {
       return null;
   }
+
+  // Get display name - prefer model name, fallback to camera name
+  const displayCameraName = rentalFlowCameraModelName || rentalFlowCamera?.name || "Unknown Camera";
 
   return (
     <div className="max-w-4xl mx-auto mb-12">
@@ -286,9 +314,9 @@ const RentalFlowSection = ({ onBackToBrowse }) => {
                             </div>
                         )}
                         <div>
-                            <h3 className="text-xl font-semibold text-gray-900">{rentalFlowCamera.name}</h3>
-                            <p className="mt-1 text-gray-600">{rentalFlowCamera.description}</p>
-                            {rentalFlowCamera.inclusions && rentalFlowCamera.inclusions.length > 0 && (
+                            <h3 className="text-xl font-semibold text-gray-900">{displayCameraName}</h3>
+                            <p className="mt-1 text-gray-600">{rentalFlowCamera?.description || "Professional camera equipment"}</p>
+                            {rentalFlowCamera?.inclusions && rentalFlowCamera.inclusions.length > 0 && (
                             <div className="mt-3">
                                 <h4 className="text-sm font-medium text-gray-700">Includes:</h4>
                                 <ul className="mt-1 grid grid-cols-2 gap-1 text-xs text-gray-600">
@@ -356,7 +384,7 @@ const RentalFlowSection = ({ onBackToBrowse }) => {
                         <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
                         <div className="flex items-center text-green-800 mb-2">
                             <CheckCircle className="flex-shrink-0 mr-2 h-5 w-5" />
-                            <span className="font-semibold">Camera is available!</span>
+                            <span className="font-semibold">Camera model is available!</span>
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-sm">
                             <span className="font-medium">Rental Duration:</span>
@@ -412,7 +440,7 @@ const RentalFlowSection = ({ onBackToBrowse }) => {
                         </div>
                         <h3 className="mt-4 text-2xl font-bold text-gray-900">Request Submitted!</h3>
                         <p className="mt-2 text-gray-600">
-                            Your rental request for <span className="font-semibold">{rentalFlowCamera.name}</span> is pending admin approval.
+                            Your rental request for <span className="font-semibold">{displayCameraName}</span> is pending admin approval.
                         </p>
                         <div className="mt-4 p-3 bg-blue-50 rounded text-left text-sm inline-block">
                             <p className="font-medium">Details:</p>

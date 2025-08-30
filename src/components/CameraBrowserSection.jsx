@@ -91,7 +91,7 @@ const CameraBrowserSection = ({
       {/* Results header */}
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-semibold text-gray-900">
-          {isFilterActive ? `Available Cameras (${displayedCameras.length})` : 'All Cameras'}
+          {isFilterActive ? `Available Camera Models (${displayedCameras.length})` : 'Camera Models'}
         </h2>
         {isFilterActive && (
           <p className="text-gray-600 text-xs flex items-center">
@@ -120,10 +120,10 @@ const CameraBrowserSection = ({
       ) : (
         <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
           <Camera className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-3 text-base font-medium text-gray-900">No cameras found</h3>
+          <h3 className="mt-3 text-base font-medium text-gray-900">No camera models found</h3>
           <p className="mt-1 text-gray-500 text-sm">
             {isFilterActive
-              ? "No cameras are available for the selected dates. Try adjusting your dates."
+              ? "No camera models are available for the selected dates. Try adjusting your dates."
               : "Please check back later for new arrivals."}
           </p>
           {isFilterActive && (

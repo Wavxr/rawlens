@@ -67,6 +67,11 @@ const RequestRow = ({ rental }) => {
           <Calendar className="w-3.5 h-3.5 text-gray-400" />
           <span>{dateRange}</span>
         </div>
+        {rental.rental_status === 'rejected' && rental.rejection_reason && (
+          <div className="mt-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1">
+            <span className="font-medium">Rejection reason:</span> {rental.rejection_reason}
+          </div>
+        )}
       </div>
       <div className="text-right text-sm text-gray-500">
         <div>Submitted</div>

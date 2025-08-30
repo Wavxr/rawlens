@@ -17,6 +17,8 @@ const useCameraStore = create(
 
       // --- Rental Flow State ---
       rentalFlowCamera: null,
+      rentalFlowCameraModelName: null, // New: stores the selected model name
+      selectedCameraUnitId: null, // New: stores the specific unit ID found during availability check
       isCheckingAvailability: false,
       isAvailabilityChecked: false,
       isAvailable: false,
@@ -65,6 +67,8 @@ const useCameraStore = create(
 
       // --- Rental Flow Actions ---
       setRentalFlowCamera: (camera) => set({ rentalFlowCamera: camera }),
+      setRentalFlowCameraModelName: (modelName) => set({ rentalFlowCameraModelName: modelName }),
+      setSelectedCameraUnitId: (unitId) => set({ selectedCameraUnitId: unitId }),
       setIsCheckingAvailability: (checking) => set({ isCheckingAvailability: checking }),
       setIsAvailabilityChecked: (checked) => set({ isAvailabilityChecked: checked }),
       setIsAvailable: (available) => set({ isAvailable: available }),
@@ -100,6 +104,8 @@ const useCameraStore = create(
       // --- Reset Actions ---
       resetRentalFlowState: () => set({
         rentalFlowCamera: null,
+        rentalFlowCameraModelName: null,
+        selectedCameraUnitId: null,
         isCheckingAvailability: false,
         isAvailabilityChecked: false,
         isAvailable: false,
@@ -138,6 +144,8 @@ const useCameraStore = create(
         isFilterActive: false,
         // Rental Flow
         rentalFlowCamera: null,
+        rentalFlowCameraModelName: null,
+        selectedCameraUnitId: null,
         isCheckingAvailability: false,
         isAvailabilityChecked: false,
         isAvailable: false,
