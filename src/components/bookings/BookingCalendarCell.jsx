@@ -21,6 +21,7 @@ const BookingCalendarCell = ({
 }) => {
   const [isSelecting, setIsSelecting] = useState(false);
   const [dragStart, setDragStart] = useState(null);
+  const [showTooltip, setShowTooltip] = useState(false);
 
   if (!date) {
     // Empty cell for padding
@@ -30,6 +31,36 @@ const BookingCalendarCell = ({
 
   const dayNumber = date.getDate();
   const hasBookings = bookings.length > 0;
+
+  // Create tooltip content with all booking information
+  const getTooltipContent = () => {
+    if (!hasBookings) return null;
+    
+    return (
+      <div className="space-y-2">
+        {bookings.map(booking => {
+          const customerName = booking.customer_name || 
+                             (booking.users ? `${booking.users.first_name} ${booking.users.last_name || ''}`.trim() : '') ||
+                             'Unknown User';
+          const startDate = new Date(booking.start_date).toLocaleDateString();
+          const endDate = new Date(booking.end_date).toLocaleDateString();
+          const status = booking.rental_status;
+          
+          return (
+            <div key={booking.id} className="text-left">
+              <div className="font-medium text-sm">{customerName}</div>
+              <div className="text-xs opacity-90">
+                {startDate} - {endDate}
+              </div>
+              <div className="text-xs capitalize opacity-75">
+                Status: {status}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   // Handle mouse down for drag selection
   const handleMouseDown = (e) => {
@@ -153,9 +184,15 @@ const BookingCalendarCell = ({
 
   return (
     <button
-      className={`h-12 sm:h-14 md:h-16 rounded-md sm:rounded-lg border flex flex-col items-center justify-between p-0.5 sm:p-1 transition ${cellClass}`}
+      className={`relative h-12 sm:h-14 md:h-16 rounded-md sm:rounded-lg border flex flex-col items-center justify-between p-0.5 sm:p-1 transition ${cellClass}`}
       onMouseDown={handleMouseDown}
-      onMouseEnter={handleMouseEnter}
+      onMouseEnter={(e) => {
+        handleMouseEnter(e);
+        if (hasBookings) setShowTooltip(true);
+      }}
+      onMouseLeave={() => {
+        setShowTooltip(false);
+      }}
       onMouseUp={handleMouseUp}
       onClick={handleClick}
     >
@@ -205,6 +242,27 @@ const BookingCalendarCell = ({
           </div>
         )}
       </div>
+
+      {/* Hover Tooltip */}
+      {showTooltip && hasBookings && (
+        <div className={`
+          absolute z-50 bottom-full mb-2 left-1/2 transform -translate-x-1/2
+          px-3 py-2 rounded-lg shadow-lg border min-w-48 max-w-64
+          ${isDarkMode 
+            ? 'bg-gray-800 border-gray-600 text-white' 
+            : 'bg-white border-gray-200 text-gray-800'
+          }
+          ${getTooltipContent() ? 'block' : 'hidden'}
+        `}>
+          {getTooltipContent()}
+          {/* Tooltip arrow */}
+          <div className={`
+            absolute top-full left-1/2 transform -translate-x-1/2
+            border-4 border-transparent
+            ${isDarkMode ? 'border-t-gray-800' : 'border-t-white'}
+          `} />
+        </div>
+      )}
     </button>
   );
 };
