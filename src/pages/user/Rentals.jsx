@@ -1,5 +1,6 @@
 // Imports
 import { useEffect, useMemo, useState, useRef } from "react"
+import { useNavigate } from "react-router-dom"
 import useAuthStore from "../../stores/useAuthStore"
 import useRentalStore from "../../stores/rentalStore"
 import { userConfirmDelivered, userConfirmSentBack } from "../../services/deliveryService"
@@ -18,6 +19,8 @@ import {
   Timer,
   PhilippinePeso,
   ArrowRight,
+  CreditCard,
+  ExternalLink,
 } from "lucide-react"
 import FeedbackForm from "../../components/FeedbackForm";
 import { getRentalFeedback } from "../../services/feedbackService";
@@ -26,6 +29,7 @@ import { motion, AnimatePresence } from "framer-motion";
 // Main Component
 export default function Rentals() {
   // State Management
+  const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const authLoading = useAuthStore((s) => s.loading)
   const {
@@ -38,7 +42,7 @@ export default function Rentals() {
   const [actionLoading, setActionLoading] = useState({})
   const [contractViewLoading, setContractViewLoading] = useState({})
   const [contractViewError, setContractViewError] = useState({})
-  const [activeFilter, setActiveFilter] = useState("awaiting")
+  const [activeFilter, setActiveFilter] = useState("payment_pending")
   const [selectedRental, setSelectedRental] = useState(null)
   const subscriptionRef = useRef(null)
   const [now, setNow] = useState(Date.now())
@@ -107,8 +111,17 @@ export default function Rentals() {
   // Data Processing: Filter rentals based on active tab
   const displayedRentals = useMemo(() => {
     if (activeFilter === "awaiting") {
+      // Only show confirmed rentals that have verified payment
       return rentals.filter(
-        (r) => r.rental_status === "confirmed" || ["ready_to_ship", "in_transit_to_user"].includes(r.shipping_status),
+        (r) => r.rental_status === "confirmed" && r.payment_status === "verified" || 
+               ["ready_to_ship", "in_transit_to_user"].includes(r.shipping_status)
+      )
+    }
+    if (activeFilter === "payment_pending") {
+      // Show confirmed rentals that need payment
+      return rentals.filter(
+        (r) => r.rental_status === "confirmed" && 
+               (r.payment_status === "pending" || r.payment_status === "submitted" || r.payment_status === "rejected" || !r.payment_status)
       )
     }
     if (activeFilter === "active") {
@@ -307,6 +320,9 @@ export default function Rentals() {
     const cameraName = rental?.cameras?.name || "Camera"
     const cameraImage = rental?.cameras?.image_url || ""
     const [imgBroken, setImgBroken] = useState(false)
+    const isPaymentPending = rental.rental_status === "confirmed" && 
+                           (rental.payment_status === "pending" || rental.payment_status === "submitted" || 
+                            rental.payment_status === "rejected" || !rental.payment_status)
 
     const days = useMemo(() => {
       const start = new Date(rental.start_date)
@@ -321,6 +337,64 @@ export default function Rentals() {
       return isNaN(diff) ? null : Math.floor(diff)
     }, [rental.start_date, rental.end_date])
 
+    // Payment pending card - different styling
+    if (isPaymentPending) {
+      return (
+        <div
+          onClick={onClick}
+          className={`p-4 rounded-lg border cursor-pointer transition-all ${
+            isSelected
+              ? "bg-amber-50 border-amber-300 shadow-sm ring-2 ring-amber-200"
+              : "bg-amber-50/50 border-amber-200 hover:bg-amber-50 hover:border-amber-300"
+          }`}
+        >
+          <div className="flex items-start space-x-3">
+            <div className="w-12 h-12 bg-gray-100 rounded-md overflow-hidden flex-shrink-0 opacity-60">
+              {!imgBroken && cameraImage ? (
+                <img
+                  src={cameraImage || "/placeholder.svg"}
+                  alt={cameraName}
+                  className="object-cover w-full h-full"
+                  onError={() => setImgBroken(true)}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-400">
+                  <CameraIcon className="h-5 w-5" />
+                </div>
+              )}
+            </div>
+            
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between">
+                <h3 className="font-medium text-gray-700 truncate text-sm">{cameraName}</h3>
+                <CreditCard className="h-4 w-4 text-amber-600 flex-shrink-0" />
+              </div>
+              
+              <div className="flex items-center space-x-2 mt-1">
+                <span className="text-xs text-gray-500 font-mono">#{rental.id.slice(0, 8)}</span>
+              </div>
+              
+              <div className="mt-2">
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                  <CreditCard className="w-3 h-3 mr-1" />
+                  Payment Required
+                </span>
+              </div>
+              
+              <div className="text-xs text-gray-500 mt-1">
+                {formatDate(rental.start_date)} — {formatDate(rental.end_date)}
+              </div>
+              
+              {typeof rental.total_price === "number" && (
+                <div className="text-sm font-semibold text-amber-700 mt-1">₱ {Number(rental.total_price).toFixed(2)}</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    // Regular card for paid rentals
     return (
       <div
         onClick={onClick}
@@ -379,8 +453,117 @@ export default function Rentals() {
   // Component: Main rental detail view
   function RentalDetailView({ rental }) {
     if (!rental) return null
+    
     const cameraName = rental?.cameras?.name || "Camera"
     const cameraImage = rental?.cameras?.image_url || ""
+    const isPaymentPending = rental.rental_status === "confirmed" && 
+                           (rental.payment_status === "pending" || rental.payment_status === "submitted" || 
+                            rental.payment_status === "rejected" || !rental.payment_status)
+
+    // Payment pending view - simplified UI with call to action
+    if (isPaymentPending) {
+      return (
+        <div className="bg-white rounded-lg border border-amber-200 overflow-hidden">
+          {/* Payment Required Header */}
+          <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-xl font-bold flex items-center">
+                  <CreditCard className="w-5 h-5 mr-2" />
+                  Payment Required
+                </h1>
+                <div className="flex items-center space-x-3 mt-2">
+                  <span className="text-xs font-mono bg-white/20 px-2 py-1 rounded">
+                    #{rental.id.slice(0, 8)}
+                  </span>
+                  <span className="px-2 py-1 rounded text-xs font-medium bg-white/20">
+                    {cameraName}
+                  </span>
+                </div>
+              </div>
+              <div className="text-right">
+                {typeof rental.total_price === "number" && (
+                  <div className="text-2xl font-bold">₱ {Number(rental.total_price).toFixed(2)}</div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6">
+            {/* Payment Status Message */}
+            <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="flex items-start space-x-3">
+                <AlertCircle className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-semibold text-amber-800 mb-2">Payment Required to Proceed</h3>
+                  <p className="text-amber-700 text-sm mb-3">
+                    Your rental has been confirmed by the admin, but payment is required before we can start preparing your order for delivery.
+                  </p>
+                  {rental.payment_status === "rejected" && (
+                    <p className="text-red-700 text-sm mb-3">
+                      <strong>Previous payment was rejected.</strong> Please upload a new, clear payment receipt.
+                    </p>
+                  )}
+                  {rental.payment_status === "submitted" && (
+                    <p className="text-blue-700 text-sm mb-3">
+                      <strong>Payment receipt submitted.</strong> Please wait for admin verification.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Rental Summary */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div className="bg-blue-50 rounded-lg p-4">
+                <div className="flex items-center space-x-2 mb-3">
+                  <Calendar className="h-5 w-5 text-blue-600" />
+                  <h4 className="font-medium text-gray-900">Rental Period</h4>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Start Date</span>
+                    <span className="font-medium text-gray-900">{formatDate(rental.start_date)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">End Date</span>
+                    <span className="font-medium text-gray-900">{formatDate(rental.end_date)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-green-50 rounded-lg p-4">
+                <div className="flex items-center space-x-2 mb-3">
+                  <PhilippinePeso className="h-5 w-5 text-green-600" />
+                  <h4 className="font-medium text-gray-900">Total Amount</h4>
+                </div>
+                <div className="text-2xl font-bold text-green-700">
+                  ₱ {Number(rental.total_price).toFixed(2)}
+                </div>
+              </div>
+            </div>
+
+            {/* Call to Action */}
+            <div className="bg-gray-50 rounded-lg p-6 text-center">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Complete Your Payment</h3>
+              <p className="text-gray-600 mb-4">
+                Upload your payment receipt in the Requests page to proceed with your rental.
+              </p>
+              <button
+                onClick={() => navigate('/user/requests')}
+                className="inline-flex items-center px-6 py-3 bg-amber-600 text-white font-semibold rounded-lg hover:bg-amber-700 transition-colors"
+              >
+                <CreditCard className="w-5 h-5 mr-2" />
+                Go to Requests
+                <ExternalLink className="w-4 h-4 ml-2" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    // Regular detail view for paid rentals
     const cameraDesc = rental?.cameras?.description || ""
     const inclusions = rental?.cameras?.camera_inclusions || []
     const canConfirmDelivered = rental.shipping_status === "in_transit_to_user"
@@ -784,6 +967,7 @@ export default function Rentals() {
         <div className="mb-6">
           <div className="inline-flex rounded-lg border border-gray-200 bg-white p-1">
             {[
+              { key: "payment_pending", label: "Payment Required" },
               { key: "awaiting", label: "Awaiting Delivery" },
               { key: "active", label: "Active" },
               { key: "returning", label: "Returning" },
@@ -793,10 +977,13 @@ export default function Rentals() {
                 onClick={() => setActiveFilter(f.key)}
                 className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
                   activeFilter === f.key
-                    ? "bg-blue-600 text-white shadow-sm"
+                    ? f.key === "payment_pending" 
+                      ? "bg-amber-600 text-white shadow-sm"
+                      : "bg-blue-600 text-white shadow-sm"
                     : "text-gray-700 hover:bg-gray-50"
                 }`}
               >
+                {f.key === "payment_pending" && <CreditCard className="w-4 h-4 mr-1 inline" />}
                 {f.label}
               </button>
             ))}
@@ -822,12 +1009,34 @@ export default function Rentals() {
         {/* Main Content */}
         {displayedRentals.length === 0 ? (
           <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
-            <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-              <CameraIcon className="h-8 w-8 text-gray-400" />
+            <div className={`w-16 h-16 rounded-lg flex items-center justify-center mx-auto mb-4 ${
+              activeFilter === "payment_pending" ? "bg-amber-100" : "bg-gray-100"
+            }`}>
+              {activeFilter === "payment_pending" ? (
+                <CreditCard className="h-8 w-8 text-amber-600" />
+              ) : (
+                <CameraIcon className="h-8 w-8 text-gray-400" />
+              )}
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No rentals found</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              {activeFilter === "payment_pending" 
+                ? "No payment required" 
+                : activeFilter === "awaiting"
+                ? "No rentals awaiting delivery"
+                : activeFilter === "active"
+                ? "No active rentals"
+                : "No returning rentals"
+              }
+            </h3>
             <p className="text-gray-600">
-              {`No rentals match the "${activeFilter}" filter. Try selecting a different filter.`}
+              {activeFilter === "payment_pending" 
+                ? "All your confirmed rentals have been paid for. Check other tabs for your rentals." 
+                : activeFilter === "awaiting"
+                ? "Once your payment is verified, rentals will appear here when they're being prepared for delivery."
+                : activeFilter === "active"
+                ? "Active rentals will show here when they're delivered and in use."
+                : "Rentals being returned will appear here."
+              }
             </p>
           </div>
         ) : (
