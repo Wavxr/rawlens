@@ -9,8 +9,22 @@ export default function Rental() {
   const location = useLocation();
   const { camera, sourcePageType = "home", preSelectedDates = null } = location.state || {};
   
-  // Get the resetBrowseFilter function from the store
-  const { resetBrowseFilter } = useCameraStore();
+  // Get the store functions and state
+  const { 
+    resetBrowseFilter, 
+    rentalFlowCamera, 
+    rentalFlowCameraModelName,
+    setRentalFlowCamera,
+    setRentalFlowCameraModelName 
+  } = useCameraStore();
+
+  // Set camera data in store if it comes from location.state but store is empty
+  useEffect(() => {
+    if (camera && (!rentalFlowCamera || !rentalFlowCameraModelName)) {
+      setRentalFlowCamera(camera);
+      setRentalFlowCameraModelName(camera.name);
+    }
+  }, [camera, rentalFlowCamera, rentalFlowCameraModelName, setRentalFlowCamera, setRentalFlowCameraModelName]);
 
   // Clear date filters when component unmounts (user navigates away)
   useEffect(() => {
@@ -32,8 +46,8 @@ export default function Rental() {
     }
   };
 
-  // If no camera data, redirect back to home
-  if (!camera) {
+  // If no camera data in both location.state and store, redirect back to home
+  if (!camera && !rentalFlowCamera && !rentalFlowCameraModelName) {
     navigate('/user/home');
     return null;
   }

@@ -297,7 +297,7 @@ const RentalFlowSection = ({ onBackToBrowse, sourcePageType = "home", preSelecte
     <div className="max-w-4xl mx-auto mb-12">
         <button
             onClick={onBackToBrowse}
-            className="mb-6 flex items-center text-blue-600 hover:text-blue-800 font-medium"
+            className="mb-6 flex items-center text-blue-600 hover:text-blue-800 font-medium transition-colors"
         >
             <ArrowLeft className="mr-1 h-4 w-4" />
             Back to Cameras
@@ -319,10 +319,10 @@ const RentalFlowSection = ({ onBackToBrowse, sourcePageType = "home", preSelecte
                                     onError={(e) => {
                                         e.target.style.display = 'none';
                                     }}
-                                    className="w-full h-80 lg:h-72 object-cover rounded-2xl shadow-lg"
+                                    className="w-full h-80 lg:h-72 object-cover rounded-2xl shadow-md"
                                 />
                             ) : (
-                                <div className="w-full h-80 lg:h-72 bg-gray-200 rounded-2xl shadow-lg flex items-center justify-center">
+                                <div className="w-full h-80 lg:h-72 bg-gray-100 rounded-2xl shadow-md flex items-center justify-center">
                                     <Camera className="h-16 w-16 text-gray-400" />
                                 </div>
                             )}
@@ -343,7 +343,7 @@ const RentalFlowSection = ({ onBackToBrowse, sourcePageType = "home", preSelecte
                                     <h4 className="text-lg font-semibold text-blue-900 mb-3">Rental Pricing</h4>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         {rentalFlowCamera.camera_pricing_tiers.map((tier, index) => (
-                                            <div key={index} className="bg-white rounded-lg p-4 shadow-sm">
+                                            <div key={index} className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
                                                 <div className="text-sm text-gray-600">{tier.duration_days} {tier.duration_days === 1 ? 'Day' : 'Days'}</div>
                                                 <div className="text-xl font-bold text-blue-600">₱{tier.price_per_day.toFixed(2)}/day</div>
                                             </div>
@@ -417,8 +417,8 @@ const RentalFlowSection = ({ onBackToBrowse, sourcePageType = "home", preSelecte
                         disabled={isCheckingAvailability || (sourcePageType === "home" && (!startDate || !endDate)) || isSubmitting || isGeneratingContract}
                         className={`flex items-center px-8 py-4 rounded-xl text-lg font-medium transition-all ${
                             isCheckingAvailability || (sourcePageType === "home" && (!startDate || !endDate)) || isSubmitting || isGeneratingContract
-                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                            : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
+                            ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                            : 'bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transform hover:-translate-y-0.5'
                         }`}
                     >
                         {isCheckingAvailability ? (
@@ -451,7 +451,7 @@ const RentalFlowSection = ({ onBackToBrowse, sourcePageType = "home", preSelecte
                                     <CheckCircle className="flex-shrink-0 mr-3 h-6 w-6" />
                                     <h4 className="text-lg font-semibold">Camera Available!</h4>
                                 </div>
-                                <div className="bg-white rounded-lg p-6 space-y-4">
+                                <div className="bg-white rounded-lg p-6 space-y-4 border border-gray-100">
                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
                                         <div>
                                             <div className="text-2xl font-bold text-gray-900">{calculatedPrice.days}</div>
@@ -497,8 +497,8 @@ const RentalFlowSection = ({ onBackToBrowse, sourcePageType = "home", preSelecte
                                 disabled={!isAvailable || !isAvailabilityChecked || isCheckingAvailability || isSubmitting || isGeneratingContract}
                                 className={`px-8 py-3 rounded-xl flex items-center justify-center text-lg font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all ${
                                     !isAvailable || !isAvailabilityChecked || isCheckingAvailability || isSubmitting || isGeneratingContract
-                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                    : 'bg-green-600 hover:bg-green-700 text-white focus:ring-green-500 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
+                                    ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                                    : 'bg-green-600 hover:bg-green-700 text-white focus:ring-green-500 shadow-md hover:shadow-lg transform hover:-translate-y-0.5'
                                 }`}
                             >
                                 <FileText className="mr-3 h-5 w-5" />
@@ -578,7 +578,7 @@ const RentalFlowSection = ({ onBackToBrowse, sourcePageType = "home", preSelecte
                                     disabled={isGeneratingPdfUrl}
                                     className={`flex items-center justify-center px-6 py-3 rounded-lg transition-colors mx-auto ${
                                         isGeneratingPdfUrl
-                                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                        ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                                         : 'bg-blue-600 text-white hover:bg-blue-700'
                                     }`}
                                 >
@@ -602,7 +602,7 @@ const RentalFlowSection = ({ onBackToBrowse, sourcePageType = "home", preSelecte
                         </p>
                         <button
                             onClick={onBackToBrowse}
-                            className="px-8 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 font-medium transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                            className="px-8 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 font-medium transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
                         >
                             Browse More Cameras
                         </button>

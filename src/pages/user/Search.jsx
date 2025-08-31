@@ -1,7 +1,7 @@
 // src/pages/user/Search.jsx
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search as SearchIcon, Filter, Calendar, X } from 'lucide-react';
+import { Search as SearchIcon, Filter, Calendar, X, Info } from 'lucide-react';
 import CameraCard from '../../components/CameraCard';
 import DateFilterInput from '../../components/DateFilterInput';
 import useCameraStore from '../../stores/cameraStore';
@@ -139,38 +139,61 @@ export default function Search() {
   const handleEndDateChange = (e) => handleDateChange(e, 'end');
 
   return (
-    <div className="min-h-screen lg:max-w-6xl lg:mx-auto lg:px-8">
-      {/* === MAIN CONTENT SECTION === */}
-      <div className="px-4 py-6">
-        {/* === SEARCH INTERFACE SECTION === */}
-        <div className="space-y-6">
-          {/* === DATE FILTER SECTION === */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 sticky top-0 z-10">
-            <div className="p-4 lg:p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Filter className="mr-2 h-5 w-5 text-blue-900" />
-                Search Available Cameras
-              </h2>
+    <div className="min-h-screen">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Page Header */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">Find Available Cameras</h1>
+          <p className="text-gray-600 mt-1">Select your rental dates to see available camera models</p>
+        </div>
+
+        {/* === MAIN CONTENT SECTION === */}
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* === FILTER SIDEBAR (Desktop) / FILTER CARD (Mobile) === */}
+          <div className="lg:w-80 lg:shrink-0">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 sticky top-6">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <Filter className="mr-2 h-5 w-5 text-blue-600" />
+                  Search Filters
+                </h2>
+                {isFilterActive && (
+                  <button
+                    onClick={handleClearFilter}
+                    className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                    title="Clear Search"
+                    disabled={filterLoading}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
               
-              <div className="space-y-3">
-                <DateFilterInput
-                  startDate={startDate}
-                  endDate={endDate}
-                  onStartDateChange={handleStartDateChange}
-                  onEndDateChange={handleEndDateChange}
-                  minStartDate={new Date().toISOString().split('T')[0]}
-                  disabled={filterLoading}
-                  idPrefix="search-filter"
-                />
+              <div className="space-y-5">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
+                    <Calendar className="mr-2 h-4 w-4 text-gray-500" />
+                    Rental Dates
+                  </h3>
+                  <DateFilterInput
+                    startDate={startDate}
+                    endDate={endDate}
+                    onStartDateChange={handleStartDateChange}
+                    onEndDateChange={handleEndDateChange}
+                    minStartDate={new Date().toISOString().split('T')[0]}
+                    disabled={filterLoading}
+                    idPrefix="search-filter"
+                  />
+                </div>
                 
-                <div className="flex items-center space-x-2">
+                <div className="pt-2">
                   <button
                     onClick={handleApplyFilter}
                     disabled={filterLoading || !startDate || !endDate}
-                    className={`flex-1 lg:flex-none lg:px-8 flex items-center justify-center px-4 py-3 rounded-xl font-medium transition-all text-sm ${
+                    className={`w-full flex items-center justify-center px-4 py-3 rounded-xl font-medium transition-all text-sm ${
                       filterLoading || !startDate || !endDate
-                        ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                        : 'bg-blue-900 hover:bg-blue-800 text-white shadow-lg hover:shadow-xl transform hover:scale-[1.02]'
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transform hover:-translate-y-0.5'
                     }`}
                   >
                     {filterLoading ? (
@@ -185,16 +208,6 @@ export default function Search() {
                       </>
                     )}
                   </button>
-                  {isFilterActive && (
-                    <button
-                      onClick={handleClearFilter}
-                      className="p-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors"
-                      title="Clear Search"
-                      disabled={filterLoading}
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  )}
                 </div>
                 
                 {error && (
@@ -210,87 +223,119 @@ export default function Search() {
           </div>
 
           {/* === SEARCH RESULTS SECTION === */}
-          {!isFilterActive ? (
-            /* === EMPTY SEARCH STATE === */
-            <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
-              <div className="max-w-md mx-auto">
-                <SearchIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">Search for Available Cameras</h3>
-                <p className="text-gray-500 mb-6">
-                  Select your rental dates above to find cameras available for your desired period.
-                </p>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h4 className="text-sm font-medium text-blue-900 mb-2">💡 Search Tips:</h4>
-                  <ul className="text-xs text-blue-800 space-y-1 text-left">
-                    <li>• Choose your exact rental dates</li>
-                    <li>• See real-time availability and pricing</li>
-                    <li>• Compare different camera models</li>
-                    <li>• Book instantly with selected dates</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          ) : (
-            /* === SEARCH RESULTS DISPLAY === */
-            <div className="space-y-4">
-              {/* Results header */}
-              <div className="flex justify-between items-center">
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Search Results ({searchResults.length} cameras found)
-                </h2>
-                <p className="text-gray-600 text-xs flex items-center">
-                  <Calendar className="mr-1 h-3.5 w-3.5" />
-                  {new Date(startDate).toLocaleDateString()} - {new Date(endDate).toLocaleDateString()}
-                </p>
-              </div>
-
-              {/* Loading state */}
-              {filterLoading ? (
-                <div className="flex justify-center items-center h-48">
-                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-                </div>
-              ) : searchResults.length > 0 ? (
-                /* === CAMERA GRID === */
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
-                  {searchResults.map((camera) => (
-                    <CameraCard
-                      key={camera.id}
-                      camera={camera}
-                      onRentClick={handleRentClick}
-                      onFavoriteClick={handleFavoriteClick}
-                      isFavorite={favorites.has(camera.id)}
-                      startDate={startDate}
-                      endDate={endDate}
-                    />
-                  ))}
-                </div>
-              ) : (
-                /* === NO RESULTS STATE === */
-                <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
-                  <SearchIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                  <h3 className="text-base font-medium text-gray-900 mb-2">No cameras available</h3>
-                  <p className="text-gray-500 text-sm mb-4">
-                    No camera models are available for the selected dates.
+          <div className="flex-1">
+            {!isFilterActive ? (
+              /* === EMPTY SEARCH STATE === */
+              <div className="bg-white rounded-2xl border border-gray-200 p-8 md:p-12">
+                <div className="max-w-2xl mx-auto text-center">
+                  <div className="mx-auto bg-blue-50 rounded-full p-4 w-20 h-20 flex items-center justify-center mb-6">
+                    <SearchIcon className="h-10 w-10 text-blue-600" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-3">Find Available Cameras</h3>
+                  <p className="text-gray-600 mb-8 max-w-md mx-auto">
+                    Select your rental dates to see which cameras are available for your desired period.
                   </p>
-                  <div className="space-y-2">
-                    <p className="text-xs text-gray-400">Try:</p>
-                    <div className="flex flex-wrap justify-center gap-2">
-                      <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">Different dates</span>
-                      <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">Shorter rental period</span>
-                      <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">Future dates</span>
+                  
+                  <div className="bg-blue-50 border border-blue-100 rounded-xl p-5 text-left max-w-lg mx-auto">
+                    <h4 className="text-sm font-semibold text-blue-900 mb-3 flex items-center">
+                      <Info className="mr-2 h-4 w-4" />
+                      Search Tips
+                    </h4>
+                    <ul className="space-y-2">
+                      <li className="flex items-start">
+                        <div className="flex-shrink-0 h-5 w-5 text-blue-500 mt-0.5">•</div>
+                        <p className="text-sm text-blue-800 ml-2">Choose your exact rental dates for accurate availability</p>
+                      </li>
+                      <li className="flex items-start">
+                        <div className="flex-shrink-0 h-5 w-5 text-blue-500 mt-0.5">•</div>
+                        <p className="text-sm text-blue-800 ml-2">See real-time availability and pricing</p>
+                      </li>
+                      <li className="flex items-start">
+                        <div className="flex-shrink-0 h-5 w-5 text-blue-500 mt-0.5">•</div>
+                        <p className="text-sm text-blue-800 ml-2">Compare different camera models side-by-side</p>
+                      </li>
+                      <li className="flex items-start">
+                        <div className="flex-shrink-0 h-5 w-5 text-blue-500 mt-0.5">•</div>
+                        <p className="text-sm text-blue-800 ml-2">Book instantly with your selected dates</p>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* === SEARCH RESULTS DISPLAY === */
+              <div className="space-y-5">
+                {/* Results header */}
+                <div className="bg-white rounded-xl border border-gray-200 p-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <h2 className="text-lg font-semibold text-gray-900">
+                      Search Results <span className="text-blue-600">({searchResults.length})</span>
+                    </h2>
+                    <div className="flex items-center text-sm text-gray-600 bg-gray-50 rounded-lg px-3 py-1.5">
+                      <Calendar className="mr-2 h-4 w-4 flex-shrink-0" />
+                      <span>
+                        {new Date(startDate).toLocaleDateString()} - {new Date(endDate).toLocaleDateString()}
+                      </span>
                     </div>
                   </div>
-                  <button
-                    onClick={handleClearFilter}
-                    className="mt-4 inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors"
-                    disabled={filterLoading}
-                  >
-                    Try Different Dates
-                  </button>
                 </div>
-              )}
-            </div>
-          )}
+
+                {/* Loading state */}
+                {filterLoading ? (
+                  <div className="flex justify-center items-center h-64 bg-white rounded-xl border border-gray-200">
+                    <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+                  </div>
+                ) : searchResults.length > 0 ? (
+                  /* === CAMERA GRID === */
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                    {searchResults.map((camera) => (
+                      <CameraCard
+                        key={camera.id}
+                        camera={camera}
+                        onRentClick={handleRentClick}
+                        onFavoriteClick={handleFavoriteClick}
+                        isFavorite={favorites.has(camera.id)}
+                        startDate={startDate}
+                        endDate={endDate}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  /* === NO RESULTS STATE === */
+                  <div className="bg-white rounded-2xl border border-gray-200 p-8 md:p-12">
+                    <div className="max-w-md mx-auto text-center">
+                      <div className="mx-auto bg-gray-100 rounded-full p-4 w-16 h-16 flex items-center justify-center mb-5">
+                        <SearchIcon className="h-8 w-8 text-gray-400" />
+                      </div>
+                      <h3 className="text-xl font-semibold text-gray-900 mb-2">No cameras available</h3>
+                      <p className="text-gray-600 mb-6">
+                        No camera models are available for the selected dates.
+                      </p>
+                      
+                      <div className="space-y-4">
+                        <div>
+                          <p className="text-xs text-gray-500 mb-2">Try:</p>
+                          <div className="flex flex-wrap justify-center gap-2">
+                            <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-medium">Different dates</span>
+                            <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-medium">Shorter rental period</span>
+                            <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-medium">Future dates</span>
+                          </div>
+                        </div>
+                        
+                        <button
+                          onClick={handleClearFilter}
+                          className="mt-2 inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                          disabled={filterLoading}
+                        >
+                          Try Different Dates
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
