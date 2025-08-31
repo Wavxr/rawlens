@@ -2,26 +2,157 @@
 
 @theme {
   --breakpoint-xs: 475px;
-}
-
-:root {
-  --color-bg-primary: #ffffff;
-  --color-bg-secondary: #f3f4f6;
-  --color-text-primary: #111827;
-  --color-text-secondary: #4b5563;
+  
+  /* Color System */
+  --color-background: #ffffff;
+  --color-foreground: #0a0a0a;
+  --color-muted: #6b7280;
+  --color-muted-foreground: #9ca3af;
+  --color-primary: #000000;
+  --color-primary-foreground: #ffffff;
+  --color-accent: #3b82f6;
+  --color-accent-foreground: #ffffff;
   --color-border: #e5e7eb;
+  --color-surface-elevated: #f9fafb;
+  --color-surface-muted: #f3f4f6;
+  
+  /* Spacing for dynamic utilities */
+  --spacing: 0.25rem;
+  
+  /* Custom gradients */
+  --gradient-hero: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  --gradient-surface: linear-gradient(to bottom, #ffffff 0%, #f8fafc 100%);
+  --gradient-accent: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  --gradient-glow: radial-gradient(circle at center, rgba(59, 130, 246, 0.03) 0%, transparent 70%);
 }
 
 .dark {
-  --color-bg-primary: #111827;
-  --color-bg-secondary: #1f2937;
-  --color-text-primary: #f9fafb;
-  --color-text-secondary: #9ca3af;
-  --color-border: #374151;
+  --color-background: #0a0a0a;
+  --color-foreground: #ffffff;
+  --color-muted: #71717a;
+  --color-muted-foreground: #a1a1aa;
+  --color-primary: #ffffff;
+  --color-primary-foreground: #0a0a0a;
+  --color-accent: #3b82f6;
+  --color-accent-foreground: #ffffff;
+  --color-border: #27272a;
+  --color-surface-elevated: #18181b;
+  --color-surface-muted: #09090b;
+  
+  --gradient-hero: linear-gradient(135deg, #0a0a0a 0%, #18181b 100%);
+  --gradient-surface: linear-gradient(to bottom, #0a0a0a 0%, #18181b 100%);
+  --gradient-glow: radial-gradient(circle at center, rgba(59, 130, 246, 0.08) 0%, transparent 70%);
 }
 
 body {
-  background-color: var(--color-bg-primary);
-  color: var(--color-text-primary);
+  background-color: var(--color-background);
+  color: var(--color-foreground);
   transition: background-color 0.3s ease, color 0.3s ease;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+}
+
+/* Custom animations */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+  }
+  50% {
+    opacity: 0.8;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.8s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.8s ease-out forwards;
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+/* Custom gradients */
+.bg-gradient-hero {
+  background: var(--gradient-hero);
+  position: relative;
+}
+
+.bg-gradient-surface {
+  background: var(--gradient-surface);
+}
+
+.bg-gradient-accent {
+  background: var(--gradient-accent);
+}
+
+.bg-gradient-glow {
+  background: var(--gradient-glow);
+}
+
+/* Custom shadows */
+.shadow-glow {
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.05), 
+              0 4px 16px rgba(59, 130, 246, 0.12), 
+              0 8px 32px rgba(59, 130, 246, 0.08);
+}
+
+.shadow-elegant {
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.04), 
+              0 2px 16px rgba(0, 0, 0, 0.02);
+}
+
+.dark .shadow-elegant {
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.3), 
+              0 2px 16px rgba(0, 0, 0, 0.2);
+}
+
+/* Hero section enhancements */
+.hero-background-glow {
+  background: radial-gradient(ellipse 80% 50% at 50% -20%, 
+              rgba(59, 130, 246, 0.08) 0%, 
+              transparent 60%);
+}
+
+/* Techy grid pattern */
+.tech-grid {
+  background-image: 
+    linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59, 130, 246, 0.03) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* Modern card styling */
+.modern-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dark .modern-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }

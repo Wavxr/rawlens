@@ -1,17 +1,5 @@
-"use client"
-
 import { useState, useEffect, useRef } from "react"
-import {
-  Camera,
-  ArrowRight,
-  MapPin,
-  Clock,
-  Heart,
-  Shield,
-  Smartphone,
-  CreditCard,
-  RotateCcw,
-} from "lucide-react"
+import { Camera, ArrowRight, MapPin, Clock, Heart, Shield, Smartphone, CreditCard, RotateCcw, Play } from "lucide-react"
 
 /* -------------------------------------------------------------------------- */
 /*  Mock auth hook                                                            */
@@ -36,7 +24,7 @@ const useScrollAnimation = () => {
           setIsVisible(true)
         }
       },
-      { threshold: 0.1 }
+      { threshold: 0.1 },
     )
 
     if (ref.current) {
@@ -120,23 +108,19 @@ const features = [
   {
     icon: Clock,
     title: "FLEXIBLE RENTAL",
-    description:
-      "Rent for 1–3 days or longer periods with better rates. Perfect for any project timeline",
+    description: "Rent for 1–3 days or longer periods with better rates. Perfect for any project timeline",
   },
   {
     icon: Shield,
     title: "RELIABLE GEAR",
-    description:
-      "Professionally maintained cameras and lenses, ready to perform every time",
+    description: "Professionally maintained cameras and lenses, ready to perform every time",
   },
   {
     icon: Smartphone,
     title: "EASY TO BOOK",
-    description:
-      "Seamless booking through our app or website — rent in just a few taps",
+    description: "Seamless booking through our app or website — rent in just a few taps",
   },
 ]
-
 
 /* -------------------------------------------------------------------------- */
 /*  Component                                                                 */
@@ -152,52 +136,52 @@ export default function Landing() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="flex items-center space-x-4">
-          <div className="w-6 h-6 border-2 border-black border-t-transparent animate-spin"></div>
-          <div className="text-black text-lg font-light" style={{ fontFamily: 'Neue Haas Grotesk, sans-serif' }}>Loading...</div>
+          <div className="w-6 h-6 border-2 border-black border-t-transparent animate-spin rounded-full"></div>
+          <div className="text-black text-lg font-medium">
+            Loading...
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 text-black" style={{ fontFamily: 'Neue Haas Grotesk, sans-serif' }}>
+    <div className="min-h-screen bg-white text-black font-sans antialiased">
       {/* Header */}
-      <header className="border-b border-gray-200 bg-white sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-8 py-6">
+      <header className="border-b border-gray-200 bg-white/80 backdrop-blur-xl sticky top-0 z-50 transition-all duration-300">
+        <div className="max-w-7xl mx-auto px-6 lg:px-2 py-4 lg:py-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <img
-                src="/logo.png"
-                alt="RAWLENS Logo"
-                className="w-12 h-12 object-contain"
-              />
+              <div className="w-10 h-10 lg:w-12 lg:h-12 bg-black text-white flex items-center justify-center rounded-2xl">
+                <Camera className="h-5 w-5 lg:h-6 lg:w-6" />
+              </div>
               <div>
-                <span className="text-3xl font-bold tracking-tight">RAWLENS</span>
-                <div className="text-sm text-gray-600 font-light tracking-widest">CAMERA RENTALS</div>
+                <span className="text-2xl lg:text-3xl font-bold tracking-tight text-black">RAWLENS</span>
+                <div className="text-xs lg:text-sm text-gray-600 font-medium tracking-[0.2em]">CAMERA RENTALS</div>
               </div>
             </div>
 
-            <div className="flex items-center space-x-6">
+            <div className="flex items-center space-x-3 lg:space-x-6">
               {user ? (
                 <button
                   onClick={() => (window.location.href = "/dashboard")}
-                  className="bg-black text-white font-medium px-6 py-3 tracking-wide transition-all duration-200 hover:bg-gray-800"
+                  className="bg-black text-white font-semibold px-6 lg:px-8 py-2.5 lg:py-3 text-sm lg:text-base tracking-wide transition-all duration-300 hover:shadow-glow hover:scale-105 active:scale-95 rounded-2xl"
                 >
                   DASHBOARD
                 </button>
               ) : (
-                <div className="flex space-x-4">
+                <div className="flex space-x-3 lg:space-x-4">
                   <button
                     onClick={() => (window.location.href = "/login")}
-                    className="border border-black bg-white text-black hover:bg-black hover:text-white font-medium px-6 py-3 tracking-wide transition-all duration-200"
+                    className="border border-gray-300 bg-white text-black hover:bg-gray-50 hover:border-gray-400 font-medium px-6 lg:px-8 py-2.5 lg:py-3 text-sm lg:text-base tracking-wide transition-all duration-300 hover:scale-105 active:scale-95 rounded-2xl"
                   >
                     LOGIN
                   </button>
                   <button
                     onClick={() => (window.location.href = "/signup")}
-                    className="bg-black text-white hover:bg-gray-800 font-medium px-6 py-3 tracking-wide transition-all duration-200"
+                    className="bg-black text-white hover:shadow-glow font-semibold px-6 lg:px-8 py-2.5 lg:py-3 text-sm lg:text-base tracking-wide transition-all duration-300 hover:scale-105 active:scale-95 rounded-2xl"
                   >
                     SIGN UP
                   </button>
@@ -209,54 +193,68 @@ export default function Landing() {
       </header>
 
       {/* Hero Section */}
-      <section ref={heroRef} className="relative py-20 px-8 overflow-hidden">
-        <div className="max-w-7xl mx-auto">
-          <div className={`grid lg:grid-cols-12 gap-16 items-center min-h-[70vh] transition-all duration-1000 ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}>
-            <div className="lg:col-span-6 space-y-8 relative z-10">
-              <div className="space-y-6">
-                <div className="inline-block bg-yellow-400 text-black px-4 py-2 font-medium tracking-widest text-sm">
+      <section
+        ref={heroRef}
+        className="relative py-10 lg:py-0 px-6 lg:px-8 overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-50 tech-grid"
+      >
+        <div className="absolute inset-0 hero-background-glow"></div>
+        <div className="max-w-7xl mx-auto relative">
+          <div
+            className={`grid lg:grid-cols-2 gap-12 lg:gap-20 items-center min-h-[85vh] transition-all duration-1000 ease-out ${heroVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}
+          >
+            <div className="space-y-8 lg:space-y-10 text-center lg:text-left">
+              <div className="space-y-6 lg:space-y-8">
+                <div className="inline-flex items-center bg-blue-100 border border-blue-200 text-blue-600 px-4 py-2 font-medium tracking-[0.15em] text-sm rounded-full backdrop-blur-sm">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mr-3 animate-glow-pulse"></div>
                   ESPAÑA, MANILA • PREMIUM RENTALS
                 </div>
 
-                <h1 className="text-6xl md:text-7xl lg:text-8xl font-bold leading-none tracking-tight">
+                <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-8xl font-bold leading-[0.85] tracking-tight">
                   <div className="overflow-hidden">
-                    <span className="block">CAPTURE</span>
+                    <span className="block animate-fade-in-up text-black">CAPTURE</span>
                   </div>
                   <div className="overflow-hidden">
-                    <span className="block text-gray-600">EVERYTHING</span>
+                    <span className="block text-gray-500 animate-fade-in-up [animation-delay:200ms] [animation-fill-mode:both]">
+                      EVERYTHING
+                    </span>
                   </div>
                 </h1>
 
-                <p className="text-xl text-gray-700 font-light leading-relaxed max-w-md">
-                  Professional camera equipment for creators, travelers, and storytellers. 
-                  Premium quality made accessible.
+                <p className="text-xl lg:text-2xl text-gray-600 font-light leading-relaxed max-w-xl mx-auto lg:mx-0 animate-fade-in [animation-delay:400ms] [animation-fill-mode:both]">
+                  Professional camera equipment for creators, travelers, and storytellers. Premium quality made
+                  accessible.
                 </p>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex flex-col sm:flex-row gap-4 lg:gap-6 justify-center lg:justify-start animate-fade-in [animation-delay:600ms] [animation-fill-mode:both]">
                 <button
                   onClick={() => document.getElementById("cameras")?.scrollIntoView({ behavior: "smooth" })}
-                  className="group bg-black text-white font-medium px-8 py-4 text-lg tracking-wide transition-all duration-200 hover:bg-gray-800 inline-flex items-center justify-center"
+                  className="group bg-black text-white font-semibold px-8 py-4 text-lg tracking-wide transition-all duration-300 hover:shadow-glow hover:scale-105 active:scale-95 inline-flex items-center justify-center rounded-2xl"
                 >
                   <span>EXPLORE COLLECTION</span>
-                  <ArrowRight className="ml-3 h-5 w-5 group-hover:translate-x-1 transition-transform duration-200" />
+                  <ArrowRight className="ml-3 h-5 w-5 group-hover:translate-x-1 transition-transform duration-300" />
                 </button>
 
-                <button className="group border border-black bg-white text-black hover:bg-black hover:text-white font-medium px-8 py-4 text-lg tracking-wide transition-all duration-200 flex items-center justify-center">
-                  <span>CHECK AVAILABILITY</span>
+                <button className="group border border-gray-300 bg-white/60 backdrop-blur-sm text-black hover:bg-gray-50 hover:border-gray-400 font-semibold px-8 py-4 text-lg tracking-wide transition-all duration-300 hover:scale-105 active:scale-95 flex items-center justify-center rounded-2xl">
+                  <Play className="mr-3 h-5 w-5 group-hover:scale-110 transition-transform duration-300" />
+                  <span>WATCH DEMO</span>
                 </button>
               </div>
             </div>
 
-            <div className="lg:col-span-6 relative">
+            <div className="relative lg:mt-0">
               <div className="relative">
-                <img 
-                  src="/g7xmarkiii.png" 
-                  alt="Premium Camera" 
-                  className="w-full max-w-2xl mx-auto object-contain"
+                {/* Enhanced background glow - bigger and more noticeable */}
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-400 via-indigo-500 to-purple-500 rounded-[3rem] transform rotate-6 scale-110 opacity-20 blur-3xl"></div>
+                <div className="absolute inset-0 bg-gradient-to-l from-blue-300 to-indigo-400 rounded-[3rem] transform -rotate-6 scale-125 opacity-15 blur-3xl"></div>
+                
+                <img
+                  src="/hero-camera.jpg"
+                  alt="Premium Camera Collection"
+                  className="relative w-full max-w-2xl mx-auto object-contain drop-shadow-2xl hover:scale-105 transition-transform duration-700 rounded-3xl"
                 />
-                <div className="absolute -top-8 -right-8 bg-yellow-400 text-black px-6 py-3 font-bold tracking-widest text-sm">
-                  NEW ARRIVAL
+                <div className="absolute -top-6 -right-6 lg:-top-8 lg:-right-8 bg-blue-500 text-white px-4 lg:px-6 py-3 lg:py-4 font-bold tracking-[0.15em] text-sm lg:text-base rounded-2xl shadow-glow animate-glow-pulse">
+                  PREMIUM GRADE
                 </div>
               </div>
             </div>
@@ -264,83 +262,85 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* About Product Section */}
-      <section ref={aboutRef} className="py-20 px-8 bg-white">
+      {/* Features Section */}
+      <section ref={featuresRef} className="py-24 lg:py-32 px-6 lg:px-8 bg-white">
         <div className="max-w-7xl mx-auto">
-          <div className={`text-center mb-16 transition-all duration-1000 ${aboutVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}>
-            <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-6">
-              <span className="block">PROFESSIONAL GRADE</span>
-              <span className="block text-gray-600">EQUIPMENT</span>
+          <div className={`text-center mb-20 transition-all duration-1000 ${featuresVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}>
+            <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-8 leading-tight">
+              <span className="block text-black">PROFESSIONAL</span>
+              <span className="block text-gray-500">GRADE</span>
             </h2>
-            <p className="text-xl text-gray-700 font-light max-w-2xl mx-auto">
+            <p className="text-xl lg:text-2xl text-gray-600 font-light max-w-3xl mx-auto leading-relaxed">
               Every camera in our collection is meticulously maintained and tested to ensure 
               peak performance for your creative projects.
             </p>
           </div>
 
-          <div className={`grid md:grid-cols-2 lg:grid-cols-4 gap-8 transition-all duration-1000 delay-300 ${aboutVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}>
+          <div className={`grid md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12 transition-all duration-1000 delay-300 ${featuresVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}>
             {features.map((feature, index) => (
-              <div key={index} className="text-center space-y-4">
-                <div className="w-16 h-16 bg-black text-white flex items-center justify-center mx-auto">
-                  <feature.icon className="h-8 w-8" />
+              <div key={index} className="text-center space-y-6 group hover:scale-105 transition-transform duration-300">
+                <div className="w-20 h-20 bg-black text-white flex items-center justify-center mx-auto rounded-3xl group-hover:shadow-glow transition-all duration-300">
+                  <feature.icon className="h-10 w-10" />
                 </div>
-                <h3 className="text-lg font-bold tracking-widest">{feature.title}</h3>
-                <p className="text-gray-700 font-light leading-relaxed">{feature.description}</p>
+                <h3 className="text-lg font-bold tracking-[0.15em] text-black">{feature.title}</h3>
+                <p className="text-gray-600 font-light leading-relaxed">{feature.description}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Camera Collection - Split Sections */}
-      <section id="cameras" ref={camerasRef} className="py-20 px-8">
+      {/* Camera Collection */}
+      <section id="cameras" ref={camerasRef} className="py-24 lg:py-32 px-6 lg:px-8 bg-gradient-to-b from-white to-gray-50">
         <div className="max-w-7xl mx-auto">
-          <div className={`text-center mb-20 transition-all duration-1000 ${camerasVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}>
-            <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-6">
-              <span className="block">OUR</span>
-              <span className="block text-gray-600">COLLECTION</span>
+          <div className={`text-center mb-24 transition-all duration-1000 ${camerasVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}>
+            <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-8 leading-tight">
+              <span className="block text-black">OUR</span>
+              <span className="block text-gray-500">COLLECTION</span>
             </h2>
           </div>
 
-          <div className="space-y-32">
+          <div className="space-y-32 lg:space-y-40">
             {cameras.map((camera, index) => (
               <div 
                 key={camera.id} 
-                className={`grid lg:grid-cols-12 gap-16 items-center transition-all duration-1000 delay-${index * 200} ${camerasVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
+                className={`grid lg:grid-cols-2 gap-16 lg:gap-20 items-center transition-all duration-1000 ${camerasVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
+                style={{ transitionDelay: `${index * 200}ms` }}
               >
-                <div className={`lg:col-span-6 ${index % 2 === 1 ? 'lg:order-2' : ''}`}>
+                <div className={`${index % 2 === 1 ? 'lg:order-2' : ''} relative group`}>
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-[3rem] transform rotate-1 scale-105 opacity-5 group-hover:opacity-10 transition-opacity duration-500"></div>
                   <img 
                     src={camera.image || "/placeholder.svg"} 
                     alt={camera.name}
-                    className="w-full max-w-2xl mx-auto object-contain"
+                    className="relative w-full max-w-xl mx-auto object-contain group-hover:scale-105 transition-transform duration-700 rounded-3xl"
                   />
                 </div>
                 
-                <div className={`lg:col-span-6 space-y-6 ${index % 2 === 1 ? 'lg:order-1' : ''}`}>
+                <div className={`space-y-8 ${index % 2 === 1 ? 'lg:order-1' : ''}`}>
                   <div>
-                    <div className="text-sm text-gray-600 font-medium mb-2 tracking-widest uppercase">
+                    <div className="text-sm text-blue-500 font-medium mb-4 tracking-[0.15em] uppercase">
                       {camera.category}
                     </div>
-                    <h3 className="text-3xl md:text-4xl font-bold tracking-tight mb-4 leading-tight">{camera.name}</h3>
-                    <p className="text-xl text-gray-700 font-light mb-6">{camera.description}</p>
+                    <h3 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6 leading-tight text-black">{camera.name}</h3>
+                    <p className="text-xl lg:text-2xl text-gray-600 font-light mb-8 leading-relaxed">{camera.description}</p>
                   </div>
 
-                  <div className="bg-gray-100 p-6">
-                    <div className="grid grid-cols-2 gap-6 mb-6">
+                  <div className="bg-gray-50 border border-gray-200 p-8 rounded-3xl backdrop-blur-sm">
+                    <div className="grid grid-cols-2 gap-8 mb-8">
                       <div>
-                        <div className="text-sm text-gray-600 mb-2 tracking-widest">1-3 DAYS</div>
-                        <div className="text-2xl font-bold">₱{camera.price1to3}</div>
+                        <div className="text-sm text-gray-600 mb-3 tracking-[0.15em] font-medium">1-3 DAYS</div>
+                        <div className="text-3xl font-bold text-black">₱{camera.price1to3}</div>
                       </div>
                       <div>
-                        <div className="text-sm text-gray-600 mb-2 tracking-widest">4+ DAYS</div>
-                        <div className="text-2xl font-bold text-yellow-600">₱{camera.price4plus}</div>
+                        <div className="text-sm text-gray-600 mb-3 tracking-[0.15em] font-medium">4+ DAYS</div>
+                        <div className="text-3xl font-bold text-blue-500">₱{camera.price4plus}</div>
                       </div>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       {camera.features.map((feature, i) => (
-                        <div key={i} className="flex items-center text-gray-800">
-                          <div className="w-2 h-2 bg-black mr-4"></div>
+                        <div key={i} className="flex items-center text-black">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full mr-4"></div>
                           <span className="font-medium">{feature}</span>
                         </div>
                       ))}
@@ -354,35 +354,37 @@ export default function Landing() {
       </section>
 
       {/* Process Section */}
-      <section ref={processRef} className="py-20 px-8 bg-white">
+      <section ref={processRef} className="py-24 lg:py-32 px-6 lg:px-8 bg-white">
         <div className="max-w-7xl mx-auto">
-          <div className={`text-center mb-16 transition-all duration-1000 ${processVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}>
-            <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-6">
-              <span className="block">SIMPLE</span>
-              <span className="block text-gray-600">PROCESS</span>
+          <div
+            className={`text-center mb-20 transition-all duration-1000 ${processVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}
+          >
+            <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-8 leading-tight">
+              <span className="block text-black">SIMPLE</span>
+              <span className="block text-gray-500">PROCESS</span>
             </h2>
           </div>
 
-          <div className={`grid md:grid-cols-2 gap-16 transition-all duration-1000 delay-300 ${processVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}>
-            <div className="text-center space-y-6">
-              <div className="w-20 h-20 bg-black text-white flex items-center justify-center mx-auto">
-                <RotateCcw className="h-10 w-10" />
+          <div
+            className={`grid md:grid-cols-2 gap-12 lg:gap-16 transition-all duration-1000 delay-300 ${processVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}
+          >
+            <div className="bg-gray-50 border border-gray-200 p-10 lg:p-12 rounded-3xl text-center space-y-8 hover:bg-gray-100 transition-all duration-500 hover:scale-105 hover:shadow-elegant group backdrop-blur-sm">
+              <div className="w-24 h-24 bg-black text-white flex items-center justify-center mx-auto rounded-3xl group-hover:shadow-glow transition-all duration-300">
+                <RotateCcw className="h-12 w-12" />
               </div>
-              <h3 className="text-2xl font-bold tracking-widest">EASY RETURNS</h3>
-              <p className="text-gray-700 font-light leading-relaxed text-lg">
-                Hassle-free return process at our España, Manila location. 
-                Quick inspection and immediate confirmation.
+              <h3 className="text-3xl lg:text-4xl font-bold tracking-[0.1em] text-black">EASY RETURNS</h3>
+              <p className="text-gray-600 font-light leading-relaxed text-lg lg:text-xl">
+                Hassle-free return process at our España, Manila location. Quick inspection and immediate confirmation.
               </p>
             </div>
 
-            <div className="text-center space-y-6">
-              <div className="w-20 h-20 bg-black text-white flex items-center justify-center mx-auto">
-                <CreditCard className="h-10 w-10" />
+            <div className="bg-gray-50 border border-gray-200 p-10 lg:p-12 rounded-3xl text-center space-y-8 hover:bg-gray-100 transition-all duration-500 hover:scale-105 hover:shadow-elegant group backdrop-blur-sm">
+              <div className="w-24 h-24 bg-black text-white flex items-center justify-center mx-auto rounded-3xl group-hover:shadow-glow transition-all duration-300">
+                <CreditCard className="h-12 w-12" />
               </div>
-              <h3 className="text-2xl font-bold tracking-widest">SECURE PAYMENTS</h3>
-              <p className="text-gray-700 font-light leading-relaxed text-lg">
-                Multiple payment options with bank-level security. 
-                GCash, card payments, and online banking accepted.
+              <h3 className="text-3xl lg:text-4xl font-bold tracking-[0.1em] text-black">SECURE PAYMENTS</h3>
+              <p className="text-gray-600 font-light leading-relaxed text-lg lg:text-xl">
+                Multiple payment options with bank-level security. GCash, card payments, and online banking accepted.
               </p>
             </div>
           </div>
@@ -390,26 +392,29 @@ export default function Landing() {
       </section>
 
       {/* CTA Section */}
-      <section ref={ctaRef} className="py-20 px-8">
+      <section ref={ctaRef} className="py-24 lg:py-32 px-6 lg:px-8 bg-gradient-to-br from-blue-50 to-indigo-50 tech-grid">
         <div className="max-w-7xl mx-auto text-center">
-          <div className={`transition-all duration-1000 ${ctaVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}>
-            <div className="inline-block bg-yellow-400 text-black px-6 py-3 font-medium tracking-widest text-sm mb-8">
+          <div
+            className={`transition-all duration-1000 ${ctaVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}
+          >
+            <div className="inline-flex items-center bg-blue-100 border border-blue-200 text-blue-600 px-6 py-3 font-semibold tracking-[0.15em] text-sm mb-10 rounded-full backdrop-blur-sm">
+              <div className="w-2 h-2 bg-blue-500 rounded-full mr-3 animate-glow-pulse"></div>
               READY TO START?
             </div>
-            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-8 leading-tight">
-              <span className="block">BEGIN YOUR</span>
-              <span className="block text-gray-600">CREATIVE JOURNEY</span>
+            <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-10 leading-tight">
+              <span className="block text-black">BEGIN YOUR</span>
+              <span className="block text-gray-500">CREATIVE JOURNEY</span>
             </h2>
-            <p className="text-xl text-gray-700 font-light mb-12 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-xl lg:text-2xl text-gray-600 font-light mb-12 max-w-4xl mx-auto leading-relaxed">
               Join hundreds of creators in Manila. Premium equipment, flexible rates, professional service.
             </p>
             <div className="flex flex-col sm:flex-row gap-6 justify-center">
-              <button className="bg-black text-white font-medium px-12 py-4 text-lg tracking-widest transition-all duration-200 hover:bg-gray-800">
+              <button className="bg-black text-white font-semibold px-12 py-4 text-lg tracking-[0.15em] transition-all duration-300 hover:shadow-glow hover:scale-105 active:scale-95 rounded-2xl">
                 BOOK NOW
               </button>
               <button
                 onClick={() => (window.location.href = "/signup")}
-                className="border border-black bg-white text-black hover:bg-black hover:text-white font-medium px-12 py-4 text-lg tracking-widest transition-all duration-200"
+                className="border border-gray-300 bg-white/60 backdrop-blur-sm text-black hover:bg-gray-50 hover:border-gray-400 font-semibold px-12 py-4 text-lg tracking-[0.15em] transition-all duration-300 hover:scale-105 active:scale-95 rounded-2xl"
               >
                 CREATE ACCOUNT
               </button>
@@ -419,49 +424,47 @@ export default function Landing() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-black text-white py-12 px-8">
+      <footer className="bg-black text-white py-20 lg:py-24 px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-3 gap-12 mb-12">
+          <div className="grid md:grid-cols-3 gap-12 lg:gap-16 mb-16">
             <div>
-              <div className="flex items-center space-x-4 mb-4">
-                <div className="w-8 h-8 bg-white text-black flex items-center justify-center">
-                  <Camera className="h-4 w-4" />
+              <div className="flex items-center space-x-4 mb-8">
+                <div className="w-12 h-12 bg-white text-black flex items-center justify-center rounded-2xl">
+                  <Camera className="h-6 w-6" />
                 </div>
-                <span className="text-2xl font-bold tracking-tight">RAWLENS</span>
+                <span className="text-3xl lg:text-4xl font-bold tracking-tight">RAWLENS</span>
               </div>
-              <p className="text-gray-400 font-light">
+              <p className="text-white/80 font-light leading-relaxed text-lg">
                 Professional camera rentals in España, Manila. Making premium equipment accessible to all creators.
               </p>
             </div>
-            
+
             <div>
-              <h4 className="text-lg font-bold tracking-widest mb-4">CONTACT</h4>
-              <div className="space-y-2 text-gray-400 font-light">
-                <div className="flex items-center space-x-2">
-                  <MapPin className="h-4 w-4" />
+              <h4 className="text-xl font-bold tracking-[0.15em] mb-8">CONTACT</h4>
+              <div className="space-y-4 text-white/80 font-light text-lg">
+                <div className="flex items-center space-x-3">
+                  <MapPin className="h-5 w-5" />
                   <span>España, Manila</span>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Clock className="h-4 w-4" />
+                <div className="flex items-center space-x-3">
+                  <Clock className="h-5 w-5" />
                   <span>Available 24/7</span>
                 </div>
               </div>
             </div>
 
             <div>
-              <h4 className="text-lg font-bold tracking-widest mb-4">RENTAL</h4>
-              <div className="space-y-2 text-gray-400 font-light">
+              <h4 className="text-xl font-bold tracking-[0.15em] mb-8">RENTAL</h4>
+              <div className="space-y-4 text-white/80 font-light text-lg">
                 <div>Professional Grade Equipment</div>
                 <div>Flexible Rental Periods</div>
                 <div>Full Insurance Coverage</div>
               </div>
             </div>
           </div>
-          
-          <div className="pt-8 border-t border-gray-800 text-center">
-            <p className="text-gray-500 font-light">
-              © 2025 RAWLENS PH. All rights reserved.
-            </p>
+
+          <div className="pt-8 border-t border-white/20 text-center">
+            <p className="text-white/60 font-light text-lg">© 2025 RAWLENS PH. All rights reserved.</p>
           </div>
         </div>
       </footer>
