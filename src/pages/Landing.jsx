@@ -151,51 +151,51 @@ export default function Landing() {
     <div className="min-h-screen bg-white text-black font-sans antialiased">
       {/* Header */}
       <header className="border-b border-gray-200 bg-white/80 backdrop-blur-xl sticky top-0 z-50 transition-all duration-300">
-        <div className="max-w-7xl mx-auto px-6 lg:px-2 py-4 lg:py-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="w-10 h-10 lg:w-12 lg:h-12 bg-black text-white flex items-center justify-center rounded-2xl">
-                <Camera className="h-5 w-5 lg:h-6 lg:w-6" />
-              </div>
-              <div>
-                <span className="text-2xl lg:text-3xl font-bold tracking-tight text-black">RAWLENS</span>
-                <div className="text-xs lg:text-sm text-gray-600 font-medium tracking-[0.2em]">CAMERA RENTALS</div>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-3 lg:space-x-6">
-              {user ? (
-                <button
-                  onClick={() => (window.location.href = "/dashboard")}
-                  className="bg-black text-white font-semibold px-6 lg:px-8 py-2.5 lg:py-3 text-sm lg:text-base tracking-wide transition-all duration-300 hover:shadow-glow hover:scale-105 active:scale-95 rounded-2xl"
-                >
-                  DASHBOARD
-                </button>
-              ) : (
-                <div className="flex space-x-3 lg:space-x-4">
-                  <button
-                    onClick={() => (window.location.href = "/login")}
-                    className="border border-gray-300 bg-white text-black hover:bg-gray-50 hover:border-gray-400 font-medium px-6 lg:px-8 py-2.5 lg:py-3 text-sm lg:text-base tracking-wide transition-all duration-300 hover:scale-105 active:scale-95 rounded-2xl"
-                  >
-                    LOGIN
-                  </button>
-                  <button
-                    onClick={() => (window.location.href = "/signup")}
-                    className="bg-black text-white hover:shadow-glow font-semibold px-6 lg:px-8 py-2.5 lg:py-3 text-sm lg:text-base tracking-wide transition-all duration-300 hover:scale-105 active:scale-95 rounded-2xl"
-                  >
-                    SIGN UP
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
+  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 lg:py-5">
+    <div className="flex items-center justify-between">
+      <div className="flex items-center space-x-3 sm:space-x-4">
+        <div className="w-9 h-9 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-black text-white flex items-center justify-center rounded-xl sm:rounded-2xl">
+          <Camera className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
         </div>
-      </header>
+        <div>
+          <span className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-black">RAWLENS</span>
+          <div className="text-[10px] sm:text-xs lg:text-sm text-gray-600 font-semibold tracking-widest uppercase">CAMERA RENTALS</div>
+        </div>
+      </div>
+
+      <div className="flex items-center space-x-2 sm:space-x-3 lg:space-x-6">
+        {user ? (
+          <button
+            onClick={() => (window.location.href = "/dashboard")}
+            className="bg-black text-white font-semibold px-4 sm:px-6 lg:px-8 py-2 lg:py-2.5 text-xs sm:text-sm lg:text-base tracking-wide transition-all duration-300 hover:shadow-glow hover:scale-105 active:scale-95 rounded-lg sm:rounded-xl lg:rounded-2xl"
+          >
+            DASHBOARD
+          </button>
+        ) : (
+          <div className="flex space-x-2 sm:space-x-3 lg:space-x-4">
+            <button
+              onClick={() => (window.location.href = "/login")}
+              className="border border-gray-300 bg-white text-black hover:bg-gray-50 hover:border-gray-400 font-medium px-4 sm:px-6 lg:px-8 py-2 lg:py-2.5 text-xs sm:text-sm lg:text-base tracking-wide transition-all duration-300 hover:scale-105 active:scale-95 rounded-lg sm:rounded-xl lg:rounded-2xl"
+            >
+              LOGIN
+            </button>
+            <button
+              onClick={() => (window.location.href = "/signup")}
+              className="bg-black text-white hover:shadow-glow font-semibold px-4 sm:px-6 lg:px-8 py-2 lg:py-2.5 text-xs sm:text-sm lg:text-base tracking-wide transition-all duration-300 hover:scale-105 active:scale-95 rounded-lg sm:rounded-xl lg:rounded-2xl"
+            >
+              SIGN UP
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+</header>
 
       {/* Hero Section */}
       <section
         ref={heroRef}
-        className="relative py-10 lg:py-0 px-6 lg:px-8 overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-50 tech-grid"
+        className="relative py-5 lg:py-0 px-6 lg:px-8 overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-50 tech-grid"
       >
         <div className="absolute inset-0 hero-background-glow"></div>
         <div className="max-w-7xl mx-auto relative">
