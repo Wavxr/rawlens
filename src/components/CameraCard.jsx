@@ -1,23 +1,24 @@
 // src/components/CameraCard.jsx
 import React, { useEffect, useState } from 'react';
 import { Camera, Tag, Heart, Calendar } from 'lucide-react';
-import { calculateTotalPrice } from '../services/rentalService';
+import { calculateTotalPrice, calculateRentalDays } from '../services/rentalService';
 
 const CameraCard = ({ camera, onRentClick, onFavoriteClick, isFavorite, startDate, endDate }) => {
   const [pricingInfo, setPricingInfo] = useState(null);
   const [loadingPrice, setLoadingPrice] = useState(false);
 
-  // Calculate rental duration in days
-  const calculateRentalDays = () => {
+  // Use the same rental days calculation as the rental service
+  const getRentalDays = () => {
     if (!startDate || !endDate) return null;
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const diffTime = Math.abs(end - start);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
+    try {
+      return calculateRentalDays(startDate, endDate);
+    } catch (error) {
+      console.error('Error calculating rental days:', error);
+      return null;
+    }
   };
 
-  const rentalDays = calculateRentalDays();
+  const rentalDays = getRentalDays();
   const hasDateRange = startDate && endDate && rentalDays;
 
   // Calculate pricing when dates are provided
@@ -39,25 +40,38 @@ const CameraCard = ({ camera, onRentClick, onFavoriteClick, isFavorite, startDat
       setPricingInfo(null);
     }
   }, [camera.id, startDate, endDate, hasDateRange]);
+
+  // Handle image loading with proper sizing and fallback
+  const handleImageError = (e) => {
+    e.target.style.display = 'none';
+    // Optional: Add a placeholder or default image
+    // e.target.src = '/default-camera-placeholder.png';
+  };
+
   return (
     <div 
       onClick={() => onRentClick(camera)}
-      className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer group"
+      className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border border-gray-100"
+      style={{ height: 'auto', minHeight: '320px' }}
     >
-      <div className="relative overflow-hidden">
+      {/* Image Container */}
+      <div className="relative aspect-video overflow-hidden">
         {camera.image_url ? (
           <img
             src={camera.image_url}
             alt={camera.name}
-            onError={(e) => {
-              console.error(`Error loading image for camera ${camera.id}:`, camera.image_url);
-              e.target.style.display = 'none';
+            onError={handleImageError}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            style={{
+              maxHeight: '200px',
+              width: '100%',
+              height: 'auto',
+              objectFit: 'cover'
             }}
-            className="w-full h-40 sm:h-48 object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
-          <div className="w-full h-40 sm:h-48 bg-gray-100 flex items-center justify-center">
-            <Camera className="h-12 w-12 text-gray-400" />
+          <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+            <Camera className="h-10 w-10 text-gray-400" />
           </div>
         )}
         
@@ -67,18 +81,20 @@ const CameraCard = ({ camera, onRentClick, onFavoriteClick, isFavorite, startDat
             e.stopPropagation();
             onFavoriteClick(camera.id);
           }}
-          className={`absolute top-3 right-3 p-2 rounded-full transition-colors shadow-sm ${
+          className={`absolute top-2 right-2 p-2 rounded-full transition-colors shadow-sm ${
             isFavorite 
               ? 'bg-red-500 text-white' 
               : 'bg-white/90 text-gray-600 hover:bg-white'
           }`}
+          aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
         >
           <Heart size={16} fill={isFavorite ? 'currentColor' : 'none'} />
         </button>
       </div>
       
-      <div className="p-4">
-        <h3 className="text-lg font-bold text-gray-900 mb-3 line-clamp-2 leading-tight">
+      {/* Content Section */}
+      <div className="p-3 pt-2">
+        <h3 className="text-base font-semibold text-gray-900 mb-2 line-clamp-2 leading-tight">
           {camera.name}
         </h3>
         
@@ -86,7 +102,7 @@ const CameraCard = ({ camera, onRentClick, onFavoriteClick, isFavorite, startDat
           <div className="flex-1">
             {hasDateRange ? (
               // Show pricing with date range using calculateTotalPrice
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <div className="flex items-center text-xs text-gray-500">
                   <Calendar className="mr-1 h-3 w-3" />
                   <span>{rentalDays} day{rentalDays !== 1 ? 's' : ''}</span>
@@ -94,18 +110,20 @@ const CameraCard = ({ camera, onRentClick, onFavoriteClick, isFavorite, startDat
                 {loadingPrice ? (
                   <div className="space-y-1">
                     <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
-                    <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
+                    <div className="h-5 bg-gray-200 rounded animate-pulse"></div>
                   </div>
                 ) : pricingInfo ? (
                   <div>
                     <p className="text-sm text-gray-600">
                       ₱{pricingInfo.pricePerDay.toFixed(2)}/day
                     </p>
-                    <p className="text-xl font-bold text-green-600">
+                    <p className="text-lg font-bold text-green-600">
                       ₱{pricingInfo.totalPrice.toFixed(2)} total
                     </p>
-                    {/* Show if there's a discount applied */}
-                    {pricingInfo.pricePerDay !== (camera.camera_pricing_tiers?.[0]?.price_per_day || 0) && (
+                    {/* Show discount only if there are multiple pricing tiers and we're not using the first (shortest duration) tier */}
+                    {camera.camera_pricing_tiers && 
+                     camera.camera_pricing_tiers.length > 1 && 
+                     rentalDays > (camera.camera_pricing_tiers[0]?.max_days || camera.camera_pricing_tiers[0]?.min_days || 0) && (
                       <p className="text-xs text-blue-600 font-medium">
                         Discounted rate applied
                       </p>
@@ -123,7 +141,7 @@ const CameraCard = ({ camera, onRentClick, onFavoriteClick, isFavorite, startDat
                   <span>Starting At</span>
                 </div>
                 {camera.camera_pricing_tiers && camera.camera_pricing_tiers.length > 0 ? (
-                  <p className="text-xl font-bold text-green-600">
+                  <p className="text-lg font-bold text-green-600">
                     ₱{camera.camera_pricing_tiers[0].price_per_day.toFixed(2)}
                   </p>
                 ) : (
@@ -133,7 +151,7 @@ const CameraCard = ({ camera, onRentClick, onFavoriteClick, isFavorite, startDat
             )}
           </div>
           
-          <div className="bg-green-50 px-3 py-1 rounded-full ml-3">
+          <div className="bg-green-50 px-2 py-1 rounded-full ml-2">
             <span className="text-green-600 text-xs font-medium">Available</span>
           </div>
         </div>

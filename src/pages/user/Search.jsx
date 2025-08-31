@@ -46,6 +46,17 @@ export default function Search() {
     };
   }, [resetBrowseFilter]);
 
+  // Clear search results when dates change (to prevent outdated availability)
+  useEffect(() => {
+    if (isFilterActive) {
+      // Only clear if we have active search results
+      setSearchResults([]);
+      setDisplayedCameras([]);
+      setIsFilterActive(false);
+      setError(''); // Clear any previous errors
+    }
+  }, [startDate, endDate]); // Trigger when either date changes
+
   // === EVENT HANDLERS ===
   const handleDateChange = (e, type) => {
     handleBrowseDateChange(e, type);
