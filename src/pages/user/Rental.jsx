@@ -53,15 +53,13 @@ export default function Rental() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="lg:max-w-6xl lg:mx-auto lg:px-8">
-        <div className="px-4 py-6">
-          <RentalFlowSection 
-            onBackToBrowse={handleBackToBrowse}
-            sourcePageType={sourcePageType}
-            preSelectedDates={preSelectedDates}
-          />
-        </div>
+    <div className="lg:max-w-6xl lg:mx-auto lg:px-8">
+      <div className="px-4 py-6">
+        <RentalFlowSection 
+          onBackToBrowse={handleBackToBrowse}
+          sourcePageType={sourcePageType}
+          preSelectedDates={preSelectedDates}
+        />
       </div>
     </div>
   );

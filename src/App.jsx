@@ -79,11 +79,10 @@ function App() {
               <Route path="search" element={<Search />} />
               <Route path="cart" element={<Cart />} />
               <Route path="booking" element={<Booking />} />
+              <Route path="rental" element={<Rental />} />
               <Route path="educational" element={<UserEducational />} />
               <Route path="profile" element={<UserProfile />} />
             </Route>
-            {/* Rental page - full screen outside of dashboard */}
-            <Route path="/user/rental" element={<Rental />} />
           </Route>
 
           {/* Catch-all for 404 Not Found */}
