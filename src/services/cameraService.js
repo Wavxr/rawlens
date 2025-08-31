@@ -347,22 +347,64 @@ export async function getAvailableCamerasForDates(startDate, endDate) {
     // 1. Get all cameras that are not marked as unavailable
     const { data: allCameras, error: cameraError } = await supabase
       .from('cameras')
-      .select('id, name, image_url, description, camera_status')
+      .select(`
+        id,
+        name,
+        description,
+        image_url,
+        created_at,
+        serial_number,
+        purchase_date,
+        cost,
+        camera_status,
+        camera_condition,
+        camera_pricing_tiers (
+          id,
+          camera_id,
+          min_days,
+          max_days,
+          price_per_day,
+          description
+        )
+      `)
       .neq('camera_status', 'unavailable');
 
     if (cameraError) throw cameraError;
 
-    // 2. Check availability for each camera
+    // 2. Check availability for each camera and only keep available ones
     const availabilityChecks = allCameras.map(async (camera) => {
       const { isAvailable } = await checkCameraAvailability(camera.id, startDate, endDate);
       return {
-        ...camera,
+        camera,
         isAvailable
       };
     });
 
     const camerasWithAvailability = await Promise.all(availabilityChecks);
-    return { data: camerasWithAvailability, error: null };
+    
+    // 3. Filter to only return cameras that are actually available
+    const availableCameras = camerasWithAvailability
+      .filter(item => item.isAvailable)
+      .map(item => item.camera);
+
+    // 4. Group by camera model name to show only one representative per model
+    const modelMap = new Map();
+    
+    availableCameras.forEach(camera => {
+      if (!modelMap.has(camera.name)) {
+        modelMap.set(camera.name, {
+          ...camera,
+          // Add a flag to indicate this represents a model with available units
+          isModelRepresentative: true,
+          // Count available units for this model
+          availableUnits: availableCameras.filter(c => c.name === camera.name).length
+        });
+      }
+    });
+
+    const availableCameraModels = Array.from(modelMap.values());
+    
+    return { data: availableCameraModels, error: null };
   } catch (error) {
     console.error("Error in getAvailableCamerasForDates:", error);
     return { data: null, error: error.message || "Failed to fetch available cameras." };

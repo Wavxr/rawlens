@@ -27,9 +27,11 @@ import Settings from './pages/admin/Settings';
 
 // User
 import UserDashboard from './pages/user/UserDashboard';
-import UserCameras from './pages/user/Cameras';
-import UserRent from './pages/user/Rentals';
-import UserRequests from './pages/user/Requests';
+import Home from './pages/user/Home';
+import Search from './pages/user/Search';
+import Cart from './pages/user/Cart';
+import Booking from './pages/user/Booking';
+import Rental from './pages/user/Rental';
 import UserEducational from './pages/user/Educational';
 import UserProfile from './pages/user/Profile';
 
@@ -72,13 +74,16 @@ function App() {
           {/* User Routes (only accessible to logged-in user) */}
           <Route element={<ProtectedRoute requiredRole="user" />}>
             <Route path="/user" element={<UserDashboard />}>
-              <Route index element={<UserCameras />} />
-              <Route path="cameras" element={<UserCameras />} />
-              <Route path="rentals" element={<UserRent />} />
-              <Route path="requests" element={<UserRequests />} />
+              <Route index element={<Home />} />
+              <Route path="home" element={<Home />} />
+              <Route path="search" element={<Search />} />
+              <Route path="cart" element={<Cart />} />
+              <Route path="booking" element={<Booking />} />
               <Route path="educational" element={<UserEducational />} />
               <Route path="profile" element={<UserProfile />} />
             </Route>
+            {/* Rental page - full screen outside of dashboard */}
+            <Route path="/user/rental" element={<Rental />} />
           </Route>
 
           {/* Catch-all for 404 Not Found */}

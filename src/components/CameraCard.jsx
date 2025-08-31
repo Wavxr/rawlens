@@ -1,10 +1,49 @@
 // src/components/CameraCard.jsx
-import React from 'react';
-import { Camera, Tag, Heart } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Camera, Tag, Heart, Calendar } from 'lucide-react';
+import { calculateTotalPrice } from '../services/rentalService';
 
-const CameraCard = ({ camera, onRentClick, onFavoriteClick, isFavorite }) => {
+const CameraCard = ({ camera, onRentClick, onFavoriteClick, isFavorite, startDate, endDate }) => {
+  const [pricingInfo, setPricingInfo] = useState(null);
+  const [loadingPrice, setLoadingPrice] = useState(false);
+
+  // Calculate rental duration in days
+  const calculateRentalDays = () => {
+    if (!startDate || !endDate) return null;
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const diffTime = Math.abs(end - start);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  const rentalDays = calculateRentalDays();
+  const hasDateRange = startDate && endDate && rentalDays;
+
+  // Calculate pricing when dates are provided
+  useEffect(() => {
+    if (hasDateRange && camera.id) {
+      setLoadingPrice(true);
+      calculateTotalPrice(camera.id, startDate, endDate)
+        .then((result) => {
+          setPricingInfo(result);
+        })
+        .catch((error) => {
+          console.error('Error calculating pricing:', error);
+          setPricingInfo(null);
+        })
+        .finally(() => {
+          setLoadingPrice(false);
+        });
+    } else {
+      setPricingInfo(null);
+    }
+  }, [camera.id, startDate, endDate, hasDateRange]);
   return (
-    <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 group">
+    <div 
+      onClick={() => onRentClick(camera)}
+      className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer group"
+    >
       <div className="relative overflow-hidden">
         {camera.image_url ? (
           <img
@@ -14,77 +53,90 @@ const CameraCard = ({ camera, onRentClick, onFavoriteClick, isFavorite }) => {
               console.error(`Error loading image for camera ${camera.id}:`, camera.image_url);
               e.target.style.display = 'none';
             }}
-            className="w-full h-48 lg:h-36 object-cover transition-transform duration-500 group-hover:scale-105"
+            className="w-full h-40 sm:h-48 object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
-          <div className="w-full h-48 lg:h-36 bg-gray-100 flex items-center justify-center">
-            <Camera className="h-12 w-12 lg:h-8 lg:w-8 text-gray-400" />
+          <div className="w-full h-40 sm:h-48 bg-gray-100 flex items-center justify-center">
+            <Camera className="h-12 w-12 text-gray-400" />
           </div>
         )}
         
         {/* Favorite button overlay */}
         <button
-          onClick={() => onFavoriteClick(camera.id)}
-          className={`absolute top-2 right-2 p-1.5 rounded-full transition-colors ${
+          onClick={(e) => {
+            e.stopPropagation();
+            onFavoriteClick(camera.id);
+          }}
+          className={`absolute top-3 right-3 p-2 rounded-full transition-colors shadow-sm ${
             isFavorite 
               ? 'bg-red-500 text-white' 
-              : 'bg-white/80 text-gray-600 hover:bg-white'
+              : 'bg-white/90 text-gray-600 hover:bg-white'
           }`}
         >
-          <Heart size={16} className="lg:w-3 lg:h-3" fill={isFavorite ? 'currentColor' : 'none'} />
+          <Heart size={16} fill={isFavorite ? 'currentColor' : 'none'} />
         </button>
       </div>
       
-      <div className="p-4 lg:p-3">
-        <h3 className="text-base lg:text-sm font-semibold text-gray-900 truncate">{camera.name}</h3>
-        <p className="mt-1 text-xs lg:text-xs text-gray-600 line-clamp-2">{camera.description}</p>
+      <div className="p-4">
+        <h3 className="text-lg font-bold text-gray-900 mb-3 line-clamp-2 leading-tight">
+          {camera.name}
+        </h3>
         
-        {/* Show unit count if this is a model representative */}
-        {camera.isModelRepresentative && camera.totalUnits > 1 && (
-          <p className="mt-1 text-xs text-blue-600 font-medium">
-            {camera.totalUnits} units available
-          </p>
-        )}
-        
-        <div className="mt-3 lg:mt-2">
-          <div className="flex items-center text-xs text-gray-500 mb-1">
-            <Tag className="mr-1 h-3 w-3 lg:h-2.5 lg:w-2.5" />
-            <span>Starting At</span>
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            {hasDateRange ? (
+              // Show pricing with date range using calculateTotalPrice
+              <div className="space-y-2">
+                <div className="flex items-center text-xs text-gray-500">
+                  <Calendar className="mr-1 h-3 w-3" />
+                  <span>{rentalDays} day{rentalDays !== 1 ? 's' : ''}</span>
+                </div>
+                {loadingPrice ? (
+                  <div className="space-y-1">
+                    <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                    <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
+                  </div>
+                ) : pricingInfo ? (
+                  <div>
+                    <p className="text-sm text-gray-600">
+                      ₱{pricingInfo.pricePerDay.toFixed(2)}/day
+                    </p>
+                    <p className="text-xl font-bold text-green-600">
+                      ₱{pricingInfo.totalPrice.toFixed(2)} total
+                    </p>
+                    {/* Show if there's a discount applied */}
+                    {pricingInfo.pricePerDay !== (camera.camera_pricing_tiers?.[0]?.price_per_day || 0) && (
+                      <p className="text-xs text-blue-600 font-medium">
+                        Discounted rate applied
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-sm">Pricing unavailable</p>
+                )}
+              </div>
+            ) : (
+              // Show regular pricing without date range
+              <div>
+                <div className="flex items-center text-xs text-gray-500 mb-1">
+                  <Tag className="mr-1 h-3 w-3" />
+                  <span>Starting At</span>
+                </div>
+                {camera.camera_pricing_tiers && camera.camera_pricing_tiers.length > 0 ? (
+                  <p className="text-xl font-bold text-green-600">
+                    ₱{camera.camera_pricing_tiers[0].price_per_day.toFixed(2)}
+                  </p>
+                ) : (
+                  <p className="text-gray-500 text-sm">Contact for price</p>
+                )}
+              </div>
+            )}
           </div>
-          {camera.camera_pricing_tiers && camera.camera_pricing_tiers.length > 0 ? (
-            <p className="text-lg lg:text-base font-bold text-gray-900">
-              ₱{camera.camera_pricing_tiers[0].price_per_day.toFixed(2)}/day
-            </p>
-          ) : (
-            <p className="text-gray-500 text-sm lg:text-xs">Pricing not available</p>
-          )}
+          
+          <div className="bg-green-50 px-3 py-1 rounded-full ml-3">
+            <span className="text-green-600 text-xs font-medium">Available</span>
+          </div>
         </div>
-        
-        {camera.inclusions && camera.inclusions.length > 0 && (
-          <div className="mt-3 lg:mt-2">
-            <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide">Includes</h4>
-            <ul className="mt-1 flex flex-wrap gap-1">
-              {camera.inclusions.slice(0, 3).map((inclusion) => (
-                <li key={`${inclusion.inclusion_item_id}-${inclusion.inclusion_items?.id}`} className="text-xs lg:text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded">
-                  {inclusion.inclusion_items?.name}
-                  {inclusion.quantity > 1 ? ` (x${inclusion.quantity})` : ''}
-                </li>
-              ))}
-              {camera.inclusions.length > 3 && (
-                <li className="text-xs lg:text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
-                  +{camera.inclusions.length - 3} more
-                </li>
-              )}
-            </ul>
-          </div>
-        )}
-        
-        <button
-          onClick={() => onRentClick(camera)}
-          className="mt-4 lg:mt-3 w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 lg:py-1.5 px-3 rounded-lg transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 text-sm lg:text-xs"
-        >
-          Rent Now
-        </button>
       </div>
     </div>
   );

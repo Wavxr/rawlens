@@ -1,7 +1,7 @@
 // src/components/UserDashboard.jsx
 import { Outlet, useNavigate, useLocation } from "react-router-dom"
 import useAuthStore from "../../stores/useAuthStore"
-import { Camera, Calendar, BookOpen, User, Menu, X, Bell } from "lucide-react"
+import { Home, Search, ShoppingCart, Calendar, User, Menu, X, Bell, Camera } from "lucide-react"
 import { useState } from "react"
 
 export default function UserDashboard() {
@@ -10,10 +10,10 @@ export default function UserDashboard() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   const navItems = [
-    { path: "/user/cameras", label: "Browse Cameras", icon: Camera, shortLabel: "Browse" },
-    { path: "/user/rentals", label: "My Rentals", icon: Calendar, shortLabel: "Rentals" },
-    { path: "/user/requests", label: "My Requests", icon: BookOpen, shortLabel: "Requests" },
-    { path: "/user/educational", label: "Learn", icon: BookOpen, shortLabel: "Learn" },
+    { path: "/user/home", label: "Home", icon: Home, shortLabel: "Home" },
+    { path: "/user/search", label: "Search", icon: Search, shortLabel: "Search" },
+    { path: "/user/cart", label: "Cart", icon: ShoppingCart, shortLabel: "Cart" },
+    { path: "/user/booking", label: "Booking", icon: Calendar, shortLabel: "Booking" },
     { path: "/user/profile", label: "Profile", icon: User, shortLabel: "Profile" },
   ]
 
