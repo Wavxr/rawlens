@@ -151,37 +151,37 @@ export default function Landing() {
     <div className="min-h-screen bg-white text-black font-sans antialiased">
       {/* Header */}
       <header className="border-b border-gray-200 bg-white/80 backdrop-blur-xl sticky top-0 z-50 transition-all duration-300">
-  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 lg:py-5">
+  <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 py-3 lg:py-5">
     <div className="flex items-center justify-between">
       <div className="flex items-center space-x-3 sm:space-x-4">
-        <div className="w-9 h-9 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-black text-white flex items-center justify-center rounded-xl sm:rounded-2xl">
-          <Camera className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
+        <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-black text-white flex items-center justify-center rounded-xl sm:rounded-2xl">
+          <Camera className="h-3.5 w-3.5 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
         </div>
         <div>
-          <span className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-black">RAWLENS</span>
-          <div className="text-[10px] sm:text-xs lg:text-sm text-gray-600 font-semibold tracking-widest uppercase">CAMERA RENTALS</div>
+          <span className="text-lg sm:text-2xl lg:text-3xl font-bold tracking-tight text-black">RAWLENS</span>
+          <div className="text-[9px] sm:text-xs lg:text-sm text-gray-600 font-semibold tracking-widest uppercase">CAMERA RENTALS</div>
         </div>
       </div>
 
-      <div className="flex items-center space-x-2 sm:space-x-3 lg:space-x-6">
+      <div className="flex items-center space-x-1.5 sm:space-x-3 lg:space-x-6">
         {user ? (
           <button
             onClick={() => (window.location.href = "/dashboard")}
-            className="bg-black text-white font-semibold px-4 sm:px-6 lg:px-8 py-2 lg:py-2.5 text-xs sm:text-sm lg:text-base tracking-wide transition-all duration-300 hover:shadow-glow hover:scale-105 active:scale-95 rounded-lg sm:rounded-xl lg:rounded-2xl"
+            className="bg-black text-white font-semibold px-3 sm:px-6 lg:px-8 py-1.5 lg:py-2.5 text-xs sm:text-sm lg:text-base tracking-wide transition-all duration-300 hover:shadow-glow hover:scale-105 active:scale-95 rounded-lg sm:rounded-xl lg:rounded-2xl"
           >
             DASHBOARD
           </button>
         ) : (
-          <div className="flex space-x-2 sm:space-x-3 lg:space-x-4">
+          <div className="flex space-x-1.5 sm:space-x-3 lg:space-x-4">
             <button
               onClick={() => (window.location.href = "/login")}
-              className="border border-gray-300 bg-white text-black hover:bg-gray-50 hover:border-gray-400 font-medium px-4 sm:px-6 lg:px-8 py-2 lg:py-2.5 text-xs sm:text-sm lg:text-base tracking-wide transition-all duration-300 hover:scale-105 active:scale-95 rounded-lg sm:rounded-xl lg:rounded-2xl"
+              className="border border-gray-300 bg-white text-black hover:bg-gray-50 hover:border-gray-400 font-medium px-3 sm:px-6 lg:px-8 py-1.5 lg:py-2.5 text-xs sm:text-sm lg:text-base tracking-wide transition-all duration-300 hover:scale-105 active:scale-95 rounded-lg sm:rounded-xl lg:rounded-2xl"
             >
               LOGIN
             </button>
             <button
               onClick={() => (window.location.href = "/signup")}
-              className="bg-black text-white hover:shadow-glow font-semibold px-4 sm:px-6 lg:px-8 py-2 lg:py-2.5 text-xs sm:text-sm lg:text-base tracking-wide transition-all duration-300 hover:scale-105 active:scale-95 rounded-lg sm:rounded-xl lg:rounded-2xl"
+              className="bg-black text-white hover:shadow-glow font-semibold px-3 sm:px-6 lg:px-8 py-1.5 lg:py-2.5 text-xs sm:text-sm lg:text-base tracking-wide transition-all duration-300 hover:scale-105 active:scale-95 rounded-lg sm:rounded-xl lg:rounded-2xl"
             >
               SIGN UP
             </button>
@@ -195,21 +195,21 @@ export default function Landing() {
       {/* Hero Section */}
       <section
         ref={heroRef}
-        className="relative py-5 lg:py-0 px-6 lg:px-8 overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-50 tech-grid"
+        className="relative py-5 lg:py-0 px-5 lg:px-8 overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-50 tech-grid"
       >
         <div className="absolute inset-0 hero-background-glow"></div>
         <div className="max-w-7xl mx-auto relative">
           <div
             className={`grid lg:grid-cols-2 gap-12 lg:gap-20 items-center min-h-[85vh] transition-all duration-1000 ease-out ${heroVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}
           >
-            <div className="space-y-8 lg:space-y-10 text-center lg:text-left">
-              <div className="space-y-6 lg:space-y-8">
-                <div className="inline-flex items-center bg-blue-100 border border-blue-200 text-blue-600 px-4 py-2 font-medium tracking-[0.15em] text-sm rounded-full backdrop-blur-sm">
+            <div className="space-y-6 lg:space-y-10 text-center lg:text-left">
+              <div className="space-y-4 lg:space-y-8">
+                <div className="inline-flex items-center bg-blue-100 border border-blue-200 text-blue-600 px-3 py-1.5 font-medium tracking-[0.15em] text-xs rounded-full backdrop-blur-sm">
                   <div className="w-2 h-2 bg-blue-500 rounded-full mr-3 animate-glow-pulse"></div>
                   ESPAÑA, MANILA • PREMIUM RENTALS
                 </div>
 
-                <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-8xl font-bold leading-[0.85] tracking-tight">
+                <h1 className="text-4xl sm:text-7xl md:text-8xl lg:text-8xl font-bold leading-[0.85] tracking-tight">
                   <div className="overflow-hidden">
                     <span className="block animate-fade-in-up text-black">CAPTURE</span>
                   </div>
@@ -220,23 +220,23 @@ export default function Landing() {
                   </div>
                 </h1>
 
-                <p className="text-xl lg:text-2xl text-gray-600 font-light leading-relaxed max-w-xl mx-auto lg:mx-0 animate-fade-in [animation-delay:400ms] [animation-fill-mode:both]">
+                <p className="text-lg lg:text-2xl text-gray-600 font-light leading-relaxed max-w-xl mx-auto lg:mx-0 animate-fade-in [animation-delay:400ms] [animation-fill-mode:both]">
                   Professional camera equipment for creators, travelers, and storytellers. Premium quality made
                   accessible.
                 </p>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-4 lg:gap-6 justify-center lg:justify-start animate-fade-in [animation-delay:600ms] [animation-fill-mode:both]">
+              <div className="flex flex-col sm:flex-row gap-3 lg:gap-6 justify-center lg:justify-start animate-fade-in [animation-delay:600ms] [animation-fill-mode:both]">
                 <button
                   onClick={() => document.getElementById("cameras")?.scrollIntoView({ behavior: "smooth" })}
-                  className="group bg-black text-white font-semibold px-8 py-4 text-lg tracking-wide transition-all duration-300 hover:shadow-glow hover:scale-105 active:scale-95 inline-flex items-center justify-center rounded-2xl"
+                  className="group bg-black text-white font-semibold px-6 py-3 text-base tracking-wide transition-all duration-300 hover:shadow-glow hover:scale-105 active:scale-95 inline-flex items-center justify-center rounded-2xl lg:px-8 lg:py-4 lg:text-lg"
                 >
                   <span>EXPLORE COLLECTION</span>
-                  <ArrowRight className="ml-3 h-5 w-5 group-hover:translate-x-1 transition-transform duration-300" />
+                  <ArrowRight className="ml-3 h-4 w-4 lg:h-5 lg:w-5 group-hover:translate-x-1 transition-transform duration-300" />
                 </button>
 
-                <button className="group border border-gray-300 bg-white/60 backdrop-blur-sm text-black hover:bg-gray-50 hover:border-gray-400 font-semibold px-8 py-4 text-lg tracking-wide transition-all duration-300 hover:scale-105 active:scale-95 flex items-center justify-center rounded-2xl">
-                  <Play className="mr-3 h-5 w-5 group-hover:scale-110 transition-transform duration-300" />
+                <button className="group border border-gray-300 bg-white/60 backdrop-blur-sm text-black hover:bg-gray-50 hover:border-gray-400 font-semibold px-6 py-3 text-base tracking-wide transition-all duration-300 hover:scale-105 active:scale-95 flex items-center justify-center rounded-2xl lg:px-8 lg:py-4 lg:text-lg">
+                  <Play className="mr-3 h-4 w-4 lg:h-5 lg:w-5 group-hover:scale-110 transition-transform duration-300" />
                   <span>WATCH DEMO</span>
                 </button>
               </div>
@@ -263,14 +263,14 @@ export default function Landing() {
       </section>
 
       {/* Features Section */}
-      <section ref={featuresRef} className="py-24 lg:py-32 px-6 lg:px-8 bg-white">
+      <section ref={featuresRef} className="py-24 lg:py-32 px-5 lg:px-8 bg-white">
         <div className="max-w-7xl mx-auto">
           <div className={`text-center mb-20 transition-all duration-1000 ${featuresVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}>
-            <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-8 leading-tight">
+            <h2 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-8 leading-tight">
               <span className="block text-black">PROFESSIONAL</span>
               <span className="block text-gray-500">GRADE</span>
             </h2>
-            <p className="text-xl lg:text-2xl text-gray-600 font-light max-w-3xl mx-auto leading-relaxed">
+            <p className="text-lg lg:text-2xl text-gray-600 font-light max-w-3xl mx-auto leading-relaxed">
               Every camera in our collection is meticulously maintained and tested to ensure 
               peak performance for your creative projects.
             </p>
@@ -282,8 +282,8 @@ export default function Landing() {
                 <div className="w-20 h-20 bg-black text-white flex items-center justify-center mx-auto rounded-3xl group-hover:shadow-glow transition-all duration-300">
                   <feature.icon className="h-10 w-10" />
                 </div>
-                <h3 className="text-lg font-bold tracking-[0.15em] text-black">{feature.title}</h3>
-                <p className="text-gray-600 font-light leading-relaxed">{feature.description}</p>
+                <h3 className="text-base lg:text-lg font-bold tracking-[0.15em] text-black">{feature.title}</h3>
+                <p className="text-gray-600 font-light leading-relaxed text-sm lg:text-base">{feature.description}</p>
               </div>
             ))}
           </div>
@@ -291,10 +291,10 @@ export default function Landing() {
       </section>
 
       {/* Camera Collection */}
-      <section id="cameras" ref={camerasRef} className="py-24 lg:py-32 px-6 lg:px-8 bg-gradient-to-b from-white to-gray-50">
+      <section id="cameras" ref={camerasRef} className="py-24 lg:py-32 px-5 lg:px-8 bg-gradient-to-b from-white to-gray-50">
         <div className="max-w-7xl mx-auto">
           <div className={`text-center mb-24 transition-all duration-1000 ${camerasVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}>
-            <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-8 leading-tight">
+            <h2 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-8 leading-tight">
               <span className="block text-black">OUR</span>
               <span className="block text-gray-500">COLLECTION</span>
             </h2>
@@ -318,22 +318,22 @@ export default function Landing() {
                 
                 <div className={`space-y-8 ${index % 2 === 1 ? 'lg:order-1' : ''}`}>
                   <div>
-                    <div className="text-sm text-blue-500 font-medium mb-4 tracking-[0.15em] uppercase">
+                    <div className="text-xs lg:text-sm text-blue-500 font-medium mb-4 tracking-[0.15em] uppercase">
                       {camera.category}
                     </div>
-                    <h3 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6 leading-tight text-black">{camera.name}</h3>
-                    <p className="text-xl lg:text-2xl text-gray-600 font-light mb-8 leading-relaxed">{camera.description}</p>
+                    <h3 className="text-3xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6 leading-tight text-black">{camera.name}</h3>
+                    <p className="text-lg lg:text-2xl text-gray-600 font-light mb-8 leading-relaxed">{camera.description}</p>
                   </div>
 
-                  <div className="bg-gray-50 border border-gray-200 p-8 rounded-3xl backdrop-blur-sm">
+                  <div className="bg-gray-50 border border-gray-200 p-6 lg:p-8 rounded-3xl backdrop-blur-sm">
                     <div className="grid grid-cols-2 gap-8 mb-8">
                       <div>
-                        <div className="text-sm text-gray-600 mb-3 tracking-[0.15em] font-medium">1-3 DAYS</div>
-                        <div className="text-3xl font-bold text-black">₱{camera.price1to3}</div>
+                        <div className="text-xs lg:text-sm text-gray-600 mb-3 tracking-[0.15em] font-medium">1-3 DAYS</div>
+                        <div className="text-2xl lg:text-3xl font-bold text-black">₱{camera.price1to3}</div>
                       </div>
                       <div>
-                        <div className="text-sm text-gray-600 mb-3 tracking-[0.15em] font-medium">4+ DAYS</div>
-                        <div className="text-3xl font-bold text-blue-500">₱{camera.price4plus}</div>
+                        <div className="text-xs lg:text-sm text-gray-600 mb-3 tracking-[0.15em] font-medium">4+ DAYS</div>
+                        <div className="text-2xl lg:text-3xl font-bold text-blue-500">₱{camera.price4plus}</div>
                       </div>
                     </div>
 
@@ -341,7 +341,7 @@ export default function Landing() {
                       {camera.features.map((feature, i) => (
                         <div key={i} className="flex items-center text-black">
                           <div className="w-2 h-2 bg-blue-500 rounded-full mr-4"></div>
-                          <span className="font-medium">{feature}</span>
+                          <span className="font-medium text-sm lg:text-base">{feature}</span>
                         </div>
                       ))}
                     </div>
@@ -354,12 +354,12 @@ export default function Landing() {
       </section>
 
       {/* Process Section */}
-      <section ref={processRef} className="py-24 lg:py-32 px-6 lg:px-8 bg-white">
+      <section ref={processRef} className="py-24 lg:py-32 px-5 lg:px-8 bg-white">
         <div className="max-w-7xl mx-auto">
           <div
             className={`text-center mb-20 transition-all duration-1000 ${processVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}
           >
-            <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-8 leading-tight">
+            <h2 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-8 leading-tight">
               <span className="block text-black">SIMPLE</span>
               <span className="block text-gray-500">PROCESS</span>
             </h2>
@@ -368,22 +368,22 @@ export default function Landing() {
           <div
             className={`grid md:grid-cols-2 gap-12 lg:gap-16 transition-all duration-1000 delay-300 ${processVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}
           >
-            <div className="bg-gray-50 border border-gray-200 p-10 lg:p-12 rounded-3xl text-center space-y-8 hover:bg-gray-100 transition-all duration-500 hover:scale-105 hover:shadow-elegant group backdrop-blur-sm">
+            <div className="bg-gray-50 border border-gray-200 p-8 lg:p-12 rounded-3xl text-center space-y-8 hover:bg-gray-100 transition-all duration-500 hover:scale-105 hover:shadow-elegant group backdrop-blur-sm">
               <div className="w-24 h-24 bg-black text-white flex items-center justify-center mx-auto rounded-3xl group-hover:shadow-glow transition-all duration-300">
                 <RotateCcw className="h-12 w-12" />
               </div>
-              <h3 className="text-3xl lg:text-4xl font-bold tracking-[0.1em] text-black">EASY RETURNS</h3>
-              <p className="text-gray-600 font-light leading-relaxed text-lg lg:text-xl">
+              <h3 className="text-2xl lg:text-4xl font-bold tracking-[0.1em] text-black">EASY RETURNS</h3>
+              <p className="text-gray-600 font-light leading-relaxed text-base lg:text-xl">
                 Hassle-free return process at our España, Manila location. Quick inspection and immediate confirmation.
               </p>
             </div>
 
-            <div className="bg-gray-50 border border-gray-200 p-10 lg:p-12 rounded-3xl text-center space-y-8 hover:bg-gray-100 transition-all duration-500 hover:scale-105 hover:shadow-elegant group backdrop-blur-sm">
+            <div className="bg-gray-50 border border-gray-200 p-8 lg:p-12 rounded-3xl text-center space-y-8 hover:bg-gray-100 transition-all duration-500 hover:scale-105 hover:shadow-elegant group backdrop-blur-sm">
               <div className="w-24 h-24 bg-black text-white flex items-center justify-center mx-auto rounded-3xl group-hover:shadow-glow transition-all duration-300">
                 <CreditCard className="h-12 w-12" />
               </div>
-              <h3 className="text-3xl lg:text-4xl font-bold tracking-[0.1em] text-black">SECURE PAYMENTS</h3>
-              <p className="text-gray-600 font-light leading-relaxed text-lg lg:text-xl">
+              <h3 className="text-2xl lg:text-4xl font-bold tracking-[0.1em] text-black">SECURE PAYMENTS</h3>
+              <p className="text-gray-600 font-light leading-relaxed text-base lg:text-xl">
                 Multiple payment options with bank-level security. GCash, card payments, and online banking accepted.
               </p>
             </div>
@@ -392,29 +392,29 @@ export default function Landing() {
       </section>
 
       {/* CTA Section */}
-      <section ref={ctaRef} className="py-24 lg:py-32 px-6 lg:px-8 bg-gradient-to-br from-blue-50 to-indigo-50 tech-grid">
+      <section ref={ctaRef} className="py-24 lg:py-32 px-5 lg:px-8 bg-gradient-to-br from-blue-50 to-indigo-50 tech-grid">
         <div className="max-w-7xl mx-auto text-center">
           <div
             className={`transition-all duration-1000 ${ctaVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}
           >
-            <div className="inline-flex items-center bg-blue-100 border border-blue-200 text-blue-600 px-6 py-3 font-semibold tracking-[0.15em] text-sm mb-10 rounded-full backdrop-blur-sm">
+            <div className="inline-flex items-center bg-blue-100 border border-blue-200 text-blue-600 px-4 py-2 font-semibold tracking-[0.15em] text-xs lg:text-sm mb-10 rounded-full backdrop-blur-sm">
               <div className="w-2 h-2 bg-blue-500 rounded-full mr-3 animate-glow-pulse"></div>
               READY TO START?
             </div>
-            <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-10 leading-tight">
+            <h2 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-10 leading-tight">
               <span className="block text-black">BEGIN YOUR</span>
               <span className="block text-gray-500">CREATIVE JOURNEY</span>
             </h2>
-            <p className="text-xl lg:text-2xl text-gray-600 font-light mb-12 max-w-4xl mx-auto leading-relaxed">
+            <p className="text-lg lg:text-2xl text-gray-600 font-light mb-12 max-w-4xl mx-auto leading-relaxed">
               Join hundreds of creators in Manila. Premium equipment, flexible rates, professional service.
             </p>
-            <div className="flex flex-col sm:flex-row gap-6 justify-center">
-              <button className="bg-black text-white font-semibold px-12 py-4 text-lg tracking-[0.15em] transition-all duration-300 hover:shadow-glow hover:scale-105 active:scale-95 rounded-2xl">
+            <div className="flex flex-col sm:flex-row gap-4 lg:gap-6 justify-center">
+              <button className="bg-black text-white font-semibold px-8 py-3 text-base tracking-[0.15em] transition-all duration-300 hover:shadow-glow hover:scale-105 active:scale-95 rounded-2xl lg:px-12 lg:py-4 lg:text-lg">
                 BOOK NOW
               </button>
               <button
                 onClick={() => (window.location.href = "/signup")}
-                className="border border-gray-300 bg-white/60 backdrop-blur-sm text-black hover:bg-gray-50 hover:border-gray-400 font-semibold px-12 py-4 text-lg tracking-[0.15em] transition-all duration-300 hover:scale-105 active:scale-95 rounded-2xl"
+                className="border border-gray-300 bg-white/60 backdrop-blur-sm text-black hover:bg-gray-50 hover:border-gray-400 font-semibold px-8 py-3 text-base tracking-[0.15em] transition-all duration-300 hover:scale-105 active:scale-95 rounded-2xl lg:px-12 lg:py-4 lg:text-lg"
               >
                 CREATE ACCOUNT
               </button>
@@ -424,7 +424,7 @@ export default function Landing() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-black text-white py-20 lg:py-24 px-6 lg:px-8">
+      <footer className="bg-black text-white py-20 lg:py-24 px-5 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-3 gap-12 lg:gap-16 mb-16">
             <div>
@@ -432,16 +432,16 @@ export default function Landing() {
                 <div className="w-12 h-12 bg-white text-black flex items-center justify-center rounded-2xl">
                   <Camera className="h-6 w-6" />
                 </div>
-                <span className="text-3xl lg:text-4xl font-bold tracking-tight">RAWLENS</span>
+                <span className="text-2xl lg:text-4xl font-bold tracking-tight">RAWLENS</span>
               </div>
-              <p className="text-white/80 font-light leading-relaxed text-lg">
+              <p className="text-white/80 font-light leading-relaxed text-base lg:text-lg">
                 Professional camera rentals in España, Manila. Making premium equipment accessible to all creators.
               </p>
             </div>
 
             <div>
-              <h4 className="text-xl font-bold tracking-[0.15em] mb-8">CONTACT</h4>
-              <div className="space-y-4 text-white/80 font-light text-lg">
+              <h4 className="text-lg lg:text-xl font-bold tracking-[0.15em] mb-8">CONTACT</h4>
+              <div className="space-y-4 text-white/80 font-light text-base lg:text-lg">
                 <div className="flex items-center space-x-3">
                   <MapPin className="h-5 w-5" />
                   <span>España, Manila</span>
@@ -454,8 +454,8 @@ export default function Landing() {
             </div>
 
             <div>
-              <h4 className="text-xl font-bold tracking-[0.15em] mb-8">RENTAL</h4>
-              <div className="space-y-4 text-white/80 font-light text-lg">
+              <h4 className="text-lg lg:text-xl font-bold tracking-[0.15em] mb-8">RENTAL</h4>
+              <div className="space-y-4 text-white/80 font-light text-base lg:text-lg">
                 <div>Professional Grade Equipment</div>
                 <div>Flexible Rental Periods</div>
                 <div>Full Insurance Coverage</div>
@@ -464,7 +464,7 @@ export default function Landing() {
           </div>
 
           <div className="pt-8 border-t border-white/20 text-center">
-            <p className="text-white/60 font-light text-lg">© 2025 RAWLENS PH. All rights reserved.</p>
+            <p className="text-white/60 font-light text-base lg:text-lg">© 2025 RAWLENS PH. All rights reserved.</p>
           </div>
         </div>
       </footer>
