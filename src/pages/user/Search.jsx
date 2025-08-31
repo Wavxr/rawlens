@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search as SearchIcon, Filter, Calendar, X, Info } from 'lucide-react';
 import CameraCard from '../../components/CameraCard';
+import CameraCardBig from '../../components/CameraCardBig';
 import DateFilterInput from '../../components/DateFilterInput';
 import useCameraStore from '../../stores/cameraStore';
 import { getAvailableCamerasForDates } from '../../services/cameraService';
@@ -286,20 +287,38 @@ export default function Search() {
                     <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
                   </div>
                 ) : searchResults.length > 0 ? (
-                  /* === CAMERA GRID === */
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                    {searchResults.map((camera) => (
-                      <CameraCard
-                        key={camera.id}
-                        camera={camera}
-                        onRentClick={handleRentClick}
-                        onFavoriteClick={handleFavoriteClick}
-                        isFavorite={favorites.has(camera.id)}
-                        startDate={startDate}
-                        endDate={endDate}
-                      />
-                    ))}
-                  </div>
+                  /* === CAMERA GRID - Responsive === */
+                  <>
+                    {/* Desktop and Tablet: Use CameraCardBig */}
+                    <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 gap-6">
+                      {searchResults.map((camera) => (
+                        <CameraCardBig
+                          key={camera.id}
+                          camera={camera}
+                          onRentClick={handleRentClick}
+                          onFavoriteClick={handleFavoriteClick}
+                          isFavorite={favorites.has(camera.id)}
+                          startDate={startDate}
+                          endDate={endDate}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Mobile: Use regular CameraCard */}
+                    <div className="grid grid-cols-2 gap-4 md:hidden">
+                      {searchResults.map((camera) => (
+                        <CameraCard
+                          key={camera.id}
+                          camera={camera}
+                          onRentClick={handleRentClick}
+                          onFavoriteClick={handleFavoriteClick}
+                          isFavorite={favorites.has(camera.id)}
+                          startDate={startDate}
+                          endDate={endDate}
+                        />
+                      ))}
+                    </div>
+                  </>
                 ) : (
                   /* === NO RESULTS STATE === */
                   <div className="bg-white rounded-2xl border border-gray-200 p-8 md:p-12">

@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, Camera } from 'lucide-react';
 import CameraCard from '../../components/CameraCard';
+import CameraCardBig from '../../components/CameraCardBig';
 import useCameraStore from '../../stores/cameraStore';
 import { getCameraModels } from '../../services/cameraService';
 
@@ -101,17 +102,49 @@ export default function Home() {
             <div className="w-10 h-10 bg-gray-200 rounded-lg animate-pulse"></div>
           </div>
           
-          {/* Camera Grid Skeleton */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className="bg-white rounded-xl shadow-sm p-3">
-                <div className="w-full h-32 bg-gray-200 rounded-lg animate-pulse mb-3"></div>
-                <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded w-full animate-pulse mb-2"></div>
-                <div className="h-6 bg-gray-200 rounded w-1/2 animate-pulse"></div>
-              </div>
-            ))}
-          </div>
+          {/* Camera Grid Skeleton - Responsive */}
+          <>
+            {/* Desktop Skeleton */}
+            <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="bg-white rounded-2xl shadow-sm p-5 border border-gray-200">
+                  <div className="w-full aspect-video bg-gray-200 rounded-lg animate-pulse mb-4"></div>
+                  <div className="space-y-3">
+                    <div className="h-5 bg-gray-200 rounded w-3/4 animate-pulse"></div>
+                    <div className="h-4 bg-gray-200 rounded w-full animate-pulse"></div>
+                    <div className="h-4 bg-gray-200 rounded w-2/3 animate-pulse"></div>
+                    <div className="flex flex-wrap gap-1 pt-2">
+                      <div className="h-6 bg-gray-200 rounded w-16 animate-pulse"></div>
+                      <div className="h-6 bg-gray-200 rounded w-20 animate-pulse"></div>
+                      <div className="h-6 bg-gray-200 rounded w-14 animate-pulse"></div>
+                    </div>
+                    <div className="flex justify-between items-end pt-2">
+                      <div className="space-y-1">
+                        <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
+                        <div className="h-6 bg-gray-200 rounded w-24 animate-pulse"></div>
+                      </div>
+                      <div className="h-6 bg-gray-200 rounded w-16 animate-pulse"></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Mobile Skeleton */}
+            <div className="grid grid-cols-2 gap-4 md:hidden">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="bg-white rounded-xl shadow-sm p-3 border border-gray-200">
+                  <div className="w-full aspect-square bg-gray-200 rounded-lg animate-pulse mb-3"></div>
+                  <div className="space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse"></div>
+                    <div className="h-3 bg-gray-200 rounded w-full animate-pulse"></div>
+                    <div className="h-4 bg-gray-200 rounded w-1/2 animate-pulse"></div>
+                    <div className="h-5 bg-gray-200 rounded w-16 animate-pulse"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         </div>
       </div>
     );
@@ -218,19 +251,35 @@ export default function Home() {
             </h2>
           </div>
 
-          {/* Camera grid - Optimized for new card design */}
+          {/* Camera grid - Responsive design with different cards */}
           {cameras.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
-              {cameras.map((camera) => (
-                <CameraCard
-                  key={camera.id}
-                  camera={camera}
-                  onRentClick={handleRentClick}
-                  onFavoriteClick={handleFavoriteClick}
-                  isFavorite={favorites.has(camera.id)}
-                />
-              ))}
-            </div>
+            <>
+              {/* Desktop and Tablet: Use CameraCardBig */}
+              <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {cameras.map((camera) => (
+                  <CameraCardBig
+                    key={camera.id}
+                    camera={camera}
+                    onRentClick={handleRentClick}
+                    onFavoriteClick={handleFavoriteClick}
+                    isFavorite={favorites.has(camera.id)}
+                  />
+                ))}
+              </div>
+
+              {/* Mobile: Use regular CameraCard */}
+              <div className="grid grid-cols-2 gap-4 md:hidden">
+                {cameras.map((camera) => (
+                  <CameraCard
+                    key={camera.id}
+                    camera={camera}
+                    onRentClick={handleRentClick}
+                    onFavoriteClick={handleFavoriteClick}
+                    isFavorite={favorites.has(camera.id)}
+                  />
+                ))}
+              </div>
+            </>
           ) : (
             <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
               <Camera className="mx-auto h-12 w-12 text-gray-400" />
