@@ -291,20 +291,20 @@ export default function Landing() {
       </section>
 
       {/* Camera Collection */}
-      <section id="cameras" ref={camerasRef} className="py-24 lg:py-32 px-5 lg:px-8 bg-gradient-to-b from-white to-gray-50">
+      <section id="cameras" ref={camerasRef} className="py-16 lg:py-32 px-5 lg:px-8 bg-gradient-to-b from-white to-gray-50">
         <div className="max-w-7xl mx-auto">
-          <div className={`text-center mb-24 transition-all duration-1000 ${camerasVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}>
+          <div className={`text-center mb-16 lg:mb-24 transition-all duration-1000 ${camerasVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}>
             <h2 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-8 leading-tight">
               <span className="block text-black">OUR</span>
               <span className="block text-gray-500">COLLECTION</span>
             </h2>
           </div>
 
-          <div className="space-y-32 lg:space-y-40">
+          <div className="space-y-16 lg:space-y-40">
             {cameras.map((camera, index) => (
               <div 
                 key={camera.id} 
-                className={`grid lg:grid-cols-2 gap-16 lg:gap-20 items-center transition-all duration-1000 ${camerasVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
+                className={`grid lg:grid-cols-2 gap-10 lg:gap-20 items-center transition-all duration-1000 ${camerasVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
                 style={{ transitionDelay: `${index * 200}ms` }}
               >
                 <div className={`${index % 2 === 1 ? 'lg:order-2' : ''} relative group`}>
@@ -312,35 +312,35 @@ export default function Landing() {
                   <img 
                     src={camera.image || "/placeholder.svg"} 
                     alt={camera.name}
-                    className="relative w-full max-w-xl mx-auto object-contain group-hover:scale-105 transition-transform duration-700 rounded-3xl"
+                    className="relative w-full max-w-sm lg:max-w-xl mx-auto object-contain group-hover:scale-105 transition-transform duration-700 rounded-3xl"
                   />
                 </div>
                 
-                <div className={`space-y-8 ${index % 2 === 1 ? 'lg:order-1' : ''}`}>
+                <div className={`space-y-6 lg:space-y-8 ${index % 2 === 1 ? 'lg:order-1' : ''}`}>
                   <div>
-                    <div className="text-xs lg:text-sm text-blue-500 font-medium mb-4 tracking-[0.15em] uppercase">
+                    <div className="text-xs lg:text-sm text-blue-500 font-medium mb-3 lg:mb-4 tracking-[0.15em] uppercase">
                       {camera.category}
                     </div>
-                    <h3 className="text-3xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6 leading-tight text-black">{camera.name}</h3>
-                    <p className="text-lg lg:text-2xl text-gray-600 font-light mb-8 leading-relaxed">{camera.description}</p>
+                    <h3 className="text-2xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-4 lg:mb-6 leading-tight text-black">{camera.name}</h3>
+                    <p className="text-base lg:text-2xl text-gray-600 font-light mb-6 lg:mb-8 leading-relaxed">{camera.description}</p>
                   </div>
 
-                  <div className="bg-gray-50 border border-gray-200 p-6 lg:p-8 rounded-3xl backdrop-blur-sm">
-                    <div className="grid grid-cols-2 gap-8 mb-8">
+                  <div className="bg-gray-50 border border-gray-200 p-5 lg:p-8 rounded-3xl backdrop-blur-sm">
+                    <div className="grid grid-cols-2 gap-6 lg:gap-8 mb-6 lg:mb-8">
                       <div>
-                        <div className="text-xs lg:text-sm text-gray-600 mb-3 tracking-[0.15em] font-medium">1-3 DAYS</div>
-                        <div className="text-2xl lg:text-3xl font-bold text-black">₱{camera.price1to3}</div>
+                        <div className="text-xs lg:text-sm text-gray-600 mb-2 lg:mb-3 tracking-[0.15em] font-medium">1-3 DAYS</div>
+                        <div className="text-xl lg:text-3xl font-bold text-black">₱{camera.price1to3}</div>
                       </div>
                       <div>
-                        <div className="text-xs lg:text-sm text-gray-600 mb-3 tracking-[0.15em] font-medium">4+ DAYS</div>
-                        <div className="text-2xl lg:text-3xl font-bold text-blue-500">₱{camera.price4plus}</div>
+                        <div className="text-xs lg:text-sm text-gray-600 mb-2 lg:mb-3 tracking-[0.15em] font-medium">4+ DAYS</div>
+                        <div className="text-xl lg:text-3xl font-bold text-blue-500">₱{camera.price4plus}</div>
                       </div>
                     </div>
 
-                    <div className="space-y-4">
+                    <div className="space-y-3 lg:space-y-4">
                       {camera.features.map((feature, i) => (
                         <div key={i} className="flex items-center text-black">
-                          <div className="w-2 h-2 bg-blue-500 rounded-full mr-4"></div>
+                          <div className="w-2 h-2 bg-blue-500 rounded-full mr-3 lg:mr-4"></div>
                           <span className="font-medium text-sm lg:text-base">{feature}</span>
                         </div>
                       ))}
