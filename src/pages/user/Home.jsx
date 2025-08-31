@@ -2,8 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, Camera } from 'lucide-react';
-import CameraCard from '../../components/CameraCard';
-import CameraCardBig from '../../components/CameraCardBig';
+import CameraCard from '../../components/camera/CameraCard';
+import CameraCardBig from '../../components/camera/CameraCardBig';
 import useCameraStore from '../../stores/cameraStore';
 import { getCameraModels } from '../../services/cameraService';
 

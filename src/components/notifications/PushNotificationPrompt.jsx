@@ -1,7 +1,7 @@
 // src/components/PushNotificationPrompt.jsx
-import React, { useState, useEffect } from 'react';
-import { usePushNotifications } from '../hooks/usePushNotifications';
-import useSettingsStore from '../stores/settingsStore';
+import { useState, useEffect } from 'react';
+import { usePushNotifications } from '../../hooks/usePushNotifications';
+import useSettingsStore from '../../stores/settingsStore';
 import PushPermissionModal from './PushPermissionModal';
 
 const PushNotificationPrompt = ({ userId, onDismiss }) => {

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom"; // Updated import to include useNavigate
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ToastContainer, toast } from 'react-toastify';
 import useRentalStore from "../../stores/rentalStore";
 import { subscribeToRentalUpdates, unsubscribeFromRentalUpdates } from "../../services/realtimeService";
@@ -19,7 +19,7 @@ import {
   ChevronRight,
   X,
 } from "lucide-react";
-import RentalStepper from "../../components/RentalStepper";
+import RentalStepper from "../../components/rental/RentalStepper";
 import { adminReadyCamera, adminTransitToUser, adminConfirmReturned } from "../../services/deliveryService";
 import { 
   adminConfirmReceived,

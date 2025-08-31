@@ -1,17 +1,17 @@
 // src/components/RentalFlowSection.jsx
 import React, { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import useCameraStore from '../stores/cameraStore';
-import DateFilterInput from './DateFilterInput';
-import ContractSigningModal from './ContractSigningModal';
-import useAuthStore from '../stores/useAuthStore';
+import useCameraStore from '../../stores/cameraStore';
+import DateFilterInput from '../forms/DateFilterInput';
+import ContractSigningModal from '../modals/ContractSigningModal';
+import useAuthStore from '../../stores/useAuthStore';
 import { Camera, FileText, CheckCircle, AlertCircle, Loader2, ArrowLeft, Eye, Calendar } from 'lucide-react';
-import { supabase } from '../lib/supabaseClient';
-import { checkCameraAvailability, createUserRentalRequest, calculateTotalPrice } from '../services/rentalService';
-import { findAvailableUnitOfModel } from '../services/cameraService';
-import { generateSignedContractPdf, uploadContractPdf, getSignedContractUrl } from '../services/pdfService';
-import { getUserById } from '../services/userService';
-import { isUserVerified } from '../services/verificationService';
+import { supabase } from '../../lib/supabaseClient';
+import { checkCameraAvailability, createUserRentalRequest, calculateTotalPrice } from '../../services/rentalService';
+import { findAvailableUnitOfModel } from '../../services/cameraService';
+import { generateSignedContractPdf, uploadContractPdf, getSignedContractUrl } from '../../services/pdfService';
+import { getUserById } from '../../services/userService';
+import { isUserVerified } from '../../services/verificationService';
 
 const RentalFlowSection = ({ onBackToBrowse, sourcePageType = "home", preSelectedDates = null }) => {
   const {

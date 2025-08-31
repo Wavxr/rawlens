@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Eye, Check, X, CreditCard, AlertTriangle } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { getPaymentReceiptUrl } from '../services/paymentService';
+import { getPaymentReceiptUrl } from '../../services/paymentService';
 
 const PaymentVerificationModal = ({ rental, isOpen, onClose, onVerify, onReject }) => {
   const [rejectionReason, setRejectionReason] = useState('');

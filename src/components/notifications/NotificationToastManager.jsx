@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { onMessage } from 'firebase/messaging';
-import { messaging } from '../lib/firebaseClient';
+import { messaging } from '../../lib/firebaseClient';
 import NotificationToast from './NotificationToast';
 
 export const NotificationToastManager = () => {

@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Camera, Tag, Heart, Calendar } from 'lucide-react';
-import { calculateTotalPrice, calculateRentalDays } from '../services/rentalService';
+import { calculateTotalPrice, calculateRentalDays } from '../../services/rentalService';
 
 const CameraCard = ({ camera, onRentClick, onFavoriteClick, isFavorite, startDate, endDate }) => {
   const [pricingInfo, setPricingInfo] = useState(null);

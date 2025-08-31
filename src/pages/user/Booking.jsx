@@ -22,7 +22,7 @@ import {
   CreditCard,
   ExternalLink,
 } from "lucide-react"
-import FeedbackForm from "../../components/FeedbackForm";
+import FeedbackForm from "../../components/forms/FeedbackForm";
 import { getRentalFeedback } from "../../services/feedbackService";
 import { motion, AnimatePresence } from "framer-motion";
 

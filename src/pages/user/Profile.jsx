@@ -5,8 +5,8 @@ import { getSignedUrl } from "../../services/storageService";
 import { subscribeToUserUpdates, unsubscribeFromUserUpdates } from "../../services/realtimeService";
 import useAuthStore from "../../stores/useAuthStore";
 import useSettingsStore from "../../stores/settingsStore";
-import PushNotificationPrompt from "../../components/PushNotificationPrompt";
-import UserNotificationSettings from "../../components/UserNotificationSettings";
+import PushNotificationPrompt from "../../components/notifications/PushNotificationPrompt";
+import UserNotificationSettings from "../../components/notifications/UserNotificationSettings";
 import { LogOut } from "lucide-react";
 
 export default function Profile() {

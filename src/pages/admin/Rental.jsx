@@ -33,15 +33,15 @@ import {
   getAvailableUnitsOfModel,
 } from "../../services/rentalService";
 import { adminVerifyPayment, adminRejectPayment } from "../../services/paymentService";
-import ConflictResolutionModal from "../../components/ConflictResolutionModal";
-import { PaymentVerificationModal, PaymentStatusBadge } from "../../components/PaymentVerificationComponents";
+import ConflictResolutionModal from "../../components/modals/ConflictResolutionModal";
+import { PaymentVerificationModal, PaymentStatusBadge } from "../../components/payment/PaymentVerificationComponents";
 import {
   adminConfirmReceived,
   adminConfirmReturned,
   adminMarkDelivered,
 } from "../../services/bookingService";
 import { getSignedContractUrl } from "../../services/pdfService";
-import RentalStepper from "../../components/RentalStepper";
+import RentalStepper from "../../components/rental/RentalStepper";
 import { getUserById } from "../../services/userService";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";

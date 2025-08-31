@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { submitRentalFeedback } from "../services/feedbackService";
+import { submitRentalFeedback } from "../../services/feedbackService";
 import { Star, MessageSquare, Send, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 

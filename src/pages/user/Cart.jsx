@@ -3,7 +3,7 @@ import useAuthStore from '../../stores/useAuthStore';
 import useRentalStore from '../../stores/rentalStore';
 import { subscribeToRentalUpdates, unsubscribeFromRentalUpdates } from '../../services/realtimeService';
 import { Loader2, Calendar, Camera as CameraIcon, AlertCircle } from 'lucide-react';
-import PaymentUploadSection from '../../components/PaymentUploadSection';
+import PaymentUploadSection from '../../components/payment/PaymentUploadSection';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 

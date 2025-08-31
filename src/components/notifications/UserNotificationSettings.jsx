@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import useAuthStore from '../stores/useAuthStore';
-import useSettingsStore from '../stores/settingsStore';
-import { getAdminDevices, toggleAdminDeviceNotifications, updateAdminDeviceActivity, deduplicateAdminTokens } from '../services/pushService';
-import { updateAdminPushNotificationSetting, isAdminPushNotificationEnabled } from '../utils/tokenLifecycle';
+import { useState, useEffect } from 'react';
+import useAuthStore from '../../stores/useAuthStore';
+import useSettingsStore from '../../stores/settingsStore';
+import { getUserDevices, toggleUserDeviceNotifications, updateUserDeviceActivity, deduplicateUserTokens } from '../../services/pushService';
+import { updateUserPushNotificationSetting, isUserPushNotificationEnabled } from '../../utils/tokenLifecycle';
 
-export default function AdminNotificationSettings() {
+export default function UserNotificationSettings() {
   const { user } = useAuthStore();
   const { settings, loading: settingsLoading } = useSettingsStore();
   const userId = user?.id;
@@ -18,11 +18,11 @@ export default function AdminNotificationSettings() {
   useEffect(() => {
     if (userId) {
       loadNotificationSettings();
-      loadAdminDevices();
-      updateAdminDeviceActivity(userId);
+      loadUserDevices();
+      updateUserDeviceActivity(userId);
       
       // Clean up any duplicate devices on component mount
-      deduplicateAdminTokens(userId);
+      deduplicateUserTokens(userId);
     }
   }, [userId]);
 
@@ -36,22 +36,22 @@ export default function AdminNotificationSettings() {
     if (!userId) return;
     
     try {
-      const enabled = await isAdminPushNotificationEnabled(userId);
+      const enabled = await isUserPushNotificationEnabled(userId);
       setGlobalEnabled(enabled);
     } catch (error) {
-      console.error('Error loading admin notification settings:', error);
+      console.error('Error loading notification settings:', error);
     }
   };
 
-  const loadAdminDevices = async () => {
+  const loadUserDevices = async () => {
     if (!userId) return;
     
     setLoadingDevices(true);
     try {
-      const adminDevices = await getAdminDevices(userId);
-      setDevices(adminDevices);
+      const userDevices = await getUserDevices(userId);
+      setDevices(userDevices);
     } catch (error) {
-      console.error('Error loading admin devices:', error);
+      console.error('Error loading user devices:', error);
     } finally {
       setLoadingDevices(false);
     }
@@ -62,13 +62,13 @@ export default function AdminNotificationSettings() {
     
     setTogglingGlobal(true);
     try {
-      const success = await updateAdminPushNotificationSetting(userId, enabled);
+      const success = await updateUserPushNotificationSetting(userId, enabled);
       if (success) {
         setGlobalEnabled(enabled);
-        await loadAdminDevices();
+        await loadUserDevices();
       }
     } catch (error) {
-      console.error('Error updating admin global notifications:', error);
+      console.error('Error updating global notifications:', error);
     } finally {
       setTogglingGlobal(false);
     }
@@ -79,16 +79,16 @@ export default function AdminNotificationSettings() {
     
     setTogglingDevice(prev => new Set([...prev, device.fcm_token]));
     try {
-      const success = await toggleAdminDeviceNotifications(userId, device.fcm_token, enabled);
+      const success = await toggleUserDeviceNotifications(userId, device.fcm_token, enabled);
       if (success) {
         setDevices(prev => prev.map(d => 
           d.fcm_token === device.fcm_token 
-            ? { ...d, enabled: enabled } 
+            ? { ...d, enabled: enabled }
             : d
         ));
       }
     } catch (error) {
-      console.error('Error updating admin device notifications:', error);
+      console.error('Error updating device notifications:', error);
     } finally {
       setTogglingDevice(prev => {
         const newSet = new Set(prev);
@@ -104,10 +104,10 @@ export default function AdminNotificationSettings() {
     try {
       if (key === 'email_notifications') {
         const settingsStore = useSettingsStore.getState();
-        await settingsStore.updateAdminSettings(userId, { [key]: value });
+        await settingsStore.updateUserSettings(userId, { [key]: value });
       }
     } catch (error) {
-      console.error(`Error updating admin ${key}:`, error);
+      console.error(`Error updating ${key}:`, error);
     }
   };
 
@@ -139,16 +139,16 @@ export default function AdminNotificationSettings() {
     <div className="bg-white rounded-lg shadow">
       <div className="px-6 py-4 border-b border-gray-200">
         <h3 className="text-lg font-medium text-gray-900 flex items-center">
-          Admin Notifications
+          Notifications
         </h3>
       </div>
 
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
           <div className="flex-1">
-            <h4 className="text-sm font-medium text-gray-900">Global Admin Notifications</h4>
+            <h4 className="text-sm font-medium text-gray-900">Global Notifications</h4>
             <p className="text-sm text-gray-500 mt-1">
-              Turn on/off all push notifications for admin functions
+              Turn on/off all push notifications for this account
             </p>
           </div>
           <button
@@ -168,9 +168,9 @@ export default function AdminNotificationSettings() {
 
         <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
           <div className="flex-1">
-            <h4 className="text-sm font-medium text-gray-900">Admin Email Notifications</h4>
+            <h4 className="text-sm font-medium text-gray-900">Account Email Notifications</h4>
             <p className="text-sm text-gray-500 mt-1">
-              Receive emails about system events and admin activities
+              Receive emails about your rentals and account activity
             </p>
           </div>
           <button
@@ -206,12 +206,12 @@ export default function AdminNotificationSettings() {
                 onClick={() => handleDeviceToggle(device, !device.enabled)}  
                 disabled={!globalEnabled || togglingDevice.has(device.fcm_token)}
                 className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed ${
-                  device.enabled && globalEnabled ? 'bg-blue-600' : 'bg-gray-200'  
+                  device.enabled && globalEnabled ? 'bg-blue-600' : 'bg-gray-200' 
                 }`}
               >
                 <span
                   className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${
-                    device.enabled && globalEnabled ? 'translate-x-6' : 'translate-x-1'  
+                    device.enabled && globalEnabled ? 'translate-x-6' : 'translate-x-1' 
                   }`}
                 />
               </button>
@@ -258,14 +258,14 @@ export default function AdminNotificationSettings() {
         {!globalEnabled && (
           <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
             <p className="text-sm text-yellow-800">
-              Enable global admin notifications to manage devices individually.
+              Enable global notifications to manage devices individually.
             </p>
           </div>
         )}
 
         {devices.length === 0 && (
           <div className="text-center py-6 text-gray-500">
-            <p className="text-sm">No admin devices found with push notification support.</p>
+            <p className="text-sm">No devices found with push notification support.</p>
           </div>
         )}
       </div>

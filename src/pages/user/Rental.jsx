@@ -1,7 +1,7 @@
 // src/pages/user/Rental.jsx
 import React, { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import RentalFlowSection from '../../components/RentalFlowSection';
+import RentalFlowSection from '../../components/rental/RentalFlowSection';
 import useCameraStore from '../../stores/cameraStore';
 
 export default function Rental() {

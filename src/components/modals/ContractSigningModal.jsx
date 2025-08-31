@@ -1,5 +1,5 @@
 // src/components/ContractSigningModal.jsx
-import React, { useState, useRef, useLayoutEffect } from 'react';
+import { useState, useRef, useLayoutEffect } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import { X, FileText, Loader2, Download } from 'lucide-react';
 

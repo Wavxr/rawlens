@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, Check, AlertCircle } from 'lucide-react';
-import { uploadPaymentReceipt, getPaymentReceiptUrl } from '../services/paymentService';
+import { uploadPaymentReceipt, getPaymentReceiptUrl } from '../../services/paymentService';
 import { toast } from 'react-toastify';
 
 const PaymentUploadSection = ({ rental, onUploadComplete }) => {

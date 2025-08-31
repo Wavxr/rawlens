@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import useAuthStore from '../../stores/useAuthStore';
 import useSettingsStore from '../../stores/settingsStore';
-import AdminNotificationSettings from '../../components/AdminNotificationSettings';
+import AdminNotificationSettings from '../../components/notifications/AdminNotificationSettings';
 import { updateDeviceActivity } from '../../services/pushService';
 
 const Settings = () => {

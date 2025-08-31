@@ -1,7 +1,7 @@
 // src/components/RedirectRoute.jsx
 import { Navigate, Outlet } from 'react-router-dom';
 import { useEffect } from 'react';
-import useAuthStore from '../stores/useAuthStore';
+import useAuthStore from '../../stores/useAuthStore';
 
 export default function RedirectRoute() {
   const { session, role, loading, roleLoading, initialize } = useAuthStore();

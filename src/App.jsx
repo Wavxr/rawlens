@@ -1,11 +1,11 @@
 // src/App.jsx
 import { Routes, Route } from 'react-router-dom';
 import { useEffect } from 'react';
-import ProtectedRoute from './components/ProtectedRoute';
-import RedirectRoute from './components/RedirectRoute';
-import AuthErrorBoundary from './components/AuthErrorBoundary';
+import ProtectedRoute from './components/auth/ProtectedRoute';
+import RedirectRoute from './components/auth/RedirectRoute';
+import AuthErrorBoundary from './components/auth/AuthErrorBoundary';
 import useThemeStore from './stores/useThemeStore';
-import NotificationToastManager from './components/NotificationToastManager';
+import NotificationToastManager from './components/notifications/NotificationToastManager';
 
 // Pages
 import Landing from './pages/Landing';

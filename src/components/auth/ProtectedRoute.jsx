@@ -1,8 +1,8 @@
 import { Navigate, Outlet } from 'react-router-dom';
-import useAuthStore from '../stores/useAuthStore';
+import useAuthStore from '../../stores/useAuthStore';
 import { useEffect, useState } from 'react';
-import { registerUserPushNotifications, registerAdminPushNotifications, isPushSupported } from '../services/pushService';
-import PushMigrationPrompt from './PushMigrationPrompt';
+import { registerUserPushNotifications, registerAdminPushNotifications, isPushSupported } from '../../services/pushService';
+import PushMigrationPrompt from '../notifications/PushMigrationPrompt';
 
 const ProtectedRoute = ({ requiredRole }) => {
   const { session, role, loading, roleLoading, checkSessionValidity, forceCleanup } = useAuthStore();

@@ -1,5 +1,5 @@
 // src/components/ConflictResolutionModal.jsx
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { X, AlertTriangle, Camera, Users, Calendar, ArrowRight, Loader2 } from 'lucide-react';
 
 const ConflictResolutionModal = ({
