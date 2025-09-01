@@ -75,7 +75,14 @@ export async function getInclusionsForCamera(cameraId) {
   try {
     const { data, error } = await supabase
       .from("camera_inclusions")
-      .select("inclusion_item_id, quantity")
+      .select(`
+        inclusion_item_id, 
+        quantity,
+        inclusion_items (
+          id,
+          name
+        )
+      `)
       .eq("camera_id", cameraId);
 
     if (error) {
