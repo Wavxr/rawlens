@@ -140,7 +140,7 @@ export default function Search() {
   const handleEndDateChange = (e) => handleDateChange(e, 'end');
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-[calc(100vh-4rem)] bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Page Header */}
         <div className="mb-6">
@@ -250,10 +250,6 @@ export default function Search() {
                       <li className="flex items-start">
                         <div className="flex-shrink-0 h-5 w-5 text-blue-500 mt-0.5">•</div>
                         <p className="text-sm text-blue-800 ml-2">See real-time availability and pricing</p>
-                      </li>
-                      <li className="flex items-start">
-                        <div className="flex-shrink-0 h-5 w-5 text-blue-500 mt-0.5">•</div>
-                        <p className="text-sm text-blue-800 ml-2">Compare different camera models side-by-side</p>
                       </li>
                       <li className="flex items-start">
                         <div className="flex-shrink-0 h-5 w-5 text-blue-500 mt-0.5">•</div>

@@ -161,8 +161,8 @@ export default function UserDashboard() {
       </nav>
 
       {/* Modern Compact Bottom Navigation (Mobile) */}
-      <div className="lg:hidden fixed inset-x-0 bottom-0 mx-2 bg-white/95 backdrop-blur-xl border border-gray-200/70 rounded-2xl shadow-lg shadow-gray-400/10 z-40 pb-1">
-        <div className="flex justify-around items-center py-1.5">
+      <div className="lg:hidden fixed inset-x-0 bottom-1 mx-2 bg-white/95 backdrop-blur-xl border border-gray-200/70 rounded-2xl shadow-lg shadow-gray-400/10 z-40 pb-0">
+        <div className="flex justify-around items-center">
           {navItems.map((item) => {
             const Icon = item.icon
             const active = isActive(item.path)
@@ -189,7 +189,7 @@ export default function UserDashboard() {
       </div>
 
       {/* Main Content - Adjusted padding for mobile navbar and gesture bar */}
-      <main className="pt-0 lg:pt-24 pb-24 lg:pb-6 tech-grid">
+      <main className="pt-0 lg:pt-24 pb-18 lg:pb-6 tech-grid">
         <Outlet />
       </main>
     </div>

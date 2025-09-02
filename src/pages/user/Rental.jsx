@@ -54,7 +54,7 @@ export default function Rental() {
 
   return (
     <div className="lg:max-w-6xl lg:mx-auto lg:px-8">
-      <div className="px-4 py-6">
+      <div>
         <RentalFlowSection 
           onBackToBrowse={handleBackToBrowse}
           sourcePageType={sourcePageType}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Camera, Tag, Heart, Calendar } from 'lucide-react';
+import { Camera, Tag, Calendar } from 'lucide-react';
 import { calculateTotalPrice, calculateRentalDays } from '../../services/rentalService';
 
 const CameraCard = ({ camera, onRentClick, onFavoriteClick, isFavorite, startDate, endDate }) => {
@@ -64,22 +64,6 @@ const CameraCard = ({ camera, onRentClick, onFavoriteClick, isFavorite, startDat
             <Camera className="h-8 w-8 text-gray-300" />
           </div>
         )}
-        
-        {/* Favorite button overlay */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onFavoriteClick(camera.id);
-          }}
-          className={`absolute top-2 right-2 p-1.5 rounded-full transition-all duration-200 ease-in-out backdrop-blur-sm ${
-            isFavorite 
-              ? 'bg-red-500/90 text-white shadow-md' 
-              : 'bg-white/80 text-gray-600 hover:bg-white shadow-sm'
-          }`}
-          aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
-        >
-          <Heart size={14} fill={isFavorite ? 'currentColor' : 'none'} />
-        </button>
       </div>
       
       {/* Content Section - Compact for mobile */}

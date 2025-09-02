@@ -6,13 +6,12 @@ import DateFilterInput from '../forms/DateFilterInput';
 import ContractSigningModal from '../modals/ContractSigningModal';
 import useAuthStore from '../../stores/useAuthStore';
 import { Camera, FileText, CheckCircle, AlertCircle, Loader2, ArrowLeft, Eye, Calendar } from 'lucide-react';
-import { supabase } from '../../lib/supabaseClient';
 import { checkCameraAvailability, createUserRentalRequest, calculateTotalPrice } from '../../services/rentalService';
 import { findAvailableUnitOfModel } from '../../services/cameraService';
 import { generateSignedContractPdf, uploadContractPdf, getSignedContractUrl } from '../../services/pdfService';
 import { getUserById } from '../../services/userService';
 import { isUserVerified } from '../../services/verificationService';
-import { getInclusionsForCamera } from '../../services/inclusionService';
+import { supabase } from '../../lib/supabaseClient';
 
 const RentalFlowSection = ({ onBackToBrowse, sourcePageType = "home", preSelectedDates = null }) => {
   const {
@@ -57,36 +56,35 @@ const RentalFlowSection = ({ onBackToBrowse, sourcePageType = "home", preSelecte
   } = useCameraStore();
 
   const { user } = useAuthStore();
+  const [activeTab, setActiveTab] = useState("description");
   const [inclusions, setInclusions] = useState([]);
   const [loadingInclusions, setLoadingInclusions] = useState(false);
 
   const sigCanvasRef = useRef();
   const navigate = useNavigate();
 
-  // Load inclusions on component mount
+  // Fetch inclusions when camera changes
   useEffect(() => {
-    const loadInclusions = async () => {
-      if (rentalFlowCamera?.id) {
-        setLoadingInclusions(true);
-        try {
-          const { data: cameraInclusions, error } = await getInclusionsForCamera(rentalFlowCamera.id);
-          
-          if (error) {
-            console.error('Error loading inclusions:', error);
-            setInclusions([]);
-          } else {
-            setInclusions(cameraInclusions || []);
-          }
-        } catch (error) {
-          console.error('Error loading inclusions:', error);
-          setInclusions([]);
-        } finally {
-          setLoadingInclusions(false);
-        }
+    if (!rentalFlowCamera?.id) return;
+
+    const fetchInclusions = async () => {
+      setLoadingInclusions(true);
+      const { data, error } = await supabase
+        .from("camera_inclusions")
+        .select("quantity, inclusion_items:inclusion_items(name)")
+        .eq("camera_id", rentalFlowCamera.id);
+
+      if (error) {
+        console.error("Error fetching inclusions:", error);
+        setInclusions([]);
+      } else {
+        setInclusions(data || []);
       }
+
+      setLoadingInclusions(false);
     };
 
-    loadInclusions();
+    fetchInclusions();
   }, [rentalFlowCamera?.id]);
 
   const calculateAndSetPrice = async (cameraId, start, end) => {
@@ -324,113 +322,135 @@ const RentalFlowSection = ({ onBackToBrowse, sourcePageType = "home", preSelecte
   const displayCameraName = rentalFlowCameraModelName || rentalFlowCamera?.name || "Unknown Camera";
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Sticky Header - Mobile and Desktop */}
-      <div className="sticky top-0 z-20 bg-white shadow-sm border-b border-gray-200">
-        <div className="flex items-center justify-between p-3 max-w-4xl mx-auto">
-          {/* Back Button */}
+    <div className="min-h-screen bg-gray-100 flex flex-col">
+      {/* Top Section */}
+      <div className="bg-gray-100 flex flex-col items-center pt-4">
+        {/* Back Button (separate above image) */}
+        <div className="w-full px-4 mb-8">
           <button
             onClick={onBackToBrowse}
-            className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+            className="bg-white rounded-full p-2 shadow-md hover:bg-gray-100 transition"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="w-5 h-5 text-gray-700" />
           </button>
-          
-          {/* Empty space for alignment */}
-          <div className="flex-1"></div>
         </div>
+
+        {/* Camera Image */}
+        {rentalFlowCamera?.image_url ? (
+          <img
+            src={rentalFlowCamera.image_url}
+            alt={rentalFlowCamera.name}
+            onError={(e) => {
+              e.target.style.display = "none";
+            }}
+            className="w-auto h-64 object-cover"
+          />
+        ) : (
+          <div className="w-64 h-64 bg-gray-200 flex items-center justify-center rounded-lg shadow-sm">
+            <Camera className="h-16 w-16 text-gray-400" />
+          </div>
+        )}
       </div>
 
-      {/* Scrollable Content */}
-      <div className="max-w-4xl mx-auto px-4 py-4">
+      {/* Bottom Section: White Background */}
+      <div className="bg-white rounded-t-2xl mt-4 p-6 shadow-md flex-grow">
         {!requestSuccess ? (
           <>
-            {/* Camera Photo */}
-            <div className="mb-6">
-              {rentalFlowCamera?.image_url ? (
-                <img
-                  src={rentalFlowCamera.image_url}
-                  alt={rentalFlowCamera.name}
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                  }}
-                  className="w-full h-64 object-cover rounded-lg"
-                />
-              ) : (
-                <div className="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center">
-                  <Camera className="h-16 w-16 text-gray-400" />
-                </div>
-              )}
-            </div>
-
             {/* Camera Name */}
-            <div className="text-center mb-6">
-              <h1 className="text-2xl font-bold text-gray-900">{displayCameraName}</h1>
-            </div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              {displayCameraName}
+            </h1>
 
-            {/* About Section */}
-            <div className="mb-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">About</h2>
-              <p className="text-gray-600 leading-relaxed">
-                {rentalFlowCamera?.description || "Professional camera equipment for all your photography needs. Capture stunning images with this high-quality camera rental."}
-              </p>
-            </div>
-
-            {/* Inclusions Section */}
-            <div className="mb-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">Inclusions</h2>
-              {loadingInclusions ? (
-                <div className="flex items-center text-gray-500">
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Loading inclusions...
-                </div>
-              ) : inclusions.length > 0 ? (
-                <div className="space-y-2">
-                  {inclusions.map((inclusion, index) => (
-                    <div key={index} className="flex items-center space-x-2">
-                      <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></div>
-                      <span className="text-gray-700">
-                        {inclusion.inclusion_items?.name}
-                        {inclusion.quantity > 1 ? ` (x${inclusion.quantity})` : ''}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500">No specific inclusions listed</p>
-              )}
-            </div>
-
-            {/* Pricing Section */}
-            {rentalFlowCamera?.camera_pricing_tiers && rentalFlowCamera.camera_pricing_tiers.length > 0 && (
+           {/* Pricing Section */}
+            {rentalFlowCamera?.camera_pricing_tiers?.length > 0 && (
               <div className="mb-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-3">Pricing Tiers</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {rentalFlowCamera.camera_pricing_tiers.map((tier, index) => (
-                    <div key={index} className="bg-blue-50 rounded-lg p-4 text-center">
-                      <div className="text-sm text-gray-600 mb-1">
-                        {tier.min_days === tier.max_days ? 
-                          `${tier.min_days} ${tier.min_days === 1 ? 'Day' : 'Days'}` :
-                          `${tier.min_days}-${tier.max_days} Days`
-                        }
-                      </div>
-                      <div className="text-lg font-bold text-blue-600">
-                        ₱{tier.price_per_day.toFixed(2)}/day
-                      </div>
-                      {tier.description && (
-                        <div className="text-xs text-gray-500 mt-1">
-                          {tier.description}
-                        </div>
-                      )}
+                <div className="grid grid-cols-2 gap-4 text-center">
+                  {/* 1–3 Days */}
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1">1–3 Days</div>
+                    <div className="text-sm font-bold">
+                      ₱{rentalFlowCamera.camera_pricing_tiers[0]?.price_per_day.toFixed(2)}/day
                     </div>
-                  ))}
+                  </div>
+
+                  {/* 4+ Days */}
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1">4+ Days</div>
+                    <div className="text-sm font-bold">
+                      ₱{rentalFlowCamera.camera_pricing_tiers[1]?.price_per_day.toFixed(2)}/day
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
 
+
+            {/* Tabs (Description & Inclusions) */}
+            <div className="mb-6">
+              <div className="flex border-b border-gray-200 mb-4">
+                <button
+                  onClick={() => setActiveTab("description")}
+                  className={`flex-1 py-2 text-center font-medium ${
+                    activeTab === "description"
+                      ? "text-blue-600 border-b-2 border-blue-600"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  Description
+                </button>
+                <button
+                  onClick={() => setActiveTab("inclusions")}
+                  className={`flex-1 py-2 text-center font-medium ${
+                    activeTab === "inclusions"
+                      ? "text-blue-600 border-b-2 border-blue-600"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  Inclusions
+                </button>
+              </div>
+
+              {/* Description Tab */}
+              {activeTab === "description" && (
+                <div>
+                  <p className="text-gray-600 leading-relaxed">
+                    {rentalFlowCamera?.description || (
+                      <span className="text-gray-400">No description available</span>
+                    )}
+                  </p>
+                </div>
+              )}
+
+              {/* Inclusions Tab */}
+              {activeTab === "inclusions" && (
+                <div>
+                  {loadingInclusions ? (
+                    <div className="flex items-center text-gray-500">
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Loading inclusions...
+                    </div>
+                  ) : inclusions.length > 0 ? (
+                    <div className="grid grid-cols-2 md:grid-cols-1 gap-2">
+                      {inclusions.map((inclusion, index) => (
+                        <div key={index} className="flex items-center space-x-2">
+                          <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></div>
+                          <span className="text-gray-700">
+                            {inclusion.inclusion_items?.name}
+                            {inclusion.quantity > 1 ? ` (x${inclusion.quantity})` : ""}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500">No specific inclusions listed</p>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Date Selection Section */}
             <div className="mb-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">Rental Period</h2>
+              <h2 className="text-lg font-semibold text-center text-gray-900 mb-3">Rental Period</h2>
               {sourcePageType === "home" && (
                 <DateFilterInput
                   startDate={startDate}

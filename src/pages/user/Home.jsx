@@ -5,6 +5,7 @@ import { Bell, Camera } from 'lucide-react';
 import CameraCard from '../../components/camera/CameraCard';
 import CameraCardBig from '../../components/camera/CameraCardBig';
 import useCameraStore from '../../stores/cameraStore';
+import useAuthStore from '../../stores/useAuthStore';
 import { getCameraModels } from '../../services/cameraService';
 
 export default function Home() {
@@ -25,6 +26,8 @@ export default function Home() {
     setRentalFlowCamera,
     resetBrowseFilter,
   } = useCameraStore();
+
+  const { profile } = useAuthStore();
 
   const [favorites, setFavorites] = useState(new Set());
 
@@ -177,21 +180,20 @@ export default function Home() {
       <div className="px-4 py-4">
         <div className="flex justify-between items-center mb-4">
           <div>
-            <p className="text-lg font-semibold text-gray-900">Hello👋, Camera Explorer</p>
+            <p className="text-lg font-semibold text-gray-900">
+              Hello👋, {profile?.first_name || 'Camera Explorer'}
+            </p>
             <p className="text-sm text-gray-600 flex items-center">
-              📍 Discover Amazing Cameras
+              📍 Discover Amazing Cameras with Rawlens
             </p>
           </div>
-          <button className="p-2 text-gray-600 hover:text-gray-800 bg-gray-100 rounded-lg transition-colors">
-            <Bell size={20} />
-          </button>
         </div>
         
         {/* === FEATURED BANNER SECTION === */}
         <div className="bg-gradient-to-r from-blue-900 to-blue-800 rounded-xl p-4 mb-6">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-white text-sm font-medium mb-2">Get high quality images with expert lenses</p>
+              <p className="text-white text-sm font-medium mb-2">Get high quality images with premium cameras</p>
               <button className="bg-yellow-500 hover:bg-yellow-600 text-black px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
                 Explore Now
               </button>
@@ -202,46 +204,10 @@ export default function Home() {
           </div>
         </div>
 
-        {/* === BRAND FILTER SECTION === */}
-        <div className="mb-4">
-          <h3 className="text-base font-semibold text-gray-900 mb-3">Top Brands</h3>
-          <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide">
-            {['Canon', 'Sony', 'Fujifilm', 'Nikon', 'GoPro'].map((brand) => (
-              <button
-                key={brand}
-                className={`px-4 py-2 text-sm font-medium rounded-full whitespace-nowrap transition-colors ${
-                  brand === 'Canon' 
-                    ? 'bg-blue-900 text-white shadow-lg' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {brand}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* === CATEGORY FILTER SECTION === */}
-        <div className="mb-6">
-          <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide">
-            {['Cameras', 'Lenses', 'Tripods', 'Lighting', 'Accessories'].map((category) => (
-              <button
-                key={category}
-                className={`px-4 py-2 text-sm font-medium rounded-full whitespace-nowrap transition-colors ${
-                  category === 'Cameras'
-                    ? 'bg-blue-100 text-blue-900 border border-blue-200'
-                    : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
-                }`}
-              >
-                {category}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
     
       {/* === MAIN CONTENT SECTION === */}
-      <div className="px-4 py-6">
+      <div className="px-4 pb-6">
         {/* === CAMERA SHOWCASE SECTION === */}
         <div className="space-y-6">
           {/* Results header */}
