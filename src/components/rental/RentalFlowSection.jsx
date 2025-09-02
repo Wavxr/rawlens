@@ -591,10 +591,10 @@ const RentalFlowSection = ({ onBackToBrowse, sourcePageType = "home", preSelecte
             onError={(e) => {
               e.target.style.display = "none";
             }}
-            className="max-h-48 h-auto object-cover"
+            className="max-h-46 h-36 object-cover"
           />
         ) : (
-          <div className="w-full max-h-48 h-48 bg-gray-200 flex items-center justify-center rounded-lg shadow-sm">
+          <div className="w-full max-h-36 h-36 bg-gray-200 flex items-center justify-center rounded-lg shadow-sm">
             <Camera className="h-12 w-12 text-gray-400" />
           </div>
         )}
@@ -700,24 +700,61 @@ const RentalFlowSection = ({ onBackToBrowse, sourcePageType = "home", preSelecte
 
             {/* Date Selection Section - Desktop only or when dates are selected */}
             {(sourcePageType === "search" && preSelectedDates) ? (
-              <div className="mb-5">
-                <h2 className="text-base font-semibold text-center text-gray-900 mb-3">Rental Period</h2> 
-                <div className="bg-blue-50 rounded-lg p-3"> 
-                  <div className="flex items-center text-blue-800 text-sm"> 
-                    <Calendar className="mr-2 h-4 w-4 flex-shrink-0" /> 
-                    <span className="font-medium truncate">
-                      {new Date(preSelectedDates.startDate).toLocaleDateString()} - {new Date(preSelectedDates.endDate).toLocaleDateString()}
-                    </span>
+              <>
+                <div className="mb-5">
+                  <div className="bg-blue-50 rounded-lg p-3"> 
+                    <div className="flex items-center text-blue-800 text-sm"> 
+                      <Calendar className="mr-2 h-4 w-4 flex-shrink-0" /> 
+                      <span className="font-medium truncate">
+                        {new Date(preSelectedDates.startDate).toLocaleDateString()} - {new Date(preSelectedDates.endDate).toLocaleDateString()}
+                      </span>
+                    </div>
                   </div>
+                  {/* Availability Indicator */}
+                  {isAvailabilityChecked && isAvailable && (
+                    <div className="mt-2 flex items-center text-green-600 text-sm"> 
+                      <CheckCircle className="h-4 w-4 mr-2 flex-shrink-0" /> 
+                      Available for selected dates
+                    </div>
+                  )}
                 </div>
-                {/* Availability Indicator */}
-                {isAvailabilityChecked && isAvailable && (
-                  <div className="mt-2 flex items-center text-green-600 text-sm"> 
-                    <CheckCircle className="h-4 w-4 mr-2 flex-shrink-0" /> 
-                    Available for selected dates
+
+                {/* Search Page Price Breakdown Invoice - Show when available and price is calculated */}
+                {isAvailabilityChecked && isAvailable && calculatedPrice && (
+                  <div className="mb-5">
+                    <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden max-w-md mx-auto">
+                      {/* Header */}
+                      <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                        <h3 className="text-sm font-semibold text-gray-900 flex items-center">
+                          <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                          Rental Summary
+                        </h3>
+                      </div>
+                      
+                      {/* Breakdown Details */}
+                      <div className="px-4 py-3 space-y-3">
+                        {/* Rental Period */}
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-600">Rental Period</span>
+                          <span className="font-medium text-gray-900">
+                            {calculatedPrice.days} {calculatedPrice.days === 1 ? 'day' : 'days'}
+                          </span>
+                        </div>
+
+                        {/* Rate Type and Per Day Price */}
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-600">
+                            Rate ({calculatedPrice.days >= 4 ? 'Discounted' : 'Standard'})
+                          </span>
+                          <span className="font-medium text-gray-900">
+                            ₱{calculatedPrice.pricePerDay.toFixed(2)}/day
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
-              </div>
+              </>
             ) : (
               <>
                 {/* Desktop Date Selection */}
@@ -813,10 +850,9 @@ const RentalFlowSection = ({ onBackToBrowse, sourcePageType = "home", preSelecte
                 )}
 
                 {/* Mobile Date Display - Only show after dates are confirmed */}
-                <div className="mb-5 lg:hidden">
+                <div className="mb-2 lg:hidden">
                   {startDate && endDate && footerState !== 'initial' && footerState !== 'selectingDates' && (
                     <>
-                      <h2 className="text-base font-semibold text-center text-gray-900 mb-3">Rental Period</h2> 
                       <div className="bg-blue-50 rounded-lg p-3"> 
                         <div className="flex items-center text-blue-800 text-sm"> 
                           <Calendar className="mr-2 h-4 w-4 flex-shrink-0" /> 
@@ -990,13 +1026,14 @@ const RentalFlowSection = ({ onBackToBrowse, sourcePageType = "home", preSelecte
       </div>
 
       {/* Modern Floating Bottom Action Bar - Mobile Only */}
+      <div className='bg-white'>
       {!requestSuccess && (
-        <div className={`lg:hidden fixed inset-x-0 bottom-1 mx-2 bg-white/95 backdrop-blur-xl border border-gray-200/70 rounded-2xl shadow-lg shadow-gray-400/10 z-40 transition-all duration-300 ease-in-out`}>
+        <div className={`lg:hidden sticky inset-x-0 bottom-1 mb-1 mx-2 bg-white/95 backdrop-blur-xl border border-gray-200/70 rounded-2xl shadow-lg shadow-gray-400/10 z-40 transition-all duration-300 ease-in-out`}>
           {/* Date Selector Section - Expandable */}
           <div className={`overflow-hidden transition-all duration-300 ease-in-out ${
             isDateSelectorOpen ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'
           }`}>
-            <div className="p-4 border-b border-gray-100">
+            <div className="p-3 border-b border-gray-100">
               <div className="mb-4">
                 <h3 className="text-sm font-semibold text-gray-900 mb-3">Select Rental Period</h3>
                 <DateFilterInput
@@ -1028,7 +1065,7 @@ const RentalFlowSection = ({ onBackToBrowse, sourcePageType = "home", preSelecte
               <button
                 onClick={handleFooterButtonClick}
                 disabled={isButtonDisabled()}
-                className={`px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 ${getButtonStyle()}`}
+                className={`px-4 py-2 rounded-xl font-medium text-sm transition-all duration-200 ${getButtonStyle()}`}
               >
                 {(footerState === 'checking' || (footerState === 'available' && (isGeneratingContract || isSubmitting))) && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin inline" />
@@ -1086,6 +1123,8 @@ const RentalFlowSection = ({ onBackToBrowse, sourcePageType = "home", preSelecte
           </div>
         </div>
       )}
+      </div>
+      
 
       <ContractSigningModal
         isOpen={showContractModal}
