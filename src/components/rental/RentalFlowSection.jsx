@@ -59,6 +59,10 @@ const RentalFlowSection = ({ onBackToBrowse, sourcePageType = "home", preSelecte
   const [activeTab, setActiveTab] = useState("description");
   const [inclusions, setInclusions] = useState([]);
   const [loadingInclusions, setLoadingInclusions] = useState(false);
+  const [isDateSelectorOpen, setIsDateSelectorOpen] = useState(false);
+  const [tempStartDate, setTempStartDate] = useState(startDate);
+  const [tempEndDate, setTempEndDate] = useState(endDate);
+  const [footerState, setFooterState] = useState('initial'); // 'initial', 'selectingDates', 'checking', 'available', 'unavailable'
 
   const sigCanvasRef = useRef();
   const navigate = useNavigate();
@@ -170,6 +174,7 @@ const RentalFlowSection = ({ onBackToBrowse, sourcePageType = "home", preSelecte
       setIsAvailabilityChecked(true);
     } catch (err) {
       setAvailabilityError(err.message || "An error occurred while checking availability.");
+      setFooterState('unavailable');
     } finally {
       setIsCheckingAvailability(false);
     }
@@ -311,8 +316,250 @@ const RentalFlowSection = ({ onBackToBrowse, sourcePageType = "home", preSelecte
     }
   };
 
-  const handleStartDateChange = (e) => handleRentalFlowDateChange(e, 'start');
-  const handleEndDateChange = (e) => handleRentalFlowDateChange(e, 'end');
+  const handleStartDateChange = (e) => {
+    if (isDateSelectorOpen) {
+      setTempStartDate(e.target.value);
+    } else {
+      handleRentalFlowDateChange(e, 'start');
+    }
+  };
+  
+  const handleEndDateChange = (e) => {
+    if (isDateSelectorOpen) {
+      setTempEndDate(e.target.value);
+    } else {
+      handleRentalFlowDateChange(e, 'end');
+    }
+  };
+
+  const handleFooterButtonClick = async () => {
+    if (footerState === 'initial') {
+      // If coming from search page with pre-selected dates, skip date selection and go directly to checking
+      if (sourcePageType === "search" && preSelectedDates?.startDate && preSelectedDates?.endDate) {
+        // Set checking state and proceed with availability check
+        setFooterState('checking');
+        setAvailabilityError('');
+        setIsAvailabilityChecked(false);
+        setIsAvailable(false);
+        
+        // Use pre-selected dates directly for availability check
+        setTimeout(async () => {
+          try {
+            const effectiveStartDate = preSelectedDates.startDate;
+            const effectiveEndDate = preSelectedDates.endDate;
+
+            if (!rentalFlowCamera && !rentalFlowCameraModelName) {
+              setAvailabilityError("Camera information is missing.");
+              setFooterState('unavailable');
+              return;
+            }
+
+            // Enforce verification before proceeding
+            const canRent = await isUserVerified(user.id);
+            if (!canRent) {
+              setAvailabilityError("Please complete your profile verification first.");
+              setFooterState('unavailable');
+              return;
+            }
+
+            const start = new Date(new Date(effectiveStartDate).setHours(0, 0, 0, 0));
+            const end = new Date(new Date(effectiveEndDate).setHours(0, 0, 0, 0));
+            if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) {
+              setAvailabilityError("Please select valid dates. End date must be on or after start date.");
+              setFooterState('unavailable');
+              return;
+            }
+
+            setIsCheckingAvailability(true);
+
+            // Use the model name to find an available unit
+            const modelName = rentalFlowCameraModelName || rentalFlowCamera?.name;
+            if (!modelName) {
+              setAvailabilityError("Camera model information is missing.");
+              setFooterState('unavailable');
+              return;
+            }
+
+            const { data: availableUnit, error } = await findAvailableUnitOfModel(modelName, effectiveStartDate, effectiveEndDate);
+
+            if (error) {
+              setAvailabilityError(error);
+              setFooterState('unavailable');
+            } else {
+              setSelectedCameraUnitId(availableUnit.id);
+              setIsAvailable(true);
+              setIsAvailabilityChecked(true);
+              await calculateAndSetPrice(availableUnit.id, effectiveStartDate, effectiveEndDate);
+              setFooterState('available');
+            }
+          } catch (err) {
+            console.error('Search page availability check error:', err);
+            setAvailabilityError(err.message || "An error occurred while checking availability.");
+            setFooterState('unavailable');
+          } finally {
+            setIsCheckingAvailability(false);
+          }
+        }, 100);
+      } else {
+        // For home page or when no pre-selected dates, show date selector
+        setTempStartDate(startDate);
+        setTempEndDate(endDate);
+        setIsDateSelectorOpen(true);
+        setFooterState('selectingDates');
+      }
+    } else if (footerState === 'selectingDates') {
+      // Check dates and validate
+      if (!tempStartDate || !tempEndDate) {
+        return;
+      }
+      
+      // Update store with selected dates
+      handleRentalFlowDateChange({ target: { value: tempStartDate } }, 'start');
+      handleRentalFlowDateChange({ target: { value: tempEndDate } }, 'end');
+      
+      // Close date selector and set checking state
+      setIsDateSelectorOpen(false);
+      setFooterState('checking');
+      setAvailabilityError('');
+      setIsAvailabilityChecked(false);
+      setIsAvailable(false);
+      
+      // Check availability with the new dates
+      setTimeout(async () => {
+        try {
+          // Use the temporary dates for availability check
+          const effectiveStartDate = tempStartDate;
+          const effectiveEndDate = tempEndDate;
+
+          if (!rentalFlowCamera && !rentalFlowCameraModelName) {
+            setAvailabilityError("Camera information is missing.");
+            setFooterState('unavailable');
+            return;
+          }
+
+          // Enforce verification before proceeding
+          const canRent = await isUserVerified(user.id);
+          if (!canRent) {
+            setAvailabilityError("Please complete your profile verification first.");
+            setFooterState('unavailable');
+            return;
+          }
+
+          const start = new Date(new Date(effectiveStartDate).setHours(0, 0, 0, 0));
+          const end = new Date(new Date(effectiveEndDate).setHours(0, 0, 0, 0));
+          if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) {
+            setAvailabilityError("Please select valid dates. End date must be on or after start date.");
+            setFooterState('unavailable');
+            return;
+          }
+
+          setIsCheckingAvailability(true);
+
+          // Use the model name to find an available unit
+          const modelName = rentalFlowCameraModelName || rentalFlowCamera?.name;
+          if (!modelName) {
+            setAvailabilityError("Camera model information is missing.");
+            setFooterState('unavailable');
+            return;
+          }
+
+          const { data: availableUnit, error } = await findAvailableUnitOfModel(modelName, effectiveStartDate, effectiveEndDate);
+
+          if (error) {
+            setAvailabilityError(error);
+            setFooterState('unavailable');
+          } else {
+            setSelectedCameraUnitId(availableUnit.id);
+            setIsAvailable(true);
+            setIsAvailabilityChecked(true);
+            await calculateAndSetPrice(availableUnit.id, effectiveStartDate, effectiveEndDate);
+            setFooterState('available');
+          }
+        } catch (err) {
+          console.error('Mobile availability check error:', err);
+          setAvailabilityError(err.message || "An error occurred while checking availability.");
+          setFooterState('unavailable');
+        } finally {
+          setIsCheckingAvailability(false);
+        }
+      }, 100);
+    } else if (footerState === 'available') {
+      // Proceed to rent
+      handleRentNow();
+    }
+    // If unavailable, button should be disabled
+  };
+
+  // Update footer state based on availability results
+  React.useEffect(() => {
+    if (footerState === 'checking' && !isCheckingAvailability) {
+      if (isAvailabilityChecked && isAvailable) {
+        setFooterState('available');
+      } else if (isAvailabilityChecked && !isAvailable) {
+        setFooterState('unavailable');
+      }
+    }
+  }, [isCheckingAvailability, isAvailabilityChecked, isAvailable, footerState]);
+
+  // Initialize footer state for search page
+  React.useEffect(() => {
+    if (sourcePageType === 'search' && preSelectedDates) {
+      // For search page, start with initial state since dates are already set
+      setFooterState('initial');
+    } else if (sourcePageType === 'home') {
+      if (startDate && endDate && isAvailabilityChecked && isAvailable) {
+        setFooterState('available');
+      } else {
+        setFooterState('initial');
+      }
+    }
+  }, [sourcePageType, preSelectedDates]);
+
+  const getButtonText = () => {
+    switch (footerState) {
+      case 'initial':
+        return 'Check';
+      case 'selectingDates':
+        return 'Check Dates';
+      case 'checking':
+        return 'Checking...';
+      case 'available':
+        // Show processing state when generating contract or submitting
+        if (isGeneratingContract || isSubmitting) {
+          return 'Processing...';
+        }
+        return 'Rent Now';
+      case 'unavailable':
+        return 'Date Not Available';
+      default:
+        return 'Check';
+    }
+  };
+
+  const getButtonStyle = () => {
+    switch (footerState) {
+      case 'unavailable':
+        return 'bg-red-100/80 text-red-500 cursor-not-allowed';
+      case 'checking':
+        return 'bg-gray-100/80 text-gray-500 cursor-not-allowed';
+      case 'available':
+        // Show disabled state when processing
+        if (isGeneratingContract || isSubmitting) {
+          return 'bg-gray-100/80 text-gray-500 cursor-not-allowed';
+        }
+        return 'bg-green-600 hover:bg-green-700 text-white shadow-md hover:shadow-lg';
+      default:
+        return 'bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg';
+    }
+  };
+
+  const isButtonDisabled = () => {
+    return footerState === 'checking' || 
+           footerState === 'unavailable' || 
+           (footerState === 'selectingDates' && (!tempStartDate || !tempEndDate)) ||
+           isSubmitting || 
+           isGeneratingContract;
+  };
 
   if (!rentalFlowCamera && !rentalFlowCameraModelName) {
       return null;
@@ -354,7 +601,7 @@ const RentalFlowSection = ({ onBackToBrowse, sourcePageType = "home", preSelecte
       </div>
 
       {/* Bottom Section: White Background */}
-      <div className="bg-white rounded-t-2xl mt-4 p-4 sm:p-6 shadow-md flex-grow"> {/* Reduced padding on mobile */}
+      <div className="bg-white rounded-t-2xl mt-4 p-4 sm:p-6 shadow-md flex-grow lg:pb-6"> {/* Added pb-24 for mobile to avoid footer overlap */}
         {!requestSuccess ? (
           <>
             {/* Camera Name - Slightly smaller heading */}
@@ -451,24 +698,10 @@ const RentalFlowSection = ({ onBackToBrowse, sourcePageType = "home", preSelecte
               )}
             </div>
 
-            {/* Date Selection Section */}
-            <div className="mb-5">
-              <h2 className="text-base font-semibold text-center text-gray-900 mb-3">Rental Period</h2> 
-              {sourcePageType === "home" && (
-                <DateFilterInput
-                  startDate={startDate}
-                  endDate={endDate}
-                  onStartDateChange={handleStartDateChange}
-                  onEndDateChange={handleEndDateChange}
-                  minStartDate={new Date().toISOString().split('T')[0]}
-                  disabled={isCheckingAvailability || isSubmitting || isGeneratingContract}
-                  label=""
-                  idPrefix="rental-flow"
-                  compact={true}
-                />
-              )}
-
-              {sourcePageType === "search" && preSelectedDates && (
+            {/* Date Selection Section - Desktop only or when dates are selected */}
+            {(sourcePageType === "search" && preSelectedDates) ? (
+              <div className="mb-5">
+                <h2 className="text-base font-semibold text-center text-gray-900 mb-3">Rental Period</h2> 
                 <div className="bg-blue-50 rounded-lg p-3"> 
                   <div className="flex items-center text-blue-800 text-sm"> 
                     <Calendar className="mr-2 h-4 w-4 flex-shrink-0" /> 
@@ -477,16 +710,169 @@ const RentalFlowSection = ({ onBackToBrowse, sourcePageType = "home", preSelecte
                     </span>
                   </div>
                 </div>
-              )}
-
-              {/* Availability Indicator */}
-              {isAvailabilityChecked && isAvailable && (
-                <div className="mt-2 flex items-center text-green-600 text-sm"> 
-                  <CheckCircle className="h-4 w-4 mr-2 flex-shrink-0" /> 
-                  Available for selected dates
+                {/* Availability Indicator */}
+                {isAvailabilityChecked && isAvailable && (
+                  <div className="mt-2 flex items-center text-green-600 text-sm"> 
+                    <CheckCircle className="h-4 w-4 mr-2 flex-shrink-0" /> 
+                    Available for selected dates
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                {/* Desktop Date Selection */}
+                <div className="mb-5 hidden lg:block">
+                  <h2 className="text-base font-semibold text-center text-gray-900 mb-3">Rental Period</h2> 
+                  <DateFilterInput
+                    startDate={startDate}
+                    endDate={endDate}
+                    onStartDateChange={(e) => handleRentalFlowDateChange(e, 'start')}
+                    onEndDateChange={(e) => handleRentalFlowDateChange(e, 'end')}
+                    minStartDate={new Date().toISOString().split('T')[0]}
+                    disabled={isCheckingAvailability || isSubmitting || isGeneratingContract}
+                    label=""
+                    idPrefix="rental-flow-desktop"
+                  />
+                  {/* Availability Indicator */}
+                  {isAvailabilityChecked && isAvailable && (
+                    <div className="mt-2 flex items-center text-green-600 text-sm"> 
+                      <CheckCircle className="h-4 w-4 mr-2 flex-shrink-0" /> 
+                      Available for selected dates
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+
+                {/* Desktop Price Breakdown Invoice - Show when available and price is calculated */}
+                {isAvailabilityChecked && isAvailable && calculatedPrice && (
+                  <div className="mb-5 hidden lg:block">
+                    <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden max-w-md mx-auto">
+                      {/* Header */}
+                      <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                        <h3 className="text-sm font-semibold text-gray-900 flex items-center">
+                          <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                          Rental Summary
+                        </h3>
+                      </div>
+                      
+                      {/* Breakdown Details */}
+                      <div className="px-4 py-3 space-y-3">
+                        {/* Rental Period */}
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-600">Rental Period</span>
+                          <span className="font-medium text-gray-900">
+                            {calculatedPrice.days} {calculatedPrice.days === 1 ? 'day' : 'days'}
+                          </span>
+                        </div>
+
+                        {/* Rate Type and Per Day Price */}
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-600">
+                            Rate ({calculatedPrice.days >= 4 ? 'Discounted' : 'Standard'})
+                          </span>
+                          <span className="font-medium text-gray-900">
+                            ₱{calculatedPrice.pricePerDay.toFixed(2)}/day
+                          </span>
+                        </div>
+
+                        {/* Discount Indicator */}
+                        {calculatedPrice.days >= 4 && (
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-green-600 flex items-center">
+                              <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span>
+                              Long-term Discount
+                            </span>
+                            <span className="text-green-600 font-medium">Applied</span>
+                          </div>
+                        )}
+
+                        {/* Divider */}
+                        <div className="border-t border-gray-100"></div>
+
+                        {/* Subtotal Calculation */}
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-600">
+                            {calculatedPrice.days} × ₱{calculatedPrice.pricePerDay.toFixed(2)}
+                          </span>
+                          <span className="font-medium text-gray-900">
+                            ₱{calculatedPrice.total.toFixed(2)}
+                          </span>
+                        </div>
+
+                        {/* Total */}
+                        <div className="border-t border-gray-200 pt-3">
+                          <div className="flex justify-between items-center">
+                            <span className="text-base font-semibold text-gray-900">Total Amount</span>
+                            <span className="text-lg font-bold text-blue-600">
+                              ₱{calculatedPrice.total.toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Mobile Date Display - Only show after dates are confirmed */}
+                <div className="mb-5 lg:hidden">
+                  {startDate && endDate && footerState !== 'initial' && footerState !== 'selectingDates' && (
+                    <>
+                      <h2 className="text-base font-semibold text-center text-gray-900 mb-3">Rental Period</h2> 
+                      <div className="bg-blue-50 rounded-lg p-3"> 
+                        <div className="flex items-center text-blue-800 text-sm"> 
+                          <Calendar className="mr-2 h-4 w-4 flex-shrink-0" /> 
+                          <span className="font-medium truncate">
+                            {new Date(startDate).toLocaleDateString()} - {new Date(endDate).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                      {/* Availability Indicator */}
+                      {isAvailabilityChecked && isAvailable && (
+                        <div className="mt-2 flex items-center text-green-600 text-sm"> 
+                          <CheckCircle className="h-4 w-4 mr-2 flex-shrink-0" /> 
+                          Available for selected dates
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* Price Breakdown Invoice - Show when available and price is calculated */}
+                {isAvailabilityChecked && isAvailable && calculatedPrice && (
+                  <div className="mb-5 lg:hidden">
+                    <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                      {/* Header */}
+                      <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                        <h3 className="text-sm font-semibold text-gray-900 flex items-center">
+                          <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                          Rental Summary
+                        </h3>
+                      </div>
+                      
+                      {/* Breakdown Details */}
+                      <div className="px-4 py-3 space-y-3">
+                        {/* Rental Period */}
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-600">Rental Period</span>
+                          <span className="font-medium text-gray-900">
+                            {calculatedPrice.days} {calculatedPrice.days === 1 ? 'day' : 'days'}
+                          </span>
+                        </div>
+
+                        {/* Rate Type and Per Day Price */}
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-600">
+                            Rate ({calculatedPrice.days >= 4 ? 'Discounted' : 'Standard'})
+                          </span>
+                          <span className="font-medium text-gray-900">
+                            ₱{calculatedPrice.pricePerDay.toFixed(2)}/day
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
 
             {/* Error Messages */}
             {availabilityError && (
@@ -605,7 +991,29 @@ const RentalFlowSection = ({ onBackToBrowse, sourcePageType = "home", preSelecte
 
       {/* Modern Floating Bottom Action Bar - Mobile Only */}
       {!requestSuccess && (
-        <div className="lg:hidden fixed inset-x-0 bottom-1 mx-2 bg-white/95 backdrop-blur-xl border border-gray-200/70 rounded-2xl shadow-lg shadow-gray-400/10 z-40 pb-0">
+        <div className={`lg:hidden fixed inset-x-0 bottom-1 mx-2 bg-white/95 backdrop-blur-xl border border-gray-200/70 rounded-2xl shadow-lg shadow-gray-400/10 z-40 transition-all duration-300 ease-in-out`}>
+          {/* Date Selector Section - Expandable */}
+          <div className={`overflow-hidden transition-all duration-300 ease-in-out ${
+            isDateSelectorOpen ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'
+          }`}>
+            <div className="p-4 border-b border-gray-100">
+              <div className="mb-4">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">Select Rental Period</h3>
+                <DateFilterInput
+                  startDate={tempStartDate}
+                  endDate={tempEndDate}
+                  onStartDateChange={handleStartDateChange}
+                  onEndDateChange={handleEndDateChange}
+                  minStartDate={new Date().toISOString().split('T')[0]}
+                  disabled={isCheckingAvailability || isSubmitting || isGeneratingContract}
+                  label=""
+                  idPrefix="rental-flow-mobile"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Main Action Section */}
           <div className="flex items-center justify-between p-4">
             {/* Price Display */}
             <div className="flex-1 min-w-0">
@@ -615,44 +1023,22 @@ const RentalFlowSection = ({ onBackToBrowse, sourcePageType = "home", preSelecte
               </div>
             </div>
 
-            {/* Action Button */}
+            {/* Single Action Button */}
             <div className="flex-1 flex justify-end ml-2">
-              {(isSubmitting || isGeneratingContract) ? (
-                <div className="px-4 py-3 flex items-center justify-center bg-gray-100/80 rounded-xl text-sm font-medium">
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  <span>Processing...</span>
-                </div>
-              ) : !isAvailabilityChecked || !isAvailable ? (
-                <button
-                  onClick={handleCheckAvailability}
-                  disabled={isCheckingAvailability || (sourcePageType === "home" && (!startDate || !endDate))}
-                  className={`px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 ${
-                    isCheckingAvailability || (sourcePageType === "home" && (!startDate || !endDate))
-                    ? 'bg-gray-100/80 text-gray-500 cursor-not-allowed'
-                    : 'bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg'
-                  }`}
-                >
-                  {isCheckingAvailability ? 'Checking...' : 'Check'}
-                </button>
-              ) : (
-                <button
-                  onClick={handleRentNow}
-                  disabled={!isAvailable || !isAvailabilityChecked || isCheckingAvailability}
-                  className={`px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 ${
-                    !isAvailable || !isAvailabilityChecked || isCheckingAvailability
-                    ? 'bg-gray-100/80 text-gray-500 cursor-not-allowed'
-                    : 'bg-green-600 hover:bg-green-700 text-white shadow-md hover:shadow-lg'
-                  }`}
-                >
-                  Rent Now
-                </button>
-              )}
+              <button
+                onClick={handleFooterButtonClick}
+                disabled={isButtonDisabled()}
+                className={`px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 ${getButtonStyle()}`}
+              >
+                {(footerState === 'checking' || (footerState === 'available' && (isGeneratingContract || isSubmitting))) && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin inline" />
+                )}
+                {getButtonText()}
+              </button>
             </div>
           </div>
         </div>
-      )}
-
-      {/* Desktop Action Buttons */}
+      )}      {/* Desktop Action Buttons */}
       {!requestSuccess && (
         <div className="hidden lg:block max-w-4xl mx-auto px-4 pb-8">
           <div className="flex justify-end space-x-4">

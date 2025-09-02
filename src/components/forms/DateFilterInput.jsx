@@ -26,11 +26,11 @@ const DateFilterInput = ({
           onChange={onStartDateChange}
           min={minStartDate}
           disabled={disabled}
-          className="flex-1 px-4 py-3 text-sm rounded-l-xl border-0 focus:outline-none focus:ring-0 disabled:bg-gray-100"
+          className="flex-1 px-1 py-3 text-sm rounded-l-xl border-0 focus:outline-none focus:ring-0 disabled:bg-gray-100"
         />
 
         {/* Separator */}
-        <span className="px-3 text-gray-400 text-sm">→</span>
+        <span className="px-1 text-gray-400 text-sm">→</span>
 
         {/* End Date */}
         <input
@@ -40,7 +40,7 @@ const DateFilterInput = ({
           onChange={onEndDateChange}
           min={calculatedMinEndDate}
           disabled={disabled}
-          className="flex-1 px-4 py-3 text-sm rounded-r-xl border-0 focus:outline-none focus:ring-0 disabled:bg-gray-100"
+          className="flex-1 px-1 py-3 text-sm rounded-r-xl border-0 focus:outline-none focus:ring-0 disabled:bg-gray-100"
         />
       </div>
     </div>
