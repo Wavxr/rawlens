@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useState, useRef } from 'react';
 import useAuthStore from '../../stores/useAuthStore';
 import useRentalStore from '../../stores/rentalStore';
 import { subscribeToRentalUpdates, unsubscribeFromRentalUpdates } from '../../services/realtimeService';
-import { Loader2, Calendar, Camera as CameraIcon, AlertCircle, Clock, CheckCircle2, XCircle } from 'lucide-react';
+import { userCancelRentalRequest } from '../../services/rentalService';
+import { Loader2, Calendar, Camera as CameraIcon, AlertCircle, Clock, CheckCircle2, XCircle, Trash2 } from 'lucide-react';
 import PaymentUploadSection from '../../components/payment/PaymentUploadSection';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -86,9 +87,33 @@ const Section = ({ title, count, children, icon: Icon }) => (
   </div>
 );
 
-const RequestRow = ({ rental, onUploadComplete }) => {
+const RequestRow = ({ rental, onUploadComplete, onCancelComplete }) => {
+  const [isCancelling, setIsCancelling] = useState(false);
   const camera = rental.cameras || {};
   const dateRange = `${formatDate(rental.start_date)} — ${formatDate(rental.end_date)}`;
+
+  const handleCancelRequest = async () => {
+    if (!confirm('Are you sure you want to cancel this rental request? This action cannot be undone.')) {
+      return;
+    }
+
+    setIsCancelling(true);
+    try {
+      const result = await userCancelRentalRequest(rental.id);
+      if (result.success) {
+        toast.success('Rental request cancelled successfully');
+        if (onCancelComplete) {
+          onCancelComplete();
+        }
+      } else {
+        toast.error(result.error || 'Failed to cancel rental request');
+      }
+    } catch (error) {
+      toast.error('Failed to cancel rental request');
+    } finally {
+      setIsCancelling(false);
+    }
+  };
   
   return (
     <div className="px-3 md:px-6 py-3 md:py-5 hover:bg-gradient-to-r hover:from-slate-50/50 hover:to-gray-50/30 transition-all duration-200 group">
@@ -124,6 +149,22 @@ const RequestRow = ({ rental, onUploadComplete }) => {
                   {camera.name || 'Camera'}
                 </h4>
                 <StatusPill status={rental.rental_status} />
+                {/* Cancel button for pending requests */}
+                {rental.rental_status === 'pending' && (
+                  <button
+                    onClick={handleCancelRequest}
+                    disabled={isCancelling}
+                    className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-full hover:bg-red-100 hover:border-red-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Cancel rental request"
+                  >
+                    {isCancelling ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-3 h-3" />
+                    )}
+                    <span className="hidden md:inline">Cancel</span>
+                  </button>
+                )}
               </div>
               
               {/* Date Range */}
@@ -190,6 +231,13 @@ const Requests = () => {
 
   const handleUploadComplete = () => {
     // Refresh rentals data after successful upload
+    if (user?.id) {
+      loadRentals(user.id);
+    }
+  };
+
+  const handleCancelComplete = () => {
+    // Refresh rentals data after successful cancellation
     if (user?.id) {
       loadRentals(user.id);
     }
@@ -312,7 +360,7 @@ const Requests = () => {
                 />
               ) : (
                 pending.map(r => (
-                  <RequestRow key={r.id} rental={r} onUploadComplete={handleUploadComplete} />
+                  <RequestRow key={r.id} rental={r} onUploadComplete={handleUploadComplete} onCancelComplete={handleCancelComplete} />
                 ))
               )}
             </Section>
@@ -326,7 +374,7 @@ const Requests = () => {
                 />
               ) : (
                 confirmedUpcoming.map(r => (
-                  <RequestRow key={r.id} rental={r} onUploadComplete={handleUploadComplete} />
+                  <RequestRow key={r.id} rental={r} onUploadComplete={handleUploadComplete} onCancelComplete={handleCancelComplete} />
                 ))
               )}
             </Section>
@@ -340,7 +388,7 @@ const Requests = () => {
                 />
               ) : (
                 rejected.map(r => (
-                  <RequestRow key={r.id} rental={r} onUploadComplete={handleUploadComplete} />
+                  <RequestRow key={r.id} rental={r} onUploadComplete={handleUploadComplete} onCancelComplete={handleCancelComplete} />
                 ))
               )}
             </Section>

@@ -1,5 +1,9 @@
 import { supabase } from "../lib/supabaseClient";
 
+// ------------------------------------------
+//    -- Functions --
+// ------------------------------------------
+
 export function calculateRentalDays(startDateStr, endDateStr) {
   const start = new Date(startDateStr);
   const end = new Date(endDateStr);
@@ -47,7 +51,6 @@ export async function calculateTotalPrice(cameraId, startDate, endDate) {
   return { totalPrice, pricePerDay, rentalDays };
 }
 
-
 // Check if a specific camera is available for a given date range.
 export async function checkCameraAvailability(cameraId, startDate, endDate) {
   try {
@@ -73,6 +76,116 @@ export async function checkCameraAvailability(cameraId, startDate, endDate) {
     return { isAvailable: false, error: error.message || "Failed to check availability." };
   }
 }
+
+// Generic function to update rental status
+export async function updateRentalStatus(rentalId, statusUpdates) {
+  try {
+    const { data, error } = await supabase
+      .from('rentals')
+      .update(statusUpdates)
+      .eq('id', rentalId)
+      .select();
+
+    if (error) {
+      throw error;
+    }
+    
+    return { success: true, data: data[0] };
+  } catch (error) {
+    return { 
+      error: error.message || "Failed to update rental status.",
+      code: error.code,
+      details: error.details
+    };
+  }
+}
+
+// Reusable query for fetching detailed rental information
+const DETAILED_RENTAL_QUERY = `
+  *,
+  cameras (*, camera_inclusions (*, inclusion_items (*))),
+  users!rentals_user_id_fkey (id, first_name, last_name, email, contact_number)
+`;
+
+// Get a single rental by its ID with all details
+export async function getRentalById(rentalId) {
+  try {
+    const { data, error } = await supabase
+      .from('rentals')
+      .select(DETAILED_RENTAL_QUERY)
+      .eq('id', rentalId)
+      .single();
+
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    console.error(`Error fetching rental ${rentalId}:`, error);
+    return { data: null, error: error.message || "Failed to fetch rental." };
+  }
+}
+
+// --- Simplified Workflow Functions using single rental_status ---
+export async function getRentalsByStatus(status = null) {
+  try {
+    let query = supabase.from('rentals').select(DETAILED_RENTAL_QUERY);
+
+    // Filter by rental status if provided
+    if (status) {
+      query = query.eq('rental_status', status);
+    }
+
+    query = query.order('created_at', { ascending: false });
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    // Filter out temporary bookings with pending status
+    const filteredData = data.filter(rental =>
+      !(rental.booking_type === 'temporary' && rental.rental_status === 'pending')
+    );
+
+    return { data: filteredData, error: null };
+  } catch (error) {
+    console.error("Error in getRentalsByStatus:", error);
+    return { data: null, error: error.message || "Failed to fetch rentals by status." };
+  }
+}
+
+// Get pending applications for admin review
+export async function getPendingApplications() {
+  return await getRentalsByStatus('pending');
+}
+
+// Get rejected applications
+export async function getRejectedApplications() {
+  return await getRentalsByStatus('rejected');
+}
+
+// Get confirmed rentals
+export async function getConfirmedRentals() {
+  return await getRentalsByStatus('confirmed');
+}
+
+// Get user's rental
+export async function getUserRentals(userId) {
+  try {
+    const { data, error } = await supabase
+      .from('rentals')
+      .select(DETAILED_RENTAL_QUERY)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    console.error("Error in getUserRentals:", error);
+    return { data: null, error: error.message || "Failed to fetch user rentals." };
+  }
+}
+
+// ------------------------------------------
+//    -- User Functions --
+// ------------------------------------------
 
 // Allows a registered user to initiate a rental request with contract
 export async function createUserRentalRequest(bookingData) {
@@ -140,73 +253,49 @@ export async function createUserRentalRequest(bookingData) {
   }
 }
 
-// Generic function to update rental status
-export async function updateRentalStatus(rentalId, statusUpdates) {
+// User cancels their own pending rental request
+export async function userCancelRentalRequest(rentalId) {
   try {
-    const { data, error } = await supabase
+    // Get the current user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      throw new Error("Authentication error. Please log in.");
+    }
+
+    // First, verify that this rental belongs to the current user and is in pending status
+    const { data: rental, error: fetchError } = await supabase
       .from('rentals')
-      .update(statusUpdates)
+      .select('id, rental_status, user_id')
       .eq('id', rentalId)
-      .select();
+      .eq('user_id', user.id)
+      .single();
 
-    if (error) {
-      throw error;
+    if (fetchError) {
+      throw new Error("Rental not found or you don't have permission to cancel it.");
     }
+
+    if (rental.rental_status !== 'pending') {
+      throw new Error("Only pending rental requests can be cancelled.");
+    }
+
+    // Delete the rental request
+    const { error: deleteError } = await supabase
+      .from('rentals')
+      .delete()
+      .eq('id', rentalId)
+      .eq('user_id', user.id);
+
+    if (deleteError) throw deleteError;
     
-    return { success: true, data: data[0] };
+    return { success: true, error: null };
   } catch (error) {
-    return { 
-      error: error.message || "Failed to update rental status.",
-      code: error.code,
-      details: error.details
-    };
+    console.error("Error in userCancelRentalRequest:", error);
+    return { success: false, error: error.message || "Failed to cancel rental request." };
   }
-}
-
-// --- Simplified Workflow Functions using single rental_status ---
-export async function getRentalsByStatus(status = null) {
-  try {
-    let query = supabase.from('rentals').select(DETAILED_RENTAL_QUERY);
-
-    // Filter by rental status if provided
-    if (status) {
-      query = query.eq('rental_status', status);
-    }
-
-    query = query.order('created_at', { ascending: false });
-
-    const { data, error } = await query;
-    if (error) throw error;
-
-    // Filter out temporary bookings with pending status
-    const filteredData = data.filter(rental =>
-      !(rental.booking_type === 'temporary' && rental.rental_status === 'pending')
-    );
-
-    return { data: filteredData, error: null };
-  } catch (error) {
-    console.error("Error in getRentalsByStatus:", error);
-    return { data: null, error: error.message || "Failed to fetch rentals by status." };
-  }
-}
-
-// Get pending applications for admin review
-export async function getPendingApplications() {
-  return await getRentalsByStatus('pending');
-}
-
-// Get rejected applications
-export async function getRejectedApplications() {
-  return await getRentalsByStatus('rejected');
-}
-
-// Get confirmed rentals
-export async function getConfirmedRentals() {
-  return await getRentalsByStatus('confirmed');
 }
 
 // ------------------------------------------
-//   --  Admin Status Management Functions --
+//   --  Admin Functions --
 // ------------------------------------------
 
 // Admin confirms application (contract valid, ready for logistics)
@@ -443,7 +532,6 @@ export async function adminCancelRental(rentalId) {
   });
 }
 
-
 // Admin deletes a rental record row entirely
 export async function adminDeleteRental(rentalId) {
   try {
@@ -457,46 +545,5 @@ export async function adminDeleteRental(rentalId) {
   } catch (error) {
     console.error("Error in adminDeleteRental:", error);
     return { success: false, error: error.message || "Failed to delete rental." };
-  }
-}
-
-// Reusable query for fetching detailed rental information
-const DETAILED_RENTAL_QUERY = `
-  *,
-  cameras (*, camera_inclusions (*, inclusion_items (*))),
-  users!rentals_user_id_fkey (id, first_name, last_name, email, contact_number)
-`;
-
-// Get a single rental by its ID with all details
-export async function getRentalById(rentalId) {
-  try {
-    const { data, error } = await supabase
-      .from('rentals')
-      .select(DETAILED_RENTAL_QUERY)
-      .eq('id', rentalId)
-      .single();
-
-    if (error) throw error;
-    return { data, error: null };
-  } catch (error) {
-    console.error(`Error fetching rental ${rentalId}:`, error);
-    return { data: null, error: error.message || "Failed to fetch rental." };
-  }
-}
-
-// Get user's rental
-export async function getUserRentals(userId) {
-  try {
-    const { data, error } = await supabase
-      .from('rentals')
-      .select(DETAILED_RENTAL_QUERY)
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return { data, error: null };
-  } catch (error) {
-    console.error("Error in getUserRentals:", error);
-    return { data: null, error: error.message || "Failed to fetch user rentals." };
   }
 }
