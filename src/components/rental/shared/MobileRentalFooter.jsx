@@ -24,8 +24,10 @@ const MobileRentalFooter = ({
   const [tempStartDate, setTempStartDate] = useState(startDate);
   const [tempEndDate, setTempEndDate] = useState(endDate);
 
-  // Initialize footer state
+  // Initialize footer state - only run once on mount or when key props change
   useEffect(() => {
+    console.log('🚀 MobileRentalFooter: Initializing state...', { sourcePageType, footerState, startDate, endDate, isAvailabilityChecked, isAvailable });
+    
     if (sourcePageType === 'search' && preSelectedDates) {
       // For search page, check if availability is already being checked or completed
       if (isCheckingAvailability) {
@@ -38,22 +40,44 @@ const MobileRentalFooter = ({
         setFooterState('checking'); // Start checking immediately for search
       }
     } else if (sourcePageType === 'home') {
-      if (startDate && endDate && isAvailabilityChecked && isAvailable) {
-        setFooterState('available');
-      } else {
-        setFooterState('initial');
+      // Only initialize if we're in initial state and don't have active states
+      if (footerState === 'initial') {
+        if (startDate && endDate && isAvailabilityChecked && isAvailable) {
+          setFooterState('available');
+        }
+        // Otherwise stay in initial state
       }
+      // Don't reset other states (checking, available, unavailable, selectingDates)
     }
-  }, [sourcePageType, preSelectedDates, startDate, endDate, isAvailabilityChecked, isAvailable, isCheckingAvailability]);
+  }, [sourcePageType, preSelectedDates]); // Remove most dependencies to prevent constant re-initialization
 
   // Update footer state based on availability results
   useEffect(() => {
+    console.log('🔄 MobileRentalFooter: Availability result effect triggered', { 
+      footerState, 
+      isCheckingAvailability, 
+      isAvailabilityChecked, 
+      isAvailable 
+    });
+    
+    // Handle transitions from checking state
     if (footerState === 'checking' && !isCheckingAvailability) {
       if (isAvailabilityChecked && isAvailable) {
+        console.log('🟢 MobileRentalFooter: Setting state to available from checking');
         setFooterState('available');
       } else if (isAvailabilityChecked && !isAvailable) {
+        console.log('🔴 MobileRentalFooter: Setting state to unavailable from checking');
         setFooterState('unavailable');
       }
+    }
+    
+    // Handle new availability results when we're in unavailable state (after "Check another date")
+    if (footerState === 'unavailable' && !isCheckingAvailability && isAvailabilityChecked) {
+      if (isAvailable) {
+        console.log('🟢 MobileRentalFooter: Setting state to available from unavailable');
+        setFooterState('available');
+      }
+      // If still unavailable, stay in unavailable state
     }
   }, [isCheckingAvailability, isAvailabilityChecked, isAvailable, footerState]);
 
@@ -86,6 +110,7 @@ const MobileRentalFooter = ({
       
       // Close date selector and immediately check availability
       setIsDateSelectorOpen(false);
+      console.log('📅 MobileRentalFooter: Setting state to checking');
       setFooterState('checking');
       
       // Check availability with the temp dates directly to avoid timing issues
@@ -99,10 +124,24 @@ const MobileRentalFooter = ({
     } else if (footerState === 'available') {
       // Proceed to rent
       onRentNow();
+    } else if (footerState === 'unavailable') {
+      // For home page, allow user to check another date
+      if (sourcePageType === 'home') {
+        console.log('🔄 MobileRentalFooter: User clicked "Check another date"');
+        setTempStartDate(startDate);
+        setTempEndDate(endDate);
+        setIsDateSelectorOpen(true);
+        setFooterState('selectingDates');
+      }
+    } else if (footerState === 'checking') {
+      // Do nothing while checking - prevent any accidental state changes
+      return;
     }
   };
 
   const getButtonText = () => {
+    console.log(`🎯 MobileRentalFooter: Current state is "${footerState}" for "${sourcePageType}" page`);
+    
     if (sourcePageType === 'search') {
       // For search page
       switch (footerState) {
@@ -127,23 +166,41 @@ const MobileRentalFooter = ({
       case 'selectingDates':
         return 'Check Dates';
       case 'checking':
-        return 'Checking...';
+        return 'Loading';
       case 'available':
         if (isGeneratingContract || isSubmitting) {
           return 'Processing...';
         }
         return 'Rent Now';
       case 'unavailable':
-        return 'Date Not Available';
+        return 'Check another date';
       default:
         return 'Check';
     }
   };
 
   const getButtonStyle = () => {
+    if (sourcePageType === 'search') {
+      // Search page styling
+      switch (footerState) {
+        case 'unavailable':
+          return 'bg-red-100/80 text-red-500 cursor-not-allowed';
+        case 'checking':
+          return 'bg-gray-100/80 text-gray-500 cursor-not-allowed';
+        case 'available':
+          if (isGeneratingContract || isSubmitting) {
+            return 'bg-gray-100/80 text-gray-500 cursor-not-allowed';
+          }
+          return 'bg-green-600 hover:bg-green-700 text-white shadow-md hover:shadow-lg';
+        default:
+          return 'bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg';
+      }
+    }
+
+    // Home page styling
     switch (footerState) {
       case 'unavailable':
-        return 'bg-red-100/80 text-red-500 cursor-not-allowed';
+        return 'bg-orange-600 hover:bg-orange-700 text-white shadow-md hover:shadow-lg'; // Clickable for "Check another date"
       case 'checking':
         return 'bg-gray-100/80 text-gray-500 cursor-not-allowed';
       case 'available':
@@ -165,9 +222,8 @@ const MobileRentalFooter = ({
              isGeneratingContract;
     }
 
-    // For home page
+    // For home page - "unavailable" state is clickable to allow "Check another date"
     return footerState === 'checking' || 
-           footerState === 'unavailable' || 
            (footerState === 'selectingDates' && (!tempStartDate || !tempEndDate)) ||
            isSubmitting || 
            isGeneratingContract;
