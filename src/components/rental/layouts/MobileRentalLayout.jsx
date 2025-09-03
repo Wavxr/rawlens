@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ArrowLeft, Camera } from 'lucide-react';
 
 const MobileRentalLayout = ({ children, onBackToBrowse, camera, footer }) => {
+  const footerRef = useRef(null);
+
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
       {/* Top Section */}
@@ -68,7 +70,7 @@ const MobileRentalLayout = ({ children, onBackToBrowse, camera, footer }) => {
         {children}
       </div>
 
-      {/* Mobile Footer */}
+      {/* Mobile Footer - Removed the extra wrapper */}
       {footer}
     </div>
   );
