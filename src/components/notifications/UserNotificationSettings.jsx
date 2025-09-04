@@ -219,7 +219,7 @@ export default function UserNotificationSettings() {
           ))}
         </div>
 
-        {devices.filter(device => !device.is_current_device).length > 0 && (
+        {/* {devices.filter(device => !device.is_current_device).length > 0 && (
           <div>
             <h4 className="text-sm font-medium text-gray-900 mb-3">Other Devices</h4>
             <div className="space-y-2">
@@ -253,7 +253,7 @@ export default function UserNotificationSettings() {
               ))}
             </div>
           </div>
-        )}
+        )} */}
 
         {!globalEnabled && (
           <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">

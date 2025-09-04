@@ -219,7 +219,7 @@ export default function AdminNotificationSettings() {
           ))}
         </div>
 
-        {devices.filter(device => !device.is_current_device).length > 0 && (
+        {/* {devices.filter(device => !device.is_current_device).length > 0 && (
           <div>
             <h4 className="text-sm font-medium text-blue-200 mb-3">Other Devices</h4>
             <div className="space-y-2">
@@ -253,7 +253,7 @@ export default function AdminNotificationSettings() {
               ))}
             </div>
           </div>
-        )}
+        )} */}
 
         {!globalEnabled && (
           <div className="p-3 bg-yellow-900/30 border border-yellow-800 rounded-lg">
