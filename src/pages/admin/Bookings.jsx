@@ -65,7 +65,7 @@ const Bookings = () => {
   const [selectedPotentialBooking, setSelectedPotentialBooking] = useState(null);
   const [selectedDateRange, setSelectedDateRange] = useState(null);
   const [highlightedDates, setHighlightedDates] = useState([]);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(true);
   const [error, setError] = useState('');
 
   // Modal state
@@ -294,15 +294,6 @@ const Bookings = () => {
                 {potentialBookings.length}
               </span>
             )}
-          </button>
-
-          {/* Theme Toggle */}
-          <button
-            onClick={() => setIsDarkMode(!isDarkMode)}
-            className={`p-2 rounded border transition ${buttonBg} ${buttonBorder} ${buttonTextColor}`}
-            aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-          >
-            {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
         </div>
       </div>
