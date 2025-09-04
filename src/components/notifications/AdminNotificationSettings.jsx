@@ -123,12 +123,12 @@ export default function AdminNotificationSettings() {
 
   if (settingsLoading || loadingDevices) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-gray-800 rounded-lg shadow-lg p-6">
         <div className="animate-pulse">
-          <div className="h-6 bg-gray-200 rounded w-1/3 mb-4"></div>
+          <div className="h-6 bg-gray-700 rounded w-1/3 mb-4"></div>
           <div className="space-y-3">
-            <div className="h-4 bg-gray-200 rounded"></div>
-            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+            <div className="h-4 bg-gray-700 rounded"></div>
+            <div className="h-4 bg-gray-700 rounded w-3/4"></div>
           </div>
         </div>
       </div>
@@ -136,18 +136,18 @@ export default function AdminNotificationSettings() {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow">
-      <div className="px-6 py-4 border-b border-gray-200">
-        <h3 className="text-lg font-medium text-gray-900 flex items-center">
+    <div className="bg-gray-800 rounded-lg shadow-lg">
+      <div className="px-6 py-4 border-b border-gray-700">
+        <h3 className="text-lg font-medium text-blue-300 flex items-center">
           Admin Notifications
         </h3>
       </div>
 
       <div className="p-6 space-y-6">
-        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+        <div className="flex items-center justify-between p-4 bg-gray-750 rounded-lg">
           <div className="flex-1">
-            <h4 className="text-sm font-medium text-gray-900">Global Admin Notifications</h4>
-            <p className="text-sm text-gray-500 mt-1">
+            <h4 className="text-sm font-medium text-blue-200">Global Admin Notifications</h4>
+            <p className="text-sm text-gray-400 mt-1">
               Turn on/off all push notifications for admin functions
             </p>
           </div>
@@ -155,7 +155,7 @@ export default function AdminNotificationSettings() {
             onClick={() => handleGlobalToggle(!globalEnabled)}
             disabled={togglingGlobal}
             className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed ${
-              globalEnabled ? 'bg-blue-600' : 'bg-gray-200'
+              globalEnabled ? 'bg-blue-600' : 'bg-gray-600'
             }`}
           >
             <span
@@ -166,17 +166,17 @@ export default function AdminNotificationSettings() {
           </button>
         </div>
 
-        <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+        <div className="flex items-center justify-between p-4 border border-gray-700 rounded-lg">
           <div className="flex-1">
-            <h4 className="text-sm font-medium text-gray-900">Admin Email Notifications</h4>
-            <p className="text-sm text-gray-500 mt-1">
+            <h4 className="text-sm font-medium text-blue-200">Admin Email Notifications</h4>
+            <p className="text-sm text-gray-400 mt-1">
               Receive emails about system events and admin activities
             </p>
           </div>
           <button
             onClick={() => handleToggle('email_notifications', !settings?.email_notifications)}
             className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-              settings?.email_notifications ? 'bg-blue-600' : 'bg-gray-200'
+              settings?.email_notifications ? 'bg-blue-600' : 'bg-gray-600'
             }`}
           >
             <span
@@ -188,16 +188,16 @@ export default function AdminNotificationSettings() {
         </div>
 
         <div>
-          <h4 className="text-sm font-medium text-gray-900 mb-3">This Device</h4>
+          <h4 className="text-sm font-medium text-blue-200 mb-3">This Device</h4>
           {devices.filter(device => device.is_current_device).map(device => (
-            <div key={device.fcm_token} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg bg-blue-50">
+            <div key={device.fcm_token} className="flex items-center justify-between p-3 border border-gray-700 rounded-lg bg-blue-900/30">
               <div className="flex items-center space-x-3">
                 <span className="text-xl">{getPlatformIcon(device.platform)}</span>
                 <div>
-                  <p className="text-sm font-medium text-gray-900">
-                    {device.device_name} <span className="text-blue-600">(current)</span>
+                  <p className="text-sm font-medium text-blue-100">
+                    {device.device_name} <span className="text-blue-400">(current)</span>
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-400">
                     Last active: {device.relative_time}
                   </p>
                 </div>
@@ -206,7 +206,7 @@ export default function AdminNotificationSettings() {
                 onClick={() => handleDeviceToggle(device, !device.enabled)}  
                 disabled={!globalEnabled || togglingDevice.has(device.fcm_token)}
                 className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed ${
-                  device.enabled && globalEnabled ? 'bg-blue-600' : 'bg-gray-200'  
+                  device.enabled && globalEnabled ? 'bg-blue-600' : 'bg-gray-600'  
                 }`}
               >
                 <span
@@ -221,17 +221,17 @@ export default function AdminNotificationSettings() {
 
         {devices.filter(device => !device.is_current_device).length > 0 && (
           <div>
-            <h4 className="text-sm font-medium text-gray-900 mb-3">Other Devices</h4>
+            <h4 className="text-sm font-medium text-blue-200 mb-3">Other Devices</h4>
             <div className="space-y-2">
               {devices.filter(device => !device.is_current_device).map(device => (
-                <div key={device.fcm_token} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                <div key={device.fcm_token} className="flex items-center justify-between p-3 border border-gray-700 rounded-lg hover:bg-gray-750 transition-colors">
                   <div className="flex items-center space-x-3">
                     <span className="text-xl">{getPlatformIcon(device.platform)}</span>
                     <div>
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-sm font-medium text-blue-100">
                         {device.device_name}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-gray-400">
                         Last active: {device.relative_time}
                       </p>
                     </div>
@@ -240,7 +240,7 @@ export default function AdminNotificationSettings() {
                     onClick={() => handleDeviceToggle(device, !device.enabled)} 
                     disabled={!globalEnabled || togglingDevice.has(device.fcm_token)}
                     className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed ${
-                      device.enabled && globalEnabled ? 'bg-blue-600' : 'bg-gray-200' 
+                      device.enabled && globalEnabled ? 'bg-blue-600' : 'bg-gray-600' 
                     }`}
                   >
                     <span
@@ -256,15 +256,15 @@ export default function AdminNotificationSettings() {
         )}
 
         {!globalEnabled && (
-          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <p className="text-sm text-yellow-800">
+          <div className="p-3 bg-yellow-900/30 border border-yellow-800 rounded-lg">
+            <p className="text-sm text-yellow-200">
               Enable global admin notifications to manage devices individually.
             </p>
           </div>
         )}
 
         {devices.length === 0 && (
-          <div className="text-center py-6 text-gray-500">
+          <div className="text-center py-6 text-gray-400">
             <p className="text-sm">No admin devices found with push notification support.</p>
           </div>
         )}
