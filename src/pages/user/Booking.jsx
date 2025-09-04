@@ -342,14 +342,14 @@ export default function Rentals() {
       return (
         <div
           onClick={onClick}
-          className={`p-4 rounded-lg border cursor-pointer transition-all ${
+          className={`p-3 sm:p-4 rounded-lg border cursor-pointer transition-all ${
             isSelected
               ? "bg-amber-50 border-amber-300 shadow-sm ring-2 ring-amber-200"
               : "bg-amber-50/50 border-amber-200 hover:bg-amber-50 hover:border-amber-300"
           }`}
         >
-          <div className="flex items-start space-x-3">
-            <div className="w-12 h-12 bg-gray-100 rounded-md overflow-hidden flex-shrink-0 opacity-60">
+          <div className="flex items-start space-x-2 sm:space-x-3">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-100 rounded-md overflow-hidden flex-shrink-0 opacity-60">
               {!imgBroken && cameraImage ? (
                 <img
                   src={cameraImage || "/placeholder.svg"}
@@ -359,7 +359,7 @@ export default function Rentals() {
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-gray-400">
-                  <CameraIcon className="h-5 w-5" />
+                  <CameraIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                 </div>
               )}
             </div>
@@ -367,7 +367,7 @@ export default function Rentals() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
                 <h3 className="font-medium text-gray-700 truncate text-sm">{cameraName}</h3>
-                <CreditCard className="h-4 w-4 text-amber-600 flex-shrink-0" />
+                <CreditCard className="h-3 w-3 sm:h-4 sm:w-4 text-amber-600 flex-shrink-0" />
               </div>
               
               <div className="flex items-center space-x-2 mt-1">
@@ -375,8 +375,8 @@ export default function Rentals() {
               </div>
               
               <div className="mt-2">
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                  <CreditCard className="w-3 h-3 mr-1" />
+                <span className="inline-flex items-center px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                  <CreditCard className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1" />
                   Payment Required
                 </span>
               </div>
@@ -398,14 +398,14 @@ export default function Rentals() {
     return (
       <div
         onClick={onClick}
-        className={`p-4 rounded-lg border cursor-pointer transition-all ${
+        className={`p-3 sm:p-4 rounded-lg border cursor-pointer transition-all ${
           isSelected
             ? "bg-blue-50 border-blue-200 shadow-sm"
             : "bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300"
         }`}
       >
-        <div className="flex items-start space-x-3">
-          <div className="w-12 h-12 bg-gray-100 rounded-md overflow-hidden flex-shrink-0">
+        <div className="flex items-start space-x-2 sm:space-x-3">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-100 rounded-md overflow-hidden flex-shrink-0">
             {!imgBroken && cameraImage ? (
               <img
                 src={cameraImage || "/placeholder.svg"}
@@ -415,7 +415,7 @@ export default function Rentals() {
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-gray-400">
-                <CameraIcon className="h-5 w-5" />
+                <CameraIcon className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
             )}
           </div>
@@ -423,7 +423,7 @@ export default function Rentals() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between">
               <h3 className="font-medium text-gray-900 truncate text-sm">{cameraName}</h3>
-              {isSelected && <ArrowRight className="h-4 w-4 text-blue-500 flex-shrink-0" />}
+              {isSelected && <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 text-blue-500 flex-shrink-0" />}
             </div>
             
             <div className="flex items-center space-x-2 mt-1">
@@ -465,14 +465,14 @@ export default function Rentals() {
       return (
         <div className="bg-white rounded-lg border border-amber-200 overflow-hidden">
           {/* Payment Required Header */}
-          <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4 text-white">
+          <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-4 sm:px-6 py-3 sm:py-4 text-white">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-xl font-bold flex items-center">
-                  <CreditCard className="w-5 h-5 mr-2" />
+                <h1 className="text-lg sm:text-xl font-bold flex items-center">
+                  <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                   Payment Required
                 </h1>
-                <div className="flex items-center space-x-3 mt-2">
+                <div className="flex items-center space-x-2 sm:space-x-3 mt-2">
                   <span className="text-xs font-mono bg-white/20 px-2 py-1 rounded">
                     #{rental.id.slice(0, 8)}
                   </span>
@@ -483,29 +483,29 @@ export default function Rentals() {
               </div>
               <div className="text-right">
                 {typeof rental.total_price === "number" && (
-                  <div className="text-2xl font-bold">₱ {Number(rental.total_price).toFixed(2)}</div>
+                  <div className="text-lg sm:text-2xl font-bold">₱ {Number(rental.total_price).toFixed(2)}</div>
                 )}
               </div>
             </div>
           </div>
 
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {/* Payment Status Message */}
-            <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-              <div className="flex items-start space-x-3">
-                <AlertCircle className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="flex items-start space-x-2 sm:space-x-3">
+                <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600 flex-shrink-0 mt-0.5" />
                 <div>
-                  <h3 className="font-semibold text-amber-800 mb-2">Payment Required to Proceed</h3>
-                  <p className="text-amber-700 text-sm mb-3">
+                  <h3 className="font-semibold text-amber-800 mb-2 text-sm sm:text-base">Payment Required to Proceed</h3>
+                  <p className="text-amber-700 text-xs sm:text-sm mb-3">
                     Your rental has been confirmed by the admin, but payment is required before we can start preparing your order for delivery.
                   </p>
                   {rental.payment_status === "rejected" && (
-                    <p className="text-red-700 text-sm mb-3">
+                    <p className="text-red-700 text-xs sm:text-sm mb-3">
                       <strong>Previous payment was rejected.</strong> Please upload a new, clear payment receipt.
                     </p>
                   )}
                   {rental.payment_status === "submitted" && (
-                    <p className="text-blue-700 text-sm mb-3">
+                    <p className="text-blue-700 text-xs sm:text-sm mb-3">
                       <strong>Payment receipt submitted.</strong> Please wait for admin verification.
                     </p>
                   )}
@@ -514,48 +514,48 @@ export default function Rentals() {
             </div>
 
             {/* Rental Summary */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              <div className="bg-blue-50 rounded-lg p-4">
-                <div className="flex items-center space-x-2 mb-3">
-                  <Calendar className="h-5 w-5 text-blue-600" />
-                  <h4 className="font-medium text-gray-900">Rental Period</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
+              <div className="bg-blue-50 rounded-lg p-3 sm:p-4">
+                <div className="flex items-center space-x-2 mb-2 sm:mb-3">
+                  <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+                  <h4 className="font-medium text-gray-900 text-sm sm:text-base">Rental Period</h4>
                 </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
+                <div className="space-y-1 sm:space-y-2">
+                  <div className="flex justify-between text-xs sm:text-sm">
                     <span className="text-gray-600">Start Date</span>
                     <span className="font-medium text-gray-900">{formatDate(rental.start_date)}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-xs sm:text-sm">
                     <span className="text-gray-600">End Date</span>
                     <span className="font-medium text-gray-900">{formatDate(rental.end_date)}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-green-50 rounded-lg p-4">
-                <div className="flex items-center space-x-2 mb-3">
-                  <PhilippinePeso className="h-5 w-5 text-green-600" />
-                  <h4 className="font-medium text-gray-900">Total Amount</h4>
+              <div className="bg-green-50 rounded-lg p-3 sm:p-4">
+                <div className="flex items-center space-x-2 mb-2 sm:mb-3">
+                  <PhilippinePeso className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
+                  <h4 className="font-medium text-gray-900 text-sm sm:text-base">Total Amount</h4>
                 </div>
-                <div className="text-2xl font-bold text-green-700">
+                <div className="text-xl sm:text-2xl font-bold text-green-700">
                   ₱ {Number(rental.total_price).toFixed(2)}
                 </div>
               </div>
             </div>
 
             {/* Call to Action */}
-            <div className="bg-gray-50 rounded-lg p-6 text-center">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Complete Your Payment</h3>
-              <p className="text-gray-600 mb-4">
+            <div className="bg-gray-50 rounded-lg p-4 sm:p-6 text-center">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">Complete Your Payment</h3>
+              <p className="text-gray-600 mb-3 sm:mb-4 text-sm sm:text-base">
                 Upload your payment receipt in the Requests page to proceed with your rental.
               </p>
               <button
                 onClick={() => navigate('/user/requests')}
-                className="inline-flex items-center px-6 py-3 bg-amber-600 text-white font-semibold rounded-lg hover:bg-amber-700 transition-colors"
+                className="inline-flex items-center px-4 sm:px-6 py-2 sm:py-3 bg-amber-600 text-white font-semibold rounded-lg hover:bg-amber-700 transition-colors text-sm sm:text-base"
               >
-                <CreditCard className="w-5 h-5 mr-2" />
+                <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                 Go to Requests
-                <ExternalLink className="w-4 h-4 ml-2" />
+                <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4 ml-2" />
               </button>
             </div>
           </div>
@@ -609,11 +609,11 @@ export default function Rentals() {
     return (
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         {/* Header Section */}
-        <div className="bg-gradient-to-r from-gray-900 to-gray-800 px-6 py-4 text-white">
+        <div className="bg-gradient-to-r from-gray-900 to-gray-800 px-4 sm:px-6 py-3 sm:py-4 text-white">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl font-bold">{cameraName}</h1>
-              <div className="flex items-center space-x-3 mt-2">
+              <h1 className="text-lg sm:text-xl font-bold">{cameraName}</h1>
+              <div className="flex items-center space-x-2 sm:space-x-3 mt-2">
                 <span className="text-xs font-mono bg-white/20 px-2 py-1 rounded">
                   #{rental.id.slice(0, 8)}
                 </span>
@@ -624,10 +624,10 @@ export default function Rentals() {
             </div>
             <div className="text-right">
               {typeof rental.total_price === "number" && (
-                <div className="text-2xl font-bold">₱ {Number(rental.total_price).toFixed(2)}</div>
+                <div className="text-lg sm:text-2xl font-bold">₱ {Number(rental.total_price).toFixed(2)}</div>
               )}
               {days && (
-                <div className="text-sm text-gray-300">
+                <div className="text-xs sm:text-sm text-gray-300">
                   ₱ {Number(rental.price_per_day).toFixed(2)}/day • {days} days
                 </div>
               )}
@@ -635,9 +635,9 @@ export default function Rentals() {
           </div>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* Equipment Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
             <div className="lg:col-span-1">
               <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
                 {!imgBroken && cameraImage ? (
@@ -649,28 +649,28 @@ export default function Rentals() {
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-gray-400">
-                    <CameraIcon className="h-16 w-16" />
+                    <CameraIcon className="h-12 w-12 sm:h-16 sm:w-16" />
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="lg:col-span-2 space-y-4">
+            <div className="lg:col-span-2 space-y-3 sm:space-y-4">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Equipment Details</h3>
-                <p className="text-gray-600 text-sm leading-relaxed">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">Equipment Details</h3>
+                <p className="text-gray-600 text-xs sm:text-sm leading-relaxed">
                   {cameraDesc || "No description available."}
                 </p>
               </div>
 
               {inclusions && inclusions.length > 0 && (
                 <div>
-                  <h4 className="font-medium text-gray-900 mb-3">Package Includes</h4>
-                  <div className="bg-blue-50 rounded-lg p-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-32 overflow-y-auto">
+                  <h4 className="font-medium text-gray-900 mb-2 sm:mb-3 text-sm sm:text-base">Package Includes</h4>
+                  <div className="bg-blue-50 rounded-lg p-2 sm:p-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 sm:gap-2 max-h-24 sm:max-h-32 overflow-y-auto">
                       {inclusions.map((inc, idx) => (
-                        <div key={idx} className="flex items-center space-x-2 text-sm">
-                          <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+                        <div key={idx} className="flex items-center space-x-2 text-xs sm:text-sm">
+                          <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-blue-500 rounded-full"></div>
                           <span className="text-gray-700">
                             {inc?.inclusion_items?.name || "Item"}
                             {inc?.quantity > 1 && <span className="text-gray-500 ml-1">×{inc.quantity}</span>}
@@ -685,23 +685,23 @@ export default function Rentals() {
           </div>
 
           {/* Info Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-blue-50 rounded-lg p-4">
-              <div className="flex items-center space-x-2 mb-3">
-                <Calendar className="h-5 w-5 text-blue-600" />
-                <h4 className="font-medium text-gray-900">Rental Period</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+            <div className="bg-blue-50 rounded-lg p-3 sm:p-4">
+              <div className="flex items-center space-x-2 mb-2 sm:mb-3">
+                <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+                <h4 className="font-medium text-gray-900 text-sm sm:text-base">Rental Period</h4>
               </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
+              <div className="space-y-1 sm:space-y-2">
+                <div className="flex justify-between text-xs sm:text-sm">
                   <span className="text-gray-600">Start Date</span>
                   <span className="font-medium text-gray-900">{formatDate(rental.start_date)}</span>
                 </div>
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-xs sm:text-sm">
                   <span className="text-gray-600">End Date</span>
                   <span className="font-medium text-gray-900">{formatDate(rental.end_date)}</span>
                 </div>
                 {days != null && (
-                  <div className="flex justify-between text-sm pt-2 border-t border-blue-200">
+                  <div className="flex justify-between text-xs sm:text-sm pt-1 sm:pt-2 border-t border-blue-200">
                     <span className="text-gray-600">Duration</span>
                     <span className="font-semibold text-blue-700">
                       {days} day{days === 1 ? "" : "s"}
@@ -711,19 +711,19 @@ export default function Rentals() {
               </div>
             </div>
 
-            <div className="bg-green-50 rounded-lg p-4">
-              <div className="flex items-center space-x-2 mb-3">
-                <PhilippinePeso className="h-5 w-5 text-green-600" />
-                <h4 className="font-medium text-gray-900">Pricing Details</h4>
+            <div className="bg-green-50 rounded-lg p-3 sm:p-4">
+              <div className="flex items-center space-x-2 mb-2 sm:mb-3">
+                <PhilippinePeso className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
+                <h4 className="font-medium text-gray-900 text-sm sm:text-base">Pricing Details</h4>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1 sm:space-y-2">
                 {days && (
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-xs sm:text-sm">
                     <span className="text-gray-600">Daily Rate</span>
                     <span className="font-medium text-gray-900">₱ {Number(rental.price_per_day).toFixed(2)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-sm pt-2 border-t border-green-200">
+                <div className="flex justify-between text-xs sm:text-sm pt-1 sm:pt-2 border-t border-green-200">
                   <span className="text-gray-600">Total Amount</span>
                   <span className="font-semibold text-green-700">₱ {Number(rental.total_price).toFixed(2)}</span>
                 </div>
@@ -734,20 +734,20 @@ export default function Rentals() {
           {/* Countdown Section */}
           {(showCountdownToEnd || showCountdownToStart) && (
             <div
-              className={`rounded-lg p-4 ${
+              className={`rounded-lg p-3 sm:p-4 ${
                 soonEnd || soonStart
                   ? "bg-amber-50 border border-amber-200"
                   : "bg-blue-50 border border-blue-200"
               }`}
             >
-              <div className="flex items-center space-x-2 mb-3">
-                <Timer className={`h-5 w-5 ${soonEnd || soonStart ? "text-amber-600" : "text-blue-600"}`} />
-                <h4 className={`font-medium ${soonEnd || soonStart ? "text-amber-900" : "text-blue-900"}`}>
+              <div className="flex items-center space-x-2 mb-2 sm:mb-3">
+                <Timer className={`h-4 w-4 sm:h-5 sm:w-5 ${soonEnd || soonStart ? "text-amber-600" : "text-blue-600"}`} />
+                <h4 className={`font-medium text-sm sm:text-base ${soonEnd || soonStart ? "text-amber-900" : "text-blue-900"}`}>
                   {showCountdownToEnd ? "Time Remaining" : "Starts In"}
                 </h4>
               </div>
               
-              <div className={`text-2xl font-bold mb-2 ${soonEnd || soonStart ? "text-amber-900" : "text-blue-900"}`}>
+              <div className={`text-lg sm:text-2xl font-bold mb-2 ${soonEnd || soonStart ? "text-amber-900" : "text-blue-900"}`}>
                 {showCountdownToEnd && countdownToEnd && (
                   <span>
                     {countdownToEnd.days}d {countdownToEnd.hours}h {countdownToEnd.minutes}m
@@ -772,8 +772,8 @@ export default function Rentals() {
 
           {/* Delivery Progress */}
           <div>
-            <h4 className="font-semibold text-gray-900 mb-4">Delivery Progress</h4>
-            <div className="bg-gray-50 rounded-lg p-4">
+            <h4 className="font-semibold text-gray-900 mb-3 sm:mb-4 text-sm sm:text-base">Delivery Progress</h4>
+            <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
               <div className="flex items-center justify-between">
                 {steps.map((step, idx) => {
                   const Icon = step.icon
@@ -782,7 +782,7 @@ export default function Rentals() {
                   return (
                     <div key={step.key} className="flex flex-col items-center">
                       <div
-                        className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
+                        className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border-2 ${
                           reached
                             ? isActive
                               ? "bg-blue-500 border-blue-500 text-white"
@@ -790,10 +790,10 @@ export default function Rentals() {
                             : "bg-white border-gray-300 text-gray-400"
                         }`}
                       >
-                        <Icon className="h-4 w-4" />
+                        <Icon className="h-3 w-3 sm:h-4 sm:w-4" />
                       </div>
                       <span
-                        className={`text-xs mt-2 text-center max-w-16 leading-tight ${
+                        className={`text-xs mt-1 sm:mt-2 text-center max-w-12 sm:max-w-16 leading-tight ${
                           reached ? "text-gray-900 font-medium" : "text-gray-500"
                         }`}
                       >
@@ -808,43 +808,43 @@ export default function Rentals() {
 
           {/* Status Messages */}
           {rental.shipping_status === 'returned' ? (
-            <div className="p-3 bg-green-50 border border-green-200 rounded-lg flex items-center space-x-3">
-              <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+            <div className="p-2 sm:p-3 bg-green-50 border border-green-200 rounded-lg flex items-center space-x-2 sm:space-x-3">
+              <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 flex-shrink-0" />
               <div>
-                <p className="font-medium text-green-800 text-sm">Return Confirmed</p>
+                <p className="font-medium text-green-800 text-xs sm:text-sm">Return Confirmed</p>
                 <p className="text-xs text-green-600">The item has been successfully returned and checked by the admin.</p>
               </div>
             </div>
           ) : rental.shipping_status === 'in_transit_to_owner' ? (
-             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center space-x-3">
-              <Truck className="h-5 w-5 text-blue-600 flex-shrink-0" />
+             <div className="p-2 sm:p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center space-x-2 sm:space-x-3">
+              <Truck className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 flex-shrink-0" />
               <div>
-                <p className="font-medium text-blue-800 text-sm">Return Shipment Sent</p>
+                <p className="font-medium text-blue-800 text-xs sm:text-sm">Return Shipment Sent</p>
                 <p className="text-xs text-blue-600">You have marked the item as shipped back. It's now in transit to the owner.</p>
               </div>
             </div>
           ) : rental.shipping_status === 'return_scheduled' && actionLoading[rental.id] === "confirmSentBack" ? (
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center space-x-3">
-              <Loader2 className="h-5 w-5 text-blue-600 flex-shrink-0 animate-spin" />
+            <div className="p-2 sm:p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center space-x-2 sm:space-x-3">
+              <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 flex-shrink-0 animate-spin" />
               <div>
-                <p className="font-medium text-blue-800 text-sm">Processing Return Shipment</p>
+                <p className="font-medium text-blue-800 text-xs sm:text-sm">Processing Return Shipment</p>
                 <p className="text-xs text-blue-600">Please wait while we process your return...</p>
               </div>
             </div>
           ) : null}
 
           {/* Action Buttons */}
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2 sm:gap-3">
             {rental.contract_pdf_url && (
               <button
                 onClick={() => viewContract(rental.id, rental.contract_pdf_url)}
                 disabled={!!contractViewLoading[rental.id]}
-                className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 text-sm font-medium"
+                className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 text-xs sm:text-sm font-medium"
               >
                 {contractViewLoading[rental.id] ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                 ) : (
-                  <FileText className="h-4 w-4" />
+                  <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
                 )}
                 <span>View Contract</span>
               </button>
@@ -853,12 +853,12 @@ export default function Rentals() {
               <button
                 onClick={() => handleConfirmDelivered(rental.id)}
                 disabled={actionLoading[rental.id] === "confirmDelivered"}
-                className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 text-sm font-medium"
+                className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 text-xs sm:text-sm font-medium"
               >
                 {actionLoading[rental.id] === "confirmDelivered" ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                 ) : (
-                  <CheckCircle className="h-4 w-4" />
+                  <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4" />
                 )}
                 <span>Confirm Received</span>
               </button>
@@ -867,16 +867,16 @@ export default function Rentals() {
               <button
                 onClick={() => handleConfirmSentBack(rental.id)}
                 disabled={actionLoading[rental.id] === "confirmSentBack"}
-                className="flex items-center space-x-2 px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 disabled:opacity-50 text-sm font-medium"
+                className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 disabled:opacity-50 text-xs sm:text-sm font-medium"
               >
                 {actionLoading[rental.id] === "confirmSentBack" ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                     <span>Processing...</span>
                   </>
                 ) : (
                   <>
-                    <Truck className="h-4 w-4" />
+                    <Truck className="h-3 w-3 sm:h-4 sm:w-4" />
                     <span>Confirm Shipped Back</span>
                   </>
                 )}
@@ -887,15 +887,15 @@ export default function Rentals() {
             {(rental.rental_status === "completed" || rental.rental_status === "active") && !feedbackSubmitted[rental.id] && (
               <button
                 onClick={() => setShowFeedbackForm(true)}
-                className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 text-sm font-medium"
+                className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 text-xs sm:text-sm font-medium"
               >
                 <span>Give Feedback</span>
               </button>
             )}
 
             {feedbackSubmitted[rental.id] && (
-              <div className="flex items-center space-x-2 px-4 py-2 bg-green-100 text-green-800 rounded-md text-sm font-medium">
-                <CheckCircle className="h-4 w-4" />
+              <div className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-green-100 text-green-800 rounded-md text-xs sm:text-sm font-medium">
+                <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4" />
                 <span>Feedback Submitted</span>
               </div>
             )}
@@ -924,8 +924,8 @@ export default function Rentals() {
           </AnimatePresence>
 
           {contractViewError[rental.id] && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-600">{contractViewError[rental.id]}</p>
+            <div className="p-2 sm:p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-xs sm:text-sm text-red-600">{contractViewError[rental.id]}</p>
             </div>
           )}
         </div>
@@ -949,10 +949,10 @@ export default function Rentals() {
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <div className="flex items-center justify-center h-64">
-          <div className="flex items-center space-x-3">
-            <Loader2 className="h-6 w-6 text-blue-600 animate-spin" />
-            <span className="text-gray-600">Loading your rentals...</span>
+        <div className="flex items-center justify-center h-48 sm:h-64">
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 animate-spin" />
+            <span className="text-gray-600 text-sm sm:text-base">Loading your rentals...</span>
           </div>
         </div>
       </div>
@@ -962,20 +962,20 @@ export default function Rentals() {
   // Main Render: Main component UI
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
         {/* Filter Tabs */}
-        <div className="mb-6">
-          <div className="inline-flex rounded-lg border border-gray-200 bg-white p-1">
+        <div className="mb-4 sm:mb-6">
+          <div className="flex rounded-lg border border-gray-200 bg-white p-0.5 sm:p-1 overflow-x-auto">
             {[
-              { key: "payment_pending", label: "Payment Required" },
-              { key: "awaiting", label: "Awaiting Delivery" },
-              { key: "active", label: "Active" },
-              { key: "returning", label: "Returning" },
+              { key: "payment_pending", label: "Payment Required", shortLabel: "Payment" },
+              { key: "awaiting", label: "Awaiting Delivery", shortLabel: "Awaiting" },
+              { key: "active", label: "Active", shortLabel: "Active" },
+              { key: "returning", label: "Returning", shortLabel: "Returning" },
             ].map((f) => (
               <button
                 key={f.key}
                 onClick={() => setActiveFilter(f.key)}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                className={`px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md transition-all whitespace-nowrap ${
                   activeFilter === f.key
                     ? f.key === "payment_pending" 
                       ? "bg-amber-600 text-white shadow-sm"
@@ -983,8 +983,9 @@ export default function Rentals() {
                     : "text-gray-700 hover:bg-gray-50"
                 }`}
               >
-                {f.key === "payment_pending" && <CreditCard className="w-4 h-4 mr-1 inline" />}
-                {f.label}
+                {f.key === "payment_pending" && <CreditCard className="w-3 h-3 sm:w-4 sm:h-4 mr-1 inline" />}
+                <span className="sm:hidden">{f.shortLabel}</span>
+                <span className="hidden sm:inline">{f.label}</span>
               </button>
             ))}
           </div>
@@ -992,13 +993,13 @@ export default function Rentals() {
 
         {/* Error Message */}
         {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
-            <div className="flex items-start space-x-3">
-              <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+          <div className="mb-4 sm:mb-6 bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4">
+            <div className="flex items-start space-x-2 sm:space-x-3">
+              <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-red-500 mt-0.5 flex-shrink-0" />
               <div className="flex-1">
-                <p className="text-red-800 font-medium">Something went wrong</p>
-                <p className="text-red-600 text-sm mt-1">{error}</p>
-                <button onClick={refresh} className="mt-2 text-sm text-red-700 underline hover:no-underline">
+                <p className="text-red-800 font-medium text-sm sm:text-base">Something went wrong</p>
+                <p className="text-red-600 text-xs sm:text-sm mt-1">{error}</p>
+                <button onClick={refresh} className="mt-2 text-xs sm:text-sm text-red-700 underline hover:no-underline">
                   Try again
                 </button>
               </div>
@@ -1008,17 +1009,17 @@ export default function Rentals() {
 
         {/* Main Content */}
         {displayedRentals.length === 0 ? (
-          <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
-            <div className={`w-16 h-16 rounded-lg flex items-center justify-center mx-auto mb-4 ${
+          <div className="bg-white border border-gray-200 rounded-lg p-6 sm:p-8 lg:p-12 text-center">
+            <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-lg flex items-center justify-center mx-auto mb-3 sm:mb-4 ${
               activeFilter === "payment_pending" ? "bg-amber-100" : "bg-gray-100"
             }`}>
               {activeFilter === "payment_pending" ? (
-                <CreditCard className="h-8 w-8 text-amber-600" />
+                <CreditCard className="h-6 w-6 sm:h-8 sm:w-8 text-amber-600" />
               ) : (
-                <CameraIcon className="h-8 w-8 text-gray-400" />
+                <CameraIcon className="h-6 w-6 sm:h-8 sm:w-8 text-gray-400" />
               )}
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
               {activeFilter === "payment_pending" 
                 ? "No payment required" 
                 : activeFilter === "awaiting"
@@ -1028,7 +1029,7 @@ export default function Rentals() {
                 : "No returning rentals"
               }
             </h3>
-            <p className="text-gray-600">
+            <p className="text-gray-600 text-sm sm:text-base">
               {activeFilter === "payment_pending" 
                 ? "All your confirmed rentals have been paid for. Check other tabs for your rentals." 
                 : activeFilter === "awaiting"
@@ -1040,11 +1041,11 @@ export default function Rentals() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 lg:gap-6">
             {/* Sidebar */}
-            <div className="lg:col-span-1">
-              <h3 className="font-semibold text-gray-900 mb-4">Your Rentals</h3>
-              <div className="space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto">
+            <div className="xl:col-span-1">
+              <h3 className="font-semibold text-gray-900 mb-3 sm:mb-4 text-sm sm:text-base">Your Rentals</h3>
+              <div className="space-y-2 sm:space-y-3 max-h-[calc(50vh)] xl:max-h-[calc(100vh-200px)] overflow-y-auto">
                 {displayedRentals.map((rental) => (
                   <RentalSidebarCard
                     key={rental.id}
@@ -1057,7 +1058,7 @@ export default function Rentals() {
             </div>
 
             {/* Detail View */}
-            <div className="lg:col-span-3">
+            <div className="xl:col-span-3">
               <RentalDetailView rental={selectedRental} />
             </div>
           </div>
