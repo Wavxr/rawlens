@@ -294,6 +294,85 @@ export async function userCancelRentalRequest(rentalId) {
   }
 }
 
+// User cancels their own confirmed rental request (with restrictions)
+export async function userCancelConfirmedRental(rentalId, cancellationReason) {
+  try {
+    // Get the current user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      throw new Error("Authentication error. Please log in.");
+    }
+
+    // Get the rental with full details including shipping status
+    const { data: rental, error: fetchError } = await supabase
+      .from('rentals')
+      .select('id, rental_status, shipping_status, user_id, start_date, end_date')
+      .eq('id', rentalId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (fetchError) {
+      throw new Error("Rental not found or you don't have permission to cancel it.");
+    }
+
+    if (rental.rental_status !== 'confirmed') {
+      throw new Error("Only confirmed rental requests can be cancelled.");
+    }
+
+    // Check if camera is already in user's hands - prevent cancellation
+    const cameraInUserHands = [
+      'in_transit_to_user',
+      'delivered', 
+      'active',
+      'return_scheduled',
+      'in_transit_to_owner'
+    ].includes(rental.shipping_status);
+
+    if (cameraInUserHands) {
+      let statusMessage = '';
+      switch (rental.shipping_status) {
+        case 'in_transit_to_user':
+          statusMessage = 'The camera is currently being shipped to you';
+          break;
+        case 'delivered':
+          statusMessage = 'The camera has been delivered to you';
+          break;
+        case 'active':
+          statusMessage = 'Your rental period is currently active';
+          break;
+        case 'return_scheduled':
+          statusMessage = 'The return process has already been initiated';
+          break;
+        case 'in_transit_to_owner':
+          statusMessage = 'The camera is being returned to the owner';
+          break;
+        default:
+          statusMessage = 'The camera is already in the delivery/rental process';
+      }
+      throw new Error(`Cannot cancel rental: ${statusMessage}. Please contact support for assistance.`);
+    }
+
+    // Update the rental status to cancelled with reason
+    const { error: updateError } = await supabase
+      .from('rentals')
+      .update({
+        rental_status: 'cancelled',
+        cancellation_reason: cancellationReason,
+        cancelled_at: new Date().toISOString(),
+        cancelled_by: 'user'
+      })
+      .eq('id', rentalId)
+      .eq('user_id', user.id);
+
+    if (updateError) throw updateError;
+    
+    return { success: true, error: null };
+  } catch (error) {
+    console.error("Error in userCancelConfirmedRental:", error);
+    return { success: false, error: error.message || "Failed to cancel confirmed rental." };
+  }
+}
+
 // ------------------------------------------
 //   --  Admin Functions --
 // ------------------------------------------
@@ -545,5 +624,38 @@ export async function adminDeleteRental(rentalId) {
   } catch (error) {
     console.error("Error in adminDeleteRental:", error);
     return { success: false, error: error.message || "Failed to delete rental." };
+  }
+}
+
+// Admin removes a cancelled rental (frees up the dates)
+export async function adminRemoveCancelledRental(rentalId) {
+  try {
+    // First verify the rental is cancelled
+    const { data: rental, error: fetchError } = await supabase
+      .from('rentals')
+      .select('id, rental_status')
+      .eq('id', rentalId)
+      .single();
+
+    if (fetchError) {
+      throw new Error("Rental not found.");
+    }
+
+    if (rental.rental_status !== 'cancelled') {
+      throw new Error("Only cancelled rentals can be removed.");
+    }
+
+    // Delete the cancelled rental
+    const { error: deleteError } = await supabase
+      .from('rentals')
+      .delete()
+      .eq('id', rentalId);
+
+    if (deleteError) throw deleteError;
+    
+    return { success: true, error: null };
+  } catch (error) {
+    console.error("Error in adminRemoveCancelledRental:", error);
+    return { success: false, error: error.message || "Failed to remove cancelled rental." };
   }
 }

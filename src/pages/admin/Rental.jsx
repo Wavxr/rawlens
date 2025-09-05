@@ -27,6 +27,7 @@ import {
   adminCompleteRental,
   adminCancelRental,
   adminDeleteRental,
+  adminRemoveCancelledRental,
   adminConfirmApplicationWithConflictCheck,
   transferRentalToUnit,
   findConflictingRentals,
@@ -634,6 +635,26 @@ export default function Rentals() {
     }
   };
 
+  const handleRemoveCancelledRental = async (rentalId) => {
+    setActionLoading((prev) => ({ ...prev, [rentalId]: "remove" }));
+    try {
+      const result = await adminRemoveCancelledRental(rentalId);
+      if (result.error) {
+        toast.error(`Failed to remove cancelled rental: ${result.error}`);
+        return;
+      }
+      toast.success("Cancelled rental removed successfully!");
+    } catch (error) {
+      toast.error("Failed to remove cancelled rental");
+    } finally {
+      setActionLoading((prev) => {
+        const newLoading = { ...prev };
+        delete newLoading[rentalId];
+        return newLoading;
+      });
+    }
+  };
+
   // Conflict resolution handlers
   const handleConfirmWithCurrentUnit = async (rentalId) => {
     setConflictLoading(true);
@@ -1153,6 +1174,26 @@ export default function Rentals() {
                 <span>Transfer Unit</span>
               </button>
             )}
+            {/* Remove button for cancelled rentals */}
+            {rental.rental_status === "cancelled" && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (confirm('Are you sure you want to remove this cancelled rental? This will free up the dates and permanently delete the record.')) {
+                    handleRemoveCancelledRental(rental.id);
+                  }
+                }}
+                disabled={actionLoading[rental.id] === "remove"}
+                className="inline-flex items-center space-x-1 md:space-x-2 bg-orange-600 hover:bg-orange-700 text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {actionLoading[rental.id] === "remove" ? (
+                  <Loader2 className="h-3 w-3 md:h-4 md:w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-3 w-3 md:h-4 md:w-4" />
+                )}
+                <span>Remove & Free Dates</span>
+              </button>
+            )}
             <button
               onClick={() => handleViewDetails(rental)}
               className="inline-flex items-center space-x-1 md:space-x-2 text-gray-300 hover:text-white text-xs md:text-sm font-medium"
@@ -1181,6 +1222,28 @@ export default function Rentals() {
               <p className="text-red-300 text-xs md:text-sm">
                 {contractViewError[rental.id]}
               </p>
+            </div>
+          )}
+          {/* Cancellation reason display */}
+          {rental.rental_status === "cancelled" && rental.cancellation_reason && (
+            <div className="mt-3 p-2 md:p-3 bg-orange-900/20 border border-orange-700 rounded-lg">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-orange-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-orange-200 text-xs md:text-sm font-medium mb-1">
+                    Cancellation Reason
+                  </p>
+                  <p className="text-orange-300 text-xs md:text-sm leading-relaxed">
+                    {rental.cancellation_reason}
+                  </p>
+                  {rental.cancelled_by && (
+                    <p className="text-orange-400 text-xs mt-1">
+                      Cancelled by: {rental.cancelled_by === 'user' ? 'Customer' : 'Admin'}
+                      {rental.cancelled_at && ` on ${formatDate(rental.cancelled_at)}`}
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
           )}
         </div>

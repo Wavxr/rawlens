@@ -2,9 +2,10 @@ import React, { useEffect, useMemo, useState, useRef } from 'react';
 import useAuthStore from '../../stores/useAuthStore';
 import useRentalStore from '../../stores/rentalStore';
 import { subscribeToRentalUpdates, unsubscribeFromRentalUpdates } from '../../services/realtimeService';
-import { userCancelRentalRequest } from '../../services/rentalService';
+import { userCancelRentalRequest, userCancelConfirmedRental } from '../../services/rentalService';
 import { Loader2, Calendar, Camera as CameraIcon, AlertCircle, Clock, CheckCircle2, XCircle, Trash2 } from 'lucide-react';
 import PaymentUploadSection from '../../components/payment/PaymentUploadSection';
+import CancellationModal from '../../components/modals/CancellationModal';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -89,6 +90,7 @@ const Section = ({ title, count, children, icon: Icon }) => (
 
 const RequestRow = ({ rental, onUploadComplete, onCancelComplete }) => {
   const [isCancelling, setIsCancelling] = useState(false);
+  const [showCancellationModal, setShowCancellationModal] = useState(false);
   const camera = rental.cameras || {};
   const dateRange = `${formatDate(rental.start_date)} — ${formatDate(rental.end_date)}`;
 
@@ -113,6 +115,29 @@ const RequestRow = ({ rental, onUploadComplete, onCancelComplete }) => {
     } finally {
       setIsCancelling(false);
     }
+  };
+
+  const handleCancelConfirmedRental = async (rentalId, reason) => {
+    try {
+      const result = await userCancelConfirmedRental(rentalId, reason);
+      if (result.success) {
+        toast.success('Rental cancelled successfully');
+        setShowCancellationModal(false);
+        if (onCancelComplete) {
+          onCancelComplete();
+        }
+      } else {
+        toast.error(result.error || 'Failed to cancel rental');
+      }
+    } catch (error) {
+      toast.error('Failed to cancel rental');
+    }
+  };
+
+  const canCancelConfirmed = () => {
+    // Check if the rental is confirmed and camera hasn't been shipped yet
+    return rental.rental_status === 'confirmed' && 
+           (!rental.shipping_status || rental.shipping_status === 'ready_to_ship');
   };
   
   return (
@@ -165,6 +190,17 @@ const RequestRow = ({ rental, onUploadComplete, onCancelComplete }) => {
                     <span className="hidden md:inline">Cancel</span>
                   </button>
                 )}
+                {/* Cancel button for confirmed requests (only before shipping) */}
+                {canCancelConfirmed() && (
+                  <button
+                    onClick={() => setShowCancellationModal(true)}
+                    className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200 rounded-full hover:bg-amber-100 hover:border-amber-300 transition-colors"
+                    title="Cancel confirmed rental"
+                  >
+                    <XCircle className="w-3 h-3" />
+                    <span className="hidden md:inline">Cancel</span>
+                  </button>
+                )}
               </div>
               
               {/* Date Range */}
@@ -208,6 +244,14 @@ const RequestRow = ({ rental, onUploadComplete, onCancelComplete }) => {
           )}
         </div>
       </div>
+
+      {/* Cancellation Modal */}
+      <CancellationModal
+        isOpen={showCancellationModal}
+        onClose={() => setShowCancellationModal(false)}
+        onConfirm={handleCancelConfirmedRental}
+        rental={rental}
+      />
     </div>
   );
 };
