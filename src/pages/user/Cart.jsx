@@ -135,9 +135,21 @@ const RequestRow = ({ rental, onUploadComplete, onCancelComplete }) => {
   };
 
   const canCancelConfirmed = () => {
-    // Check if the rental is confirmed and camera hasn't been shipped yet
-    return rental.rental_status === 'confirmed' && 
-           (!rental.shipping_status || rental.shipping_status === 'ready_to_ship');
+    // Check if the rental is confirmed and not yet shipped or in customer's hands
+    if (rental.rental_status !== 'confirmed') return false;
+    
+    // Allow cancellation if shipping hasn't started or only in ready_to_ship status
+    const prohibitedShippingStatuses = [
+      'in_transit_to_user',
+      'delivered', 
+      'active',
+      'return_scheduled',
+      'in_transit_to_owner'
+    ];
+    
+    return !rental.shipping_status || 
+           rental.shipping_status === 'ready_to_ship' || 
+           !prohibitedShippingStatuses.includes(rental.shipping_status);
   };
   
   return (
@@ -309,14 +321,14 @@ const Requests = () => {
     for (const r of rentals) {
       if (r.rental_status === 'pending') groups.pending.push(r);
       else if (r.rental_status === 'rejected') groups.rejected.push(r);
-      else if (r.rental_status === 'confirmed' && isUpcoming(r.start_date)) groups.confirmedUpcoming.push(r);
+      else if (r.rental_status === 'confirmed') groups.confirmedUpcoming.push(r);
     }
     
     // Sort confirmed upcoming rentals - those without payment come first
     groups.confirmedUpcoming.sort((a, b) => {
-      // Check if payment exists
-      const aHasPayment = a.payments && a.payments.length > 0;
-      const bHasPayment = b.payments && b.payments.length > 0;
+      // Check if payment exists or verified
+      const aHasPayment = (a.payments && a.payments.length > 0) || a.payment_status === 'verified';
+      const bHasPayment = (b.payments && b.payments.length > 0) || b.payment_status === 'verified';
       
       // If one has payment and other doesn't, prioritize the one without payment
       if (!aHasPayment && bHasPayment) return -1;

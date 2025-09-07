@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom"
 import useAuthStore from "../../stores/useAuthStore"
 import useRentalStore from "../../stores/rentalStore"
 import { userConfirmDelivered, userConfirmSentBack } from "../../services/deliveryService"
+import { userCancelConfirmedRental } from "../../services/rentalService"
 import { getSignedContractUrl } from "../../services/pdfService"
 import { subscribeToRentalUpdates, unsubscribeFromRentalUpdates } from "../../services/realtimeService"
 import {
@@ -21,10 +22,14 @@ import {
   ArrowRight,
   CreditCard,
   ExternalLink,
+  XCircle,
 } from "lucide-react"
 import FeedbackForm from "../../components/forms/FeedbackForm";
+import CancellationModal from "../../components/modals/CancellationModal";
 import { getRentalFeedback } from "../../services/feedbackService";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast, ToastContainer } from "react-toastify";
+import 'react-toastify/dist/ReactToastify.css';
 
 // Main Component
 export default function Rentals() {
@@ -48,6 +53,8 @@ export default function Rentals() {
   const [now, setNow] = useState(Date.now())
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState({});
+  const [showCancellationModal, setShowCancellationModal] = useState(false);
+  const [rentalToCancel, setRentalToCancel] = useState(null);
 
   // Time Management: Update time every minute
   useEffect(() => {
@@ -268,6 +275,46 @@ export default function Rentals() {
     await refresh();
   }
 
+  // Action Handlers: Handle cancellation
+  const handleCancelConfirmedRental = async (rentalId, reason) => {
+    try {
+      const result = await userCancelConfirmedRental(rentalId, reason);
+      if (result.success) {
+        toast.success('Rental cancelled successfully');
+        setShowCancellationModal(false);
+        setRentalToCancel(null);
+        await refresh();
+      } else {
+        toast.error(result.error || 'Failed to cancel rental');
+      }
+    } catch (error) {
+      toast.error('Failed to cancel rental');
+    }
+  };
+
+  const handleOpenCancellation = (rental) => {
+    setRentalToCancel(rental);
+    setShowCancellationModal(true);
+  };
+
+  // Helper function to check if rental can be cancelled
+  const canCancelConfirmed = (rental) => {
+    if (rental.rental_status !== 'confirmed') return false;
+    
+    // Allow cancellation if shipping hasn't started or only in ready_to_ship status
+    const prohibitedShippingStatuses = [
+      'in_transit_to_user',
+      'delivered', 
+      'active',
+      'return_scheduled',
+      'in_transit_to_owner'
+    ];
+    
+    return !rental.shipping_status || 
+           rental.shipping_status === 'ready_to_ship' || 
+           !prohibitedShippingStatuses.includes(rental.shipping_status);
+  };
+
   // Helper Functions: Countdown timer
   function useCountdown(targetIso, { dir = "down", startDate = null, endDate = null } = {}) {
     if (!targetIso) return null
@@ -341,15 +388,17 @@ export default function Rentals() {
     if (isPaymentPending) {
       return (
         <div
-          onClick={onClick}
-          className={`p-3 sm:p-4 rounded-lg border cursor-pointer transition-all ${
+          className={`p-3 sm:p-4 rounded-lg border transition-all ${
             isSelected
               ? "bg-amber-50 border-amber-300 shadow-sm ring-2 ring-amber-200"
               : "bg-amber-50/50 border-amber-200 hover:bg-amber-50 hover:border-amber-300"
           }`}
         >
           <div className="flex items-start space-x-2 sm:space-x-3">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-100 rounded-md overflow-hidden flex-shrink-0 opacity-60">
+            <div 
+              className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-100 rounded-md overflow-hidden flex-shrink-0 opacity-60 cursor-pointer"
+              onClick={onClick}
+            >
               {!imgBroken && cameraImage ? (
                 <img
                   src={cameraImage || "/placeholder.svg"}
@@ -364,10 +413,24 @@ export default function Rentals() {
               )}
             </div>
             
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 cursor-pointer" onClick={onClick}>
               <div className="flex items-center justify-between">
                 <h3 className="font-medium text-gray-700 truncate text-sm">{cameraName}</h3>
-                <CreditCard className="h-3 w-3 sm:h-4 sm:w-4 text-amber-600 flex-shrink-0" />
+                <div className="flex items-center gap-1">
+                  {canCancelConfirmed(rental) && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenCancellation(rental);
+                      }}
+                      className="p-1 rounded-full text-red-500 hover:bg-red-50 transition-colors"
+                      title="Cancel rental"
+                    >
+                      <XCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+                    </button>
+                  )}
+                  <CreditCard className="h-3 w-3 sm:h-4 sm:w-4 text-amber-600 flex-shrink-0" />
+                </div>
               </div>
               
               <div className="flex items-center space-x-2 mt-1">
@@ -549,14 +612,25 @@ export default function Rentals() {
               <p className="text-gray-600 mb-3 sm:mb-4 text-sm sm:text-base">
                 Upload your payment receipt in the Requests page to proceed with your rental.
               </p>
-              <button
-                onClick={() => navigate('/user/requests')}
-                className="inline-flex items-center px-4 sm:px-6 py-2 sm:py-3 bg-amber-600 text-white font-semibold rounded-lg hover:bg-amber-700 transition-colors text-sm sm:text-base"
-              >
-                <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                Go to Requests
-                <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4 ml-2" />
-              </button>
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center">
+                <button
+                  onClick={() => navigate('/user/requests')}
+                  className="inline-flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 bg-amber-600 text-white font-semibold rounded-lg hover:bg-amber-700 transition-colors text-sm sm:text-base"
+                >
+                  <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                  Go to Requests
+                  <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4 ml-2" />
+                </button>
+                {canCancelConfirmed(rental) && (
+                  <button
+                    onClick={() => handleOpenCancellation(rental)}
+                    className="inline-flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors text-sm sm:text-base"
+                  >
+                    <XCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                    Cancel Rental
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -1063,6 +1137,32 @@ export default function Rentals() {
             </div>
           </div>
         )}
+
+        {/* Cancellation Modal */}
+        {showCancellationModal && rentalToCancel && (
+          <CancellationModal
+            isOpen={showCancellationModal}
+            onClose={() => {
+              setShowCancellationModal(false);
+              setRentalToCancel(null);
+            }}
+            onConfirm={handleCancelConfirmedRental}
+            rental={rentalToCancel}
+          />
+        )}
+
+        <ToastContainer
+          position="bottom-right"
+          autoClose={3000}
+          hideProgressBar
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable={false}
+          pauseOnHover
+          theme="light"
+        />
       </div>
     </div>
   )

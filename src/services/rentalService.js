@@ -358,8 +358,6 @@ export async function userCancelConfirmedRental(rentalId, cancellationReason) {
       .update({
         rental_status: 'cancelled',
         cancellation_reason: cancellationReason,
-        cancelled_at: new Date().toISOString(),
-        cancelled_by: 'user'
       })
       .eq('id', rentalId)
       .eq('user_id', user.id);
