@@ -187,7 +187,7 @@ const BookingCalendarGrid = ({
       // When sidebar is shown: 1 col on mobile, 2 on large screens
       return 'grid-cols-1 lg:grid-cols-2';
     } else {
-      // When no sidebar: 1 col on mobile, 2 on tablet, 3 on desktop
+      // When no sidebar: 1 col on mobile, 3 on tablet, 4 on desktop
       return 'grid-cols-1 md:grid-cols-3 xl:grid-cols-4';
     }
   };
