@@ -26,6 +26,7 @@ import {
 } from "lucide-react"
 import FeedbackForm from "../../components/forms/FeedbackForm";
 import CancellationModal from "../../components/modals/CancellationModal";
+import PaymentDetails from "../../components/payment/PaymentDetails";
 import { getRentalFeedback } from "../../services/feedbackService";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast, ToastContainer } from "react-toastify";
@@ -367,9 +368,12 @@ export default function Rentals() {
     const cameraName = rental?.cameras?.name || "Camera"
     const cameraImage = rental?.cameras?.image_url || ""
     const [imgBroken, setImgBroken] = useState(false)
-    const isPaymentPending = rental.rental_status === "confirmed" && 
-                           (rental.payment_status === "pending" || rental.payment_status === "submitted" || 
-                            rental.payment_status === "rejected" || !rental.payment_status)
+    // Always use the initial payment record for payment status
+    const initialPayment = rental.payments?.find(payment => payment.payment_type === 'rental' && !payment.extension_id);
+    const paymentStatus = initialPayment?.payment_status;
+    const isPaymentPending = rental.rental_status === "confirmed" && (
+      paymentStatus === "pending" || paymentStatus === "submitted" || paymentStatus === "rejected" || !paymentStatus
+    );
 
     const days = useMemo(() => {
       const start = new Date(rental.start_date)
@@ -438,10 +442,22 @@ export default function Rentals() {
               </div>
               
               <div className="mt-2">
-                <span className="inline-flex items-center px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                  <CreditCard className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1" />
-                  Payment Required
-                </span>
+                {paymentStatus === 'submitted' ? (
+                  <span className="inline-flex items-center px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1" />
+                    Under Review
+                  </span>
+                ) : paymentStatus === 'rejected' ? (
+                  <span className="inline-flex items-center px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                    <XCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1" />
+                    Receipt Rejected
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                    <CreditCard className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1" />
+                    Payment Required
+                  </span>
+                )}
               </div>
               
               <div className="text-xs text-gray-500 mt-1">
@@ -519,21 +535,44 @@ export default function Rentals() {
     
     const cameraName = rental?.cameras?.name || "Camera"
     const cameraImage = rental?.cameras?.image_url || ""
-    const isPaymentPending = rental.rental_status === "confirmed" && 
-                           (rental.payment_status === "pending" || rental.payment_status === "submitted" || 
-                            rental.payment_status === "rejected" || !rental.payment_status)
+    // Always use the initial payment record for payment status
+    const initialPayment = rental.payments?.find(payment => payment.payment_type === 'rental' && !payment.extension_id);
+    const paymentStatus = initialPayment?.payment_status;
+    const isPaymentPending = rental.rental_status === "confirmed" && (
+      paymentStatus === "pending" || paymentStatus === "submitted" || paymentStatus === "rejected" || !paymentStatus
+    );
 
     // Payment pending view - simplified UI with call to action
     if (isPaymentPending) {
       return (
-        <div className="bg-white rounded-lg border border-amber-200 overflow-hidden">
-          {/* Payment Required Header */}
-          <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-4 sm:px-6 py-3 sm:py-4 text-white">
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          {/* Dynamic Header based on payment status */}
+          <div className={`px-4 sm:px-6 py-3 sm:py-4 text-white ${
+            paymentStatus === 'submitted' 
+              ? 'bg-gradient-to-r from-blue-500 to-indigo-500'
+              : paymentStatus === 'rejected'
+              ? 'bg-gradient-to-r from-red-500 to-rose-500'
+              : 'bg-gradient-to-r from-amber-500 to-orange-500'
+          }`}>
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-lg sm:text-xl font-bold flex items-center">
-                  <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                  Payment Required
+                  {paymentStatus === 'submitted' ? (
+                    <>
+                      <Clock className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                      Under Review
+                    </>
+                  ) : paymentStatus === 'rejected' ? (
+                    <>
+                      <XCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                      Payment Rejected
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                      Payment Required
+                    </>
+                  )}
                 </h1>
                 <div className="flex items-center space-x-2 sm:space-x-3 mt-2">
                   <span className="text-xs font-mono bg-white/20 px-2 py-1 rounded">
@@ -554,27 +593,65 @@ export default function Rentals() {
 
           <div className="p-4 sm:p-6">
             {/* Payment Status Message */}
-            <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className={`mb-4 sm:mb-6 p-3 sm:p-4 border rounded-lg ${
+              paymentStatus === 'submitted'
+                ? 'bg-blue-50 border-blue-200'
+                : paymentStatus === 'rejected'
+                ? 'bg-red-50 border-red-200'
+                : 'bg-amber-50 border-amber-200'
+            }`}>
               <div className="flex items-start space-x-2 sm:space-x-3">
-                <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600 flex-shrink-0 mt-0.5" />
+                <AlertCircle className={`w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0 mt-0.5 ${
+                  paymentStatus === 'submitted'
+                    ? 'text-blue-600'
+                    : paymentStatus === 'rejected'
+                    ? 'text-red-600'
+                    : 'text-amber-600'
+                }`} />
                 <div>
-                  <h3 className="font-semibold text-amber-800 mb-2 text-sm sm:text-base">Payment Required to Proceed</h3>
-                  <p className="text-amber-700 text-xs sm:text-sm mb-3">
-                    Your rental has been confirmed by the admin, but payment is required before we can start preparing your order for delivery.
-                  </p>
-                  {rental.payment_status === "rejected" && (
-                    <p className="text-red-700 text-xs sm:text-sm mb-3">
-                      <strong>Previous payment was rejected.</strong> Please upload a new, clear payment receipt.
-                    </p>
-                  )}
-                  {rental.payment_status === "submitted" && (
-                    <p className="text-blue-700 text-xs sm:text-sm mb-3">
-                      <strong>Payment receipt submitted.</strong> Please wait for admin verification.
-                    </p>
+                  {paymentStatus === 'submitted' ? (
+                    <>
+                      <h3 className="font-semibold text-blue-800 mb-2 text-sm sm:text-base">Payment Under Review</h3>
+                      <p className="text-blue-700 text-xs sm:text-sm mb-3">
+                        Great! Your payment receipt has been uploaded and is currently being reviewed by our admin team. 
+                        You'll be notified once verification is complete (usually within 24 hours).
+                      </p>
+                      <p className="text-blue-600 text-xs sm:text-sm font-medium">
+                        No further action required at this time. Please wait for verification.
+                      </p>
+                    </>
+                  ) : paymentStatus === 'rejected' ? (
+                    <>
+                      <h3 className="font-semibold text-red-800 mb-2 text-sm sm:text-base">Payment Receipt Rejected</h3>
+                      <p className="text-red-700 text-xs sm:text-sm mb-3">
+                        Your previous payment receipt was not accepted. This could be due to unclear image, 
+                        incorrect amount, or other issues. Please upload a new, clear payment confirmation.
+                      </p>
+                      <p className="text-red-600 text-xs sm:text-sm font-medium">
+                        Please go to the Requests page to upload a new payment receipt.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <h3 className="font-semibold text-amber-800 mb-2 text-sm sm:text-base">Payment Required to Proceed</h3>
+                      <p className="text-amber-700 text-xs sm:text-sm mb-3">
+                        Your rental has been confirmed by the admin, but payment is required before we can start preparing your order for delivery.
+                      </p>
+                      <p className="text-amber-600 text-xs sm:text-sm font-medium">
+                        Please use any of the payment methods below and upload your receipt.
+                      </p>
+                    </>
                   )}
                 </div>
               </div>
             </div>
+
+            {/* Payment Details - Show only if not yet submitted */}
+            {paymentStatus !== 'submitted' && paymentStatus !== 'verified' && (
+              <div className="mb-4 sm:mb-6">
+                <PaymentDetails rental={rental} />
+              </div>
+            )}
 
             {/* Rental Summary */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
@@ -608,33 +685,76 @@ export default function Rentals() {
 
             {/* Call to Action */}
             <div className="bg-gray-50 rounded-lg p-4 sm:p-6 text-center">
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">Complete Your Payment</h3>
-              <p className="text-gray-600 mb-3 sm:mb-4 text-sm sm:text-base">
-                Upload your payment receipt in the Requests page to proceed with your rental.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center">
-                <button
-                  onClick={() => navigate('/user/requests')}
-                  className="inline-flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 bg-amber-600 text-white font-semibold rounded-lg hover:bg-amber-700 transition-colors text-sm sm:text-base"
-                >
-                  <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                  Go to Requests
-                  <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4 ml-2" />
-                </button>
-                {canCancelConfirmed(rental) && (
-                  <button
-                    onClick={() => handleOpenCancellation(rental)}
-                    className="inline-flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors text-sm sm:text-base"
-                  >
-                    <XCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                    Cancel Rental
-                  </button>
-                )}
-              </div>
+              {paymentStatus === 'submitted' ? (
+                <>
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">Payment Under Review</h3>
+                  <p className="text-gray-600 mb-3 sm:mb-4 text-sm sm:text-base">
+                    Your payment receipt is being verified. You'll be notified once approved.
+                  </p>
+                  <div className="flex justify-center">
+                    <button
+                      onClick={() => navigate('/user/requests')}
+                      className="inline-flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
+                    >
+                      <Clock className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                      View Status
+                      <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4 ml-2" />
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
+                    {paymentStatus === 'rejected' ? 'Upload New Receipt' : 'Complete Your Payment'}
+                  </h3>
+                  <p className="text-gray-600 mb-3 sm:mb-4 text-sm sm:text-base">
+                    {paymentStatus === 'rejected' 
+                      ? 'Go to the Requests page to upload a new payment receipt.'
+                      : 'Send your payment and upload the receipt in the Requests page to proceed.'
+                    }
+                  </p>
+                  <div className="flex justify-center">
+                    <button
+                      onClick={() => navigate('/user/requests')}
+                      className={`inline-flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 text-white font-semibold rounded-lg transition-colors text-sm sm:text-base ${
+                        paymentStatus === 'rejected' 
+                          ? 'bg-red-600 hover:bg-red-700'
+                          : 'bg-amber-600 hover:bg-amber-700'
+                      }`}
+                    >
+                      {paymentStatus === 'rejected' ? (
+                        <>
+                          <XCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                          Upload New Receipt
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                          Go to Requests
+                        </>
+                      )}
+                      <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4 ml-2" />
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
+            
+            {/* Cancel Button - if applicable */}
+            {canCancelConfirmed(rental) && (
+              <div className="mt-4">
+                <button
+                  onClick={() => handleOpenCancellation(rental)}
+                  className="w-full inline-flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors text-sm sm:text-base"
+                >
+                  <XCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                  Cancel Rental
+                </button>
+              </div>
+            )}
           </div>
         </div>
-      )
+      );
     }
 
     // Regular detail view for paid rentals

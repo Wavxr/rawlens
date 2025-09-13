@@ -19,6 +19,7 @@ import {
   Eye,
   ChevronLeft,
   ChevronRight,
+  Receipt,
 } from "lucide-react";
 import {
   adminConfirmApplication,
@@ -26,14 +27,13 @@ import {
   adminStartRental,
   adminCompleteRental,
   adminCancelRental,
-  adminDeleteRental,
+  adminForceDeleteRental,
   adminRemoveCancelledRental,
   adminConfirmApplicationWithConflictCheck,
   transferRentalToUnit,
-  findConflictingRentals,
   getAvailableUnitsOfModel,
 } from "../../services/rentalService";
-import { adminVerifyPayment, adminRejectPayment } from "../../services/paymentService";
+import { adminVerifyRentalPayment, adminVerifyExtensionPayment, userUpdatePaymentStatus, getPaymentReceiptUrl } from "../../services/paymentService";
 import ConflictResolutionModal from "../../components/modals/ConflictResolutionModal";
 import { PaymentVerificationModal, PaymentStatusBadge } from "../../components/payment/PaymentVerificationComponents";
 import {
@@ -617,7 +617,7 @@ export default function Rentals() {
   const handleDeleteRental = async (rentalId) => {
     setActionLoading((prev) => ({ ...prev, [rentalId]: "delete" }));
     try {
-      const result = await adminDeleteRental(rentalId);
+      const result = await adminForceDeleteRental(rentalId);
       if (result.error) {
         toast.error(`Failed to delete rental: ${result.error}`);
         return;
@@ -745,34 +745,56 @@ export default function Rentals() {
 
   // Payment verification handlers
   const handleOpenPaymentVerification = (rental) => {
-    setSelectedPaymentRental(rental);
+    // Find the initial rental payment (payment_type = 'rental' and extension_id is null)
+    const initialPayment = rental.payments?.find(payment => 
+      payment.payment_type === 'rental' && !payment.extension_id
+    );
+    
+    if (!initialPayment) {
+      toast.error("No payment record found for this rental");
+      return;
+    }
+    
+    // Create an enhanced rental object with the specific payment info
+    const rentalWithPayment = {
+      ...rental,
+      selectedPayment: initialPayment,
+      payment_status: initialPayment.payment_status,
+      payment_receipt_url: initialPayment.payment_receipt_url
+    };
+    
+    setSelectedPaymentRental(rentalWithPayment);
     setShowPaymentModal(true);
   };
 
-  const handleVerifyPayment = async (rentalId) => {
+  const handleVerifyPayment = async (paymentId) => { 
     try {
-      const result = await adminVerifyPayment(rentalId);
+      const result = await adminVerifyRentalPayment(paymentId);
       if (result.success) {
-        await loadAllRentals(); // Refresh data
+        toast.success("Payment verified successfully!");
+        await loadAllRentals(); 
         return result;
       } else {
         throw new Error(result.error);
       }
     } catch (error) {
+      toast.error(`Failed to verify payment: ${error.message}`);
       throw error;
     }
   };
 
-  const handleRejectPayment = async (rentalId, reason) => {
+  const handleRejectPayment = async (paymentId, reason) => {
     try {
-      const result = await adminRejectPayment(rentalId, reason);
+      const result = await userUpdatePaymentStatus(paymentId, 'rejected');
       if (result.success) {
-        await loadAllRentals(); // Refresh data
+        await loadAllRentals();
+        toast.success("Payment rejected.");
         return result;
       } else {
         throw new Error(result.error);
       }
     } catch (error) {
+      toast.error(`Failed to reject payment: ${error.message}`);
       throw error;
     }
   };
@@ -808,6 +830,26 @@ export default function Rentals() {
         delete newLoading[rentalId];
         return newLoading;
       });
+    }
+  };
+
+  const viewPaymentReceipt = async (paymentId) => {
+    if (!paymentId) {
+      toast.warn("Payment ID is missing");
+      return;
+    }
+
+    try {
+      const result = await getPaymentReceiptUrl(paymentId);
+      if (result.success && result.url) {
+        window.open(result.url, "_blank", "noopener,noreferrer");
+        toast.success("Opening payment receipt in new tab");
+      } else {
+        toast.error(result.error || "No payment receipt found");
+      }
+    } catch (error) {
+      console.error("Error viewing payment receipt:", error);
+      toast.error("Could not open payment receipt");
     }
   };
 
@@ -877,12 +919,26 @@ export default function Rentals() {
               >
                 {getStatusText(rental.rental_status)}
               </span>
-              {rental.rental_status === "confirmed" && (
-                <PaymentStatusBadge 
-                  rental={rental} 
-                  onOpenVerification={() => handleOpenPaymentVerification(rental)}
-                />
-              )}
+              {rental.rental_status === "confirmed" && (() => {
+                // Find the initial rental payment
+                const initialPayment = rental.payments?.find(payment => 
+                  payment.payment_type === 'rental' && !payment.extension_id
+                );
+                
+                // Create rental object with payment status for the badge
+                const rentalWithPaymentStatus = {
+                  ...rental,
+                  payment_status: initialPayment?.payment_status,
+                  selectedPayment: initialPayment
+                };
+                
+                return (
+                  <PaymentStatusBadge 
+                    rental={rentalWithPaymentStatus} 
+                    onOpenVerification={() => handleOpenPaymentVerification(rental)}
+                  />
+                );
+              })()}
             </div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 mb-4 md:mb-6">
@@ -1129,6 +1185,24 @@ export default function Rentals() {
                 <span>View Contract</span>
               </button>
             )}
+            {/* View Receipt button - show for confirmed rentals with payments */}
+            {rental.rental_status === "confirmed" && (() => {
+              const initialPayment = rental.payments?.find(payment => 
+                payment.payment_type === 'rental' && !payment.extension_id
+              );
+              return initialPayment?.payment_receipt_url ? (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    viewPaymentReceipt(initialPayment.id);
+                  }}
+                  className="inline-flex items-center space-x-1 md:space-x-2 bg-green-600 hover:bg-green-700 text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors"
+                >
+                  <Receipt className="h-3 w-3 md:h-4 md:w-4" />
+                  <span>View Receipt</span>
+                </button>
+              ) : null;
+            })()}
             {/* Transfer button for pending rentals only */}
             {rental.rental_status === "pending" && (
               <button

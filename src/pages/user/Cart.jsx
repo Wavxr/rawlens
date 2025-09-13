@@ -5,6 +5,7 @@ import { subscribeToRentalUpdates, unsubscribeFromRentalUpdates } from '../../se
 import { userCancelRentalRequest, userCancelConfirmedRental } from '../../services/rentalService';
 import { Loader2, Calendar, Camera as CameraIcon, AlertCircle, Clock, CheckCircle2, XCircle, Trash2 } from 'lucide-react';
 import PaymentUploadSection from '../../components/payment/PaymentUploadSection';
+import PaymentDetails from '../../components/payment/PaymentDetails';
 import CancellationModal from '../../components/modals/CancellationModal';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -249,11 +250,73 @@ const RequestRow = ({ rental, onUploadComplete, onCancelComplete }) => {
           )}
 
           {/* Payment Upload Section */}
-          {rental.rental_status === 'confirmed' && (
-            <div className="bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 rounded-lg md:rounded-xl p-2 md:p-4">
-              <PaymentUploadSection rental={rental} onUploadComplete={onUploadComplete} />
-            </div>
-          )}
+          {rental.rental_status === 'confirmed' && (() => {
+            // Always use the initial payment record for status
+            const initialPayment = rental.payments?.find(payment => 
+              payment.payment_type === 'rental' && !payment.extension_id
+            );
+            const paymentStatus = initialPayment?.payment_status;
+
+            // No payment record yet (should not happen after admin approves, but handle gracefully)
+            if (!initialPayment) {
+              return (
+                <div className="bg-gradient-to-r from-gray-50 to-slate-50 border border-gray-200 rounded-lg md:rounded-xl p-2 md:p-4 text-gray-500 text-sm">
+                  Waiting for admin to generate payment instructions...
+                </div>
+              );
+            }
+
+            // Payment verified: show only verified message
+            if (paymentStatus === 'verified') {
+              return (
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg md:rounded-xl p-2 md:p-4">
+                  <div className="flex items-center gap-2 text-green-700">
+                    <CheckCircle2 className="w-5 h-5" />
+                    <span className="text-sm font-semibold">Payment Verified ✓</span>
+                  </div>
+                  <div className="text-sm text-green-600 mt-1">
+                    Your payment has been verified. Your rental is now confirmed and will be prepared for delivery.
+                  </div>
+                </div>
+              );
+            }
+
+            // Payment submitted: show under review message
+            if (paymentStatus === 'submitted') {
+              return (
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg md:rounded-xl p-2 md:p-4">
+                  <div className="flex items-center gap-2 text-blue-700">
+                    <Clock className="w-5 h-5" />
+                    <span className="text-sm font-semibold">Payment Receipt Submitted</span>
+                  </div>
+                  <div className="text-sm text-blue-600 mt-1">
+                    Your payment receipt has been uploaded and is currently being reviewed by our admin team. You'll be notified once verification is complete (usually within 24 hours).
+                  </div>
+                </div>
+              );
+            }
+
+            // Payment pending or rejected: show payment details and upload
+            if (paymentStatus === 'pending' || paymentStatus === 'rejected') {
+              return (
+                <div className="space-y-3">
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg md:rounded-xl p-2 md:p-4">
+                    <PaymentDetails rental={rental} />
+                  </div>
+                  <div className={`border rounded-lg md:rounded-xl p-2 md:p-4 ${
+                    paymentStatus === 'rejected'
+                      ? 'bg-gradient-to-r from-red-50 to-rose-50 border-red-200'
+                      : 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200'
+                  }`}>
+                    <PaymentUploadSection rental={rental} onUploadComplete={onUploadComplete} />
+                  </div>
+                </div>
+              );
+            }
+
+            // Fallback (should not happen)
+            return null;
+          })()}
         </div>
       </div>
 

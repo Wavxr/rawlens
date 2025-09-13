@@ -10,21 +10,21 @@ const PaymentVerificationModal = ({ rental, isOpen, onClose, onVerify, onReject 
 
   // Get fresh signed URL for receipt
   useEffect(() => {
-    if (isOpen && rental?.payment_receipt_url) {
+    if (isOpen && rental?.selectedPayment?.id) {
       const fetchReceiptUrl = async () => {
-        const result = await getPaymentReceiptUrl(rental.id);
+        const result = await getPaymentReceiptUrl(rental.selectedPayment.id);
         if (result.success) {
           setReceiptUrl(result.url);
         }
       };
       fetchReceiptUrl();
     }
-  }, [isOpen, rental?.id, rental?.payment_receipt_url]);
+  }, [isOpen, rental?.selectedPayment?.id]);
 
   const handleVerify = async () => {
     setIsProcessing(true);
     try {
-      await onVerify(rental.id);
+      await onVerify(rental.selectedPayment.id);
       toast.success('Payment verified successfully!');
       onClose();
     } catch (error) {
@@ -43,7 +43,7 @@ const PaymentVerificationModal = ({ rental, isOpen, onClose, onVerify, onReject 
     
     setIsProcessing(true);
     try {
-      await onReject(rental.id, rejectionReason);
+      await onReject(rental.selectedPayment.id, rejectionReason);
       toast.success('Payment rejected successfully!');
       onClose();
     } catch (error) {

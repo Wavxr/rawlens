@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabaseClient";
+import { adminCreateInitialRentalPayment } from "./paymentService";
 
 // ------------------------------------------
 //    -- Functions --
@@ -104,7 +105,8 @@ export async function updateRentalStatus(rentalId, statusUpdates) {
 const DETAILED_RENTAL_QUERY = `
   *,
   cameras (*, camera_inclusions (*, inclusion_items (*))),
-  users!rentals_user_id_fkey (id, first_name, last_name, email, contact_number)
+  users!rentals_user_id_fkey (id, first_name, last_name, email, contact_number),
+  payments (*)
 `;
 
 // Get a single rental by its ID with all details
@@ -232,6 +234,7 @@ export async function createUserRentalRequest(bookingData) {
         price_per_day: pricePerDay,
         booking_type: 'registered_user',
         rental_status: 'pending',
+        shipping_status: null,
         contract_pdf_url: contractPdfUrl, 
         customer_name: customerInfo?.name || null,
         customer_contact: customerInfo?.contact || null,
@@ -372,15 +375,8 @@ export async function userCancelConfirmedRental(rentalId, cancellationReason) {
 }
 
 // ------------------------------------------
-//   --  Admin Functions --
+//   --  Admin Functions -- Generic
 // ------------------------------------------
-
-// Admin confirms application (contract valid, ready for logistics)
-export async function adminConfirmApplication(rentalId) {
-  return await updateRentalStatus(rentalId, {
-    rental_status: 'confirmed'
-  });
-}
 
 // Find conflicting rentals for the same camera unit and overlapping dates
 export async function findConflictingRentals(cameraId, startDate, endDate, excludeRentalId = null) {
@@ -508,6 +504,56 @@ export async function transferRentalToUnit(rentalId, newCameraId) {
   }
 }
 
+
+// ------------------------------------------
+//   --  Admin Functions -- 
+// ------------------------------------------
+
+// Admin confirms application (contract valid, ready for logistics)
+export async function adminConfirmApplication(rentalId) {
+  try {
+    // Get the rental details
+    const { data: rental, error: rentalError } = await getRentalById(rentalId);
+    if (rentalError || !rental) {
+      throw new Error("Rental not found.");
+    }
+
+    // Create initial rental payment
+    const paymentResult = await adminCreateInitialRentalPayment(
+      rentalId, 
+      rental.user_id, 
+      rental.total_price
+    );
+
+    if (!paymentResult.success) {
+      throw new Error("Failed to create rental payment: " + paymentResult.error);
+    }
+
+    // Update rental status to confirmed
+    const updateResult = await updateRentalStatus(rentalId, {
+      rental_status: 'confirmed'
+    });
+
+    if (updateResult.error) {
+      throw new Error("Failed to update rental status: " + updateResult.error);
+    }
+
+    return {
+      success: true,
+      data: {
+        rental: updateResult.data,
+        payment: paymentResult.data
+      }
+    };
+  } catch (error) {
+    console.error("Error in adminConfirmApplication:", error);
+    return {
+      success: false,
+      error: error.message || "Failed to confirm application."
+    };
+  }
+}
+
 // Enhanced admin confirm with conflict detection and resolution
 export async function adminConfirmApplicationWithConflictCheck(rentalId) {
   try {
@@ -548,7 +594,19 @@ export async function adminConfirmApplicationWithConflictCheck(rentalId) {
     }
 
     // No conflicts, proceed with normal confirmation
-    const result = await updateRentalStatus(rentalId, {
+    // Create initial rental payment
+    const paymentResult = await adminCreateInitialRentalPayment(
+      rentalId, 
+      rental.user_id, 
+      rental.total_price
+    );
+
+    if (!paymentResult.success) {
+      throw new Error("Failed to create rental payment: " + paymentResult.error);
+    }
+
+    // Update rental status to confirmed
+    const updateResult = await updateRentalStatus(rentalId, {
       rental_status: 'confirmed'
     });
 
@@ -557,8 +615,9 @@ export async function adminConfirmApplicationWithConflictCheck(rentalId) {
       hasConflicts: false,
       conflicts: [],
       availableUnits: [],
-      rental: rental,
-      error: result.error
+      rental: updateResult.data,
+      payment: paymentResult.data,
+      error: updateResult.error
     };
   } catch (error) {
     console.error("Error in adminConfirmApplicationWithConflictCheck:", error);
@@ -609,26 +668,33 @@ export async function adminCancelRental(rentalId) {
   });
 }
 
-// Admin deletes a rental record row entirely
-export async function adminDeleteRental(rentalId) {
+// Admin force deletes a rental and its payments (use with caution)
+export async function adminForceDeleteRental(rentalId) {
   try {
-    const { error } = await supabase
-      .from('rentals')
-      .delete()
-      .eq('id', rentalId);
+    // Delete payments (ignore error if none exist)
+    await supabase.from("payments").delete().eq("rental_id", rentalId);
 
+    // Delete rental
+    const { error } = await supabase.from("rentals").delete().eq("id", rentalId);
     if (error) throw error;
-    return { success: true, error: null };
-  } catch (error) {
-    console.error("Error in adminDeleteRental:", error);
-    return { success: false, error: error.message || "Failed to delete rental." };
+
+    return { success: true, message: "Rental and payments deleted successfully." };
+  } catch (err) {
+    console.error("adminForceDeleteRental error:", err);
+    if (err.code === "23503") {
+      return {
+        success: false,
+        error: "Cannot delete rental due to related records. Please try again or contact support.",
+      };
+    }
+    return { success: false, error: err.message || "Failed to delete rental." };
   }
 }
+
 
 // Admin removes a cancelled rental (frees up the dates)
 export async function adminRemoveCancelledRental(rentalId) {
   try {
-    // First verify the rental is cancelled
     const { data: rental, error: fetchError } = await supabase
       .from('rentals')
       .select('id, rental_status')
@@ -643,17 +709,24 @@ export async function adminRemoveCancelledRental(rentalId) {
       throw new Error("Only cancelled rentals can be removed.");
     }
 
-    // Delete the cancelled rental
+    const { error: paymentDeleteError } = await supabase
+      .from('payments')
+      .delete()
+      .eq('rental_id', rentalId);
+
     const { error: deleteError } = await supabase
       .from('rentals')
       .delete()
       .eq('id', rentalId);
 
     if (deleteError) throw deleteError;
-    
-    return { success: true, error: null };
+
+    return { success: true, error: null, message: "Cancelled rental and associated payments removed successfully." };
   } catch (error) {
     console.error("Error in adminRemoveCancelledRental:", error);
+    if (error.code === '23503') {
+         return { success: false, error: "Cannot remove rental: Associated payment records exist and could not be deleted. Please try again or contact support." };
+    }
     return { success: false, error: error.message || "Failed to remove cancelled rental." };
   }
 }
