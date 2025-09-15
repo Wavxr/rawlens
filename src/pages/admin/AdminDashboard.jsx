@@ -25,6 +25,8 @@ import {
   Sun,
   Moon,
   UserStar,
+  CalendarPlus,
+  CreditCard,
 } from "lucide-react";
 
 export default function AdminDashboard() {
@@ -71,6 +73,8 @@ export default function AdminDashboard() {
         { name: "Users", path: "/admin/users", icon: Users },
         { name: "Bookings", path: "/admin/bookings", icon: Calendar },
         { name: "Rentals", path: "/admin/rentals", icon: Package },
+        { name: "Extensions", path: "/admin/extensions", icon: CalendarPlus },
+        { name: "Payments", path: "/admin/payments", icon: CreditCard },
         { name: "Delivery", path: "/admin/delivery", icon: Truck },
         { name: "Settings", path: "/admin/settings", icon: Settings }
       ]

@@ -23,6 +23,8 @@ import AdminBookings from './pages/admin/Bookings';
 import AdminRentals from './pages/admin/Rental';
 import AdminDelivery from './pages/admin/Delivery';
 import AdminFeedbacks from './pages/admin/Feedbacks';
+import AdminExtensions from './pages/admin/Extensions';
+import AdminPayments from './pages/admin/Payments';
 import Settings from './pages/admin/Settings';
 
 // User
@@ -65,6 +67,8 @@ function App() {
               <Route path="inclusions" element={<AdminInclusions/>} />
               <Route path="bookings" element={<AdminBookings />} />
               <Route path="rentals" element={<AdminRentals />} />
+              <Route path="extensions" element={<AdminExtensions />} />
+              <Route path="payments" element={<AdminPayments />} />
               <Route path="delivery" element={<AdminDelivery />} />
               <Route path="feedbacks" element={<AdminFeedbacks />} />
               <Route path="settings" element={<Settings />} />

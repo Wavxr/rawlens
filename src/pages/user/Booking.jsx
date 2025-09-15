@@ -27,6 +27,7 @@ import {
 import FeedbackForm from "../../components/forms/FeedbackForm";
 import CancellationModal from "../../components/modals/CancellationModal";
 import PaymentDetails from "../../components/payment/PaymentDetails";
+import RentalExtensionManager from "../../components/rental/RentalExtensionManager";
 import { getRentalFeedback } from "../../services/feedbackService";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast, ToastContainer } from "react-toastify";
@@ -1026,6 +1027,15 @@ export default function Rentals() {
               </div>
             </div>
           ) : null}
+
+          {/* Rental Extension Manager - Only show for confirmed and active rentals */}
+          {['confirmed', 'active'].includes(rental.rental_status) && (
+            <RentalExtensionManager 
+              rental={rental} 
+              userId={user.id} 
+              onRefresh={refresh}
+            />
+          )}
 
           {/* Action Buttons */}
           <div className="flex flex-wrap gap-2 sm:gap-3">
