@@ -7,9 +7,6 @@ import SuccessView from '../shared/SuccessView';
 import ContractSigningModal from '../../modals/ContractSigningModal';
 import useCameraStore from '../../../stores/cameraStore';
 import useAuthStore from '../../../stores/useAuthStore';
-import useRentalAvailability from '../../../hooks/useRentalAvailability';
-import useRentalPricing from '../../../hooks/useRentalPricing';
-import useRentalSubmission from '../../../hooks/useRentalSubmission';
 
 const HomeToRentalFlow = ({ 
   onBackToBrowse, 
@@ -36,12 +33,14 @@ const HomeToRentalFlow = ({
     selectedCameraUnitId,
     checkAvailability,
     setAvailabilityError,
+    resetAvailability,
   } = availability;
 
   const {
     calculatedPrice,
     pricingError,
     calculateAndSetPrice,
+    resetPricing,
   } = pricing;
 
   const {
@@ -64,6 +63,16 @@ const HomeToRentalFlow = ({
   } = submission;
 
   const cameraModelName = rentalFlowCameraModelName || rentalFlowCamera?.name;
+
+  // Custom date change handler that resets availability and pricing when dates change
+  const handleDateChange = (e, dateType) => {
+    // Update the date in the store
+    handleRentalFlowDateChange(e, dateType);
+    
+    // Reset the hooks to clear availability and pricing state
+    resetAvailability();
+    resetPricing();
+  };
 
   const handleCheckAvailability = async () => {
     if (!startDate || !endDate) {
@@ -192,8 +201,8 @@ const HomeToRentalFlow = ({
           <DateFilterInput
             startDate={startDate}
             endDate={endDate}
-            onStartDateChange={(e) => handleRentalFlowDateChange(e, 'start')}
-            onEndDateChange={(e) => handleRentalFlowDateChange(e, 'end')}
+            onStartDateChange={(e) => handleDateChange(e, 'start')}
+            onEndDateChange={(e) => handleDateChange(e, 'end')}
             minStartDate={new Date().toISOString().split('T')[0]}
             disabled={isCheckingAvailability || isSubmitting || isGeneratingContract}
             label=""

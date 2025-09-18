@@ -22,7 +22,7 @@ const RentalFlowSection = ({ onBackToBrowse, sourcePageType = "home", preSelecte
     handleRentalFlowDateChange,
   } = useCameraStore();
 
-  // For mobile footer - needed for both flows
+  // Use shared hook states
   const {
     isCheckingAvailability,
     isAvailabilityChecked,
@@ -31,12 +31,14 @@ const RentalFlowSection = ({ onBackToBrowse, sourcePageType = "home", preSelecte
     selectedCameraUnitId,
     checkAvailability,
     setAvailabilityError,
+    resetAvailability,
   } = useRentalAvailability(user);
 
   const {
     calculatedPrice,
     pricingError,
     calculateAndSetPrice,
+    resetPricing,
   } = useRentalPricing();
 
   const {
@@ -68,6 +70,10 @@ const RentalFlowSection = ({ onBackToBrowse, sourcePageType = "home", preSelecte
   const handleMobileDateChange = (newStartDate, newEndDate) => {
     handleRentalFlowDateChange({ target: { value: newStartDate } }, 'start');
     handleRentalFlowDateChange({ target: { value: newEndDate } }, 'end');
+    
+    // Reset availability and pricing when dates change
+    resetAvailability();
+    resetPricing();
   };
 
   const handleMobileCheckAvailability = async () => {
@@ -126,11 +132,13 @@ const RentalFlowSection = ({ onBackToBrowse, sourcePageType = "home", preSelecte
         selectedCameraUnitId,
         checkAvailability,
         setAvailabilityError,
+        resetAvailability,
       },
       pricing: {
         calculatedPrice,
         pricingError,
         calculateAndSetPrice,
+        resetPricing,
       },
       submission: {
         isSubmitting,
