@@ -72,10 +72,10 @@ const ConflictResolutionModal = ({
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-red-900">
-                  Pending Booking Conflict Detected
+                  Camera Unit Booking Conflict
                 </h3>
                 <p className="text-red-700 text-sm">
-                  This camera unit has conflicting pending bookings for overlapping dates
+                  Multiple bookings assigned to the same camera unit (Serial #{rental.cameras?.serial_number || 'N/A'})
                 </p>
               </div>
             </div>
@@ -99,7 +99,10 @@ const ConflictResolutionModal = ({
                   <Camera className="h-5 w-5 text-blue-600" />
                   <div>
                     <p className="font-medium text-blue-900">
-                      {rental.cameras?.name} {rental.cameras?.serial_number && `(#${rental.cameras.serial_number})`}
+                      {rental.cameras?.name}
+                    </p>
+                    <p className="text-blue-700 text-sm">
+                      <strong>Unit:</strong> Serial #{rental.cameras?.serial_number || 'N/A'}
                     </p>
                     <p className="text-blue-700 text-sm">
                       Customer: {getCustomerName(rental)}
@@ -149,6 +152,9 @@ const ConflictResolutionModal = ({
                         <p className="font-medium text-red-900">
                           {getCustomerName(conflict)}
                         </p>
+                        <p className="text-red-700 text-sm">
+                          <strong>Same Unit:</strong> Serial #{conflict.cameras?.serial_number || 'N/A'}
+                        </p>
                         <p className="text-red-700 text-sm font-semibold">
                           Status: {conflict.rental_status.toUpperCase()} ⚠️
                         </p>
@@ -171,6 +177,9 @@ const ConflictResolutionModal = ({
                       <div>
                         <p className="font-medium text-orange-900">
                           {getCustomerName(conflict)}
+                        </p>
+                        <p className="text-orange-700 text-sm">
+                          <strong>Same Unit:</strong> Serial #{conflict.cameras?.serial_number || 'N/A'}
                         </p>
                         <p className="text-orange-700 text-sm">
                           Status: {conflict.rental_status}
@@ -226,7 +235,8 @@ const ConflictResolutionModal = ({
                                 className="text-blue-600"
                               />
                               <span className="text-sm text-gray-800">
-                                {unit.name} {unit.serial_number && `(Serial: #${unit.serial_number})`}
+                                <strong>{unit.name}</strong> - Serial #{unit.serial_number || 'N/A'}
+                                <span className="text-green-600 ml-2">✓ Available</span>
                               </span>
                             </label>
                           ))}
