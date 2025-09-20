@@ -24,105 +24,83 @@ const useRentalSubmission = (user) => {
     setRequestError('');
   };
 
+  /** Step 2: User submits rental request */
   const submitRentalRequest = async (signatureDataUrl, {
-  selectedCameraUnitId,
-  cameraModelName,
-  startDate,
-  endDate,
-  calculatedPrice
-}) => {
-  if (!signatureDataUrl) {
-    setRequestError("Signature is required.");
-    setShowContractModal(true);
-    return;
-  }
-
-  try {
-    setIsSubmitting(true);
-    setRequestError('');
-
-    console.time("⏱ Total rental submission");
-
-    // 1. Verify user
-    console.time("⏱ User verification");
-    const canRent = await isUserVerified(user.id);
-    console.timeEnd("⏱ User verification");
-
-    if (!canRent) {
-      throw new Error("Your account is not verified. Please complete verification in your Profile.");
+    selectedCameraUnitId,
+    cameraModelName,
+    startDate,
+    endDate,
+    calculatedPrice
+  }) => {
+    if (!signatureDataUrl) {
+      setRequestError("Signature is required.");
+      setShowContractModal(true);
+      return;
     }
 
-    // 2. Create rental
-    console.time("⏱ Rental creation");
-    const { data: rentalData, error } = await createUserRentalRequest({
-      cameraId: selectedCameraUnitId,
-      startDate,
-      endDate,
-      contractPdfUrl: null, // temp
-      customerInfo: {
-        name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
-        contact: user.contact_number || '',
-        email: user.email,
-      },
-      total_price: calculatedPrice.total,
-    });
-    console.timeEnd("⏱ Rental creation");
+    try {
+      setIsSubmitting(true);
+      setRequestError('');
 
-    if (error) throw new Error(error.message || "Failed to submit rental request.");
-    setSubmittedRentalData(rentalData);
-    setRequestSuccess(true);
-    setShowContractModal(false);
-
-    // 3. Background: generate + upload contract
-    (async () => {
-      console.time("⏱ Contract generation & upload");
-      try {
-        const rentalDetails = {
-          cameraName: cameraModelName,
-          startDate: new Date(startDate).toLocaleDateString(),
-          endDate: new Date(endDate).toLocaleDateString(),
-          customerName: user.first_name || user.email || "User",
-        };
-
-        console.time("⏱ Generate PDF");
-        const pdfBytes = await generateSignedContractPdf(signatureDataUrl, rentalDetails);
-        console.timeEnd("⏱ Generate PDF");
-
-        console.time("⏱ Upload PDF");
-        const fileName = `contract_${selectedCameraUnitId}_${Date.now()}.pdf`;
-        const { success, filePath } = await uploadContractPdf(pdfBytes, fileName);
-        console.timeEnd("⏱ Upload PDF");
-
-        if (success && filePath) {
-          console.time("⏱ Update rental row with PDF URL");
-          const updateResult = await updateRentalContractUrl(rentalData.id, filePath);
-          console.timeEnd("⏱ Update rental row with PDF URL");
-
-          if (updateResult.success) {
-            setSubmittedRentalData((prev) => ({ ...prev, contract_pdf_url: filePath }));
-          } else {
-            console.warn("Failed to update rental with contract URL:", updateResult.error);
-          }
-        }
-      } catch (bgErr) {
-        console.error("Background contract upload failed:", bgErr);
-      } finally {
-        console.timeEnd("⏱ Contract generation & upload");
+      // Verify user
+      const canRent = await isUserVerified(user.id);
+      if (!canRent) {
+        throw new Error("Your account is not verified. Please complete verification in your Profile.");
       }
-    })();
 
-    console.timeEnd("⏱ Total rental submission");
+      // Create rental row
+      const { data: rentalData, error } = await createUserRentalRequest({
+        cameraId: selectedCameraUnitId,
+        startDate,
+        endDate,
+        contractPdfUrl: null,
+        customerInfo: {
+          name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
+          contact: user.contact_number || '',
+          email: user.email,
+        },
+        total_price: calculatedPrice.total,
+      });
 
-  } catch (err) {
-    setRequestError(err.message || "Could not submit rental request.");
-    setShowContractModal(true);
-    console.timeEnd("⏱ Total rental submission");
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+      if (error) throw new Error(error.message || "Failed to submit rental request.");
+      setSubmittedRentalData(rentalData);
+      setRequestSuccess(true);
+      setShowContractModal(false);
 
-  /** View contract PDF */
+      // Background contract generation + upload
+      setTimeout(async () => {
+        try {
+          const rentalDetails = {
+            cameraName: cameraModelName,
+            startDate: new Date(startDate).toLocaleDateString(),
+            endDate: new Date(endDate).toLocaleDateString(),
+            customerName: user.first_name || user.email || "User",
+          };
+
+          const pdfBytes = await generateSignedContractPdf(signatureDataUrl, rentalDetails);
+          const fileName = `contract_${selectedCameraUnitId}_${Date.now()}.pdf`;
+          const { success, filePath } = await uploadContractPdf(pdfBytes, fileName);
+
+          if (success && filePath) {
+            const updateResult = await updateRentalContractUrl(rentalData.id, filePath);
+            if (updateResult.success) {
+              setSubmittedRentalData(prev => ({ ...prev, contract_pdf_url: filePath }));
+            }
+          }
+        } catch (bgErr) {
+          console.error("Background contract upload failed:", bgErr);
+        }
+      }, 0);
+
+    } catch (err) {
+      setRequestError(err.message || "Could not submit rental request.");
+      setShowContractModal(true);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  /** Step 3: View contract PDF */
   const handleViewPdf = async (contractFilePath) => {
     if (!contractFilePath) {
       setPdfViewError("No contract file available.");
