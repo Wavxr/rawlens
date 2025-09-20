@@ -190,7 +190,7 @@ export async function createUserRentalRequest(bookingData) {
     const { cameraId, cameraModelName, startDate, endDate, contractPdfUrl, customerInfo } = bookingData;
 
     // simple validation
-    if (!startDate || !endDate || !contractPdfUrl) throw new Error("Missing required fields.");
+    if (!startDate || !endDate) throw new Error("Missing required fields: startDate and endDate are required.");
     if (!cameraId && !cameraModelName) throw new Error("Camera ID or model name required.");
 
     const start = new Date(startDate);
@@ -351,6 +351,35 @@ export async function userCancelConfirmedRental(rentalId, cancellationReason) {
   } catch (error) {
     console.error("Error in userCancelConfirmedRental:", error);
     return { success: false, error: error.message || "Failed to cancel confirmed rental." };
+  }
+}
+
+// Update rental with contract PDF URL after background processing
+export async function updateRentalContractUrl(rentalId, contractPdfUrl) {
+  try {
+    // Get the current user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      throw new Error("Authentication error. Please log in.");
+    }
+
+    // Update the rental with the contract PDF URL
+    const { data, error: updateError } = await supabase
+      .from('rentals')
+      .update({ contract_pdf_url: contractPdfUrl })
+      .eq('id', rentalId)
+      .eq('user_id', user.id) // Ensure user can only update their own rentals
+      .select()
+      .single();
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    return { success: true, data, error: null };
+  } catch (error) {
+    console.error("Error in updateRentalContractUrl:", error);
+    return { success: false, error: error.message || "Failed to update rental contract URL." };
   }
 }
 

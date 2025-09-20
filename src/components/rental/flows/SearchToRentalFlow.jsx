@@ -6,9 +6,6 @@ import SuccessView from '../shared/SuccessView';
 import ContractSigningModal from '../../modals/ContractSigningModal';
 import useCameraStore from '../../../stores/cameraStore';
 import useAuthStore from '../../../stores/useAuthStore';
-import useRentalAvailability from '../../../hooks/useRentalAvailability';
-import useRentalPricing from '../../../hooks/useRentalPricing';
-import useRentalSubmission from '../../../hooks/useRentalSubmission';
 
 const SearchToRentalFlow = ({ 
   preSelectedDates, 

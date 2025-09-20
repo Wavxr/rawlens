@@ -1,104 +1,152 @@
-import { useState, useRef } from "react";
-import { createUserRentalRequest } from "../services/rentalService";
-import { generateSignedContractPdf, uploadContractPdf, getSignedContractUrl } from "../services/pdfService";
-import { getUserById } from "../services/userService";
-import { isUserVerified } from "../services/verificationService";
+import { useState, useRef } from 'react';
+import { createUserRentalRequest, updateRentalContractUrl } from '../services/rentalService';
+import { generateSignedContractPdf, uploadContractPdf, getSignedContractUrl } from '../services/pdfService';
+import { isUserVerified } from '../services/verificationService';
 
 const useRentalSubmission = (user) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [requestError, setRequestError] = useState("");
+  const [requestError, setRequestError] = useState('');
   const [requestSuccess, setRequestSuccess] = useState(false);
   const [submittedRentalData, setSubmittedRentalData] = useState(null);
+
   const [showContractModal, setShowContractModal] = useState(false);
-  const [pdfSignedUrl, setPdfSignedUrl] = useState("");
+  const [pdfSignedUrl, setPdfSignedUrl] = useState('');
+  const [isGeneratingPdfUrl, setIsGeneratingPdfUrl] = useState(false);
+  const [pdfViewError, setPdfViewError] = useState('');
 
   const sigCanvasRef = useRef();
 
-  // Step 1: open contract modal
+  /** Step 1: User clicks "Rent Now" → show contract modal */
   const handleRentNow = () => {
+    if (isSubmitting) return;
     if (sigCanvasRef.current) sigCanvasRef.current.clear();
     setShowContractModal(true);
-    setRequestError("");
+    setRequestError('');
   };
 
-  // Step 2: finalize and submit request
   const submitRentalRequest = async (signatureDataUrl, {
-    cameraModelName,
-    startDate,
-    endDate,
-  }) => {
-    try {
-      if (!signatureDataUrl) throw new Error("Please sign the contract before submitting.");
+  selectedCameraUnitId,
+  cameraModelName,
+  startDate,
+  endDate,
+  calculatedPrice
+}) => {
+  if (!signatureDataUrl) {
+    setRequestError("Signature is required.");
+    setShowContractModal(true);
+    return;
+  }
 
-      // Check verification
-      const canRent = await isUserVerified(user.id);
-      if (!canRent) throw new Error("Your account is not verified. Please complete verification first.");
+  try {
+    setIsSubmitting(true);
+    setRequestError('');
 
-      // Fetch user info for contract
-      let customerName = "User", customerEmail = "", customerContact = "";
-      try {
-        const userData = await getUserById(user.id);
-        customerName = `${userData.first_name || ""} ${userData.last_name || ""}`.trim() || userData.email;
-        customerEmail = userData.email;
-        customerContact = userData.contact_number || "";
-      } catch (err) {
-        console.warn("Could not fetch full user data, using defaults.");
-        customerEmail = user.email;
-      }
+    console.time("⏱ Total rental submission");
 
-      // Generate + upload contract
-      const rentalDetails = {
-        cameraName: cameraModelName,
-        startDate: new Date(startDate).toLocaleDateString(),
-        endDate: new Date(endDate).toLocaleDateString(),
-        customerName,
-      };
-      const pdfBytes = await generateSignedContractPdf(signatureDataUrl, rentalDetails);
-      const fileName = `contract_${user.id}_${Date.now()}.pdf`;
-      const { success, filePath } = await uploadContractPdf(pdfBytes, fileName);
-      if (!success || !filePath) throw new Error("Contract upload failed.");
+    // 1. Verify user
+    console.time("⏱ User verification");
+    const canRent = await isUserVerified(user.id);
+    console.timeEnd("⏱ User verification");
 
-      // Insert rental request (unit assigned inside service)
-      setIsSubmitting(true);
-      const result = await createUserRentalRequest({
-        cameraModelName,
-        startDate,
-        endDate,
-        contractPdfUrl: filePath,
-        customerInfo: { name: customerName, contact: customerContact, email: customerEmail },
-      });
-
-      if (result.error) throw new Error(result.error);
-
-      setRequestSuccess(true);
-      setSubmittedRentalData(result.data);
-      setShowContractModal(false);
-    } catch (err) {
-      setRequestError(err.message || "Failed to submit rental request.");
-      setShowContractModal(true);
-    } finally {
-      setIsSubmitting(false);
+    if (!canRent) {
+      throw new Error("Your account is not verified. Please complete verification in your Profile.");
     }
-  };
 
-  // Step 3: contract PDF viewer
-  const handleViewPdf = async (filePath) => {
-    try {
-      const url = await getSignedContractUrl(filePath);
-      setPdfSignedUrl(url);
-      window.open(url, "_blank", "noopener,noreferrer");
-    } catch (err) {
-      setRequestError("Could not open contract.");
-    }
-  };
+    // 2. Create rental
+    console.time("⏱ Rental creation");
+    const { data: rentalData, error } = await createUserRentalRequest({
+      cameraId: selectedCameraUnitId,
+      startDate,
+      endDate,
+      contractPdfUrl: null, // temp
+      customerInfo: {
+        name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
+        contact: user.contact_number || '',
+        email: user.email,
+      },
+      total_price: calculatedPrice.total,
+    });
+    console.timeEnd("⏱ Rental creation");
 
-  const resetSubmission = () => {
-    setIsSubmitting(false);
-    setRequestError("");
-    setRequestSuccess(false);
-    setSubmittedRentalData(null);
+    if (error) throw new Error(error.message || "Failed to submit rental request.");
+    setSubmittedRentalData(rentalData);
+    setRequestSuccess(true);
     setShowContractModal(false);
-    setPdfSignedUrl("");
+
+    // 3. Background: generate + upload contract
+    (async () => {
+      console.time("⏱ Contract generation & upload");
+      try {
+        const rentalDetails = {
+          cameraName: cameraModelName,
+          startDate: new Date(startDate).toLocaleDateString(),
+          endDate: new Date(endDate).toLocaleDateString(),
+          customerName: user.first_name || user.email || "User",
+        };
+
+        console.time("⏱ Generate PDF");
+        const pdfBytes = await generateSignedContractPdf(signatureDataUrl, rentalDetails);
+        console.timeEnd("⏱ Generate PDF");
+
+        console.time("⏱ Upload PDF");
+        const fileName = `contract_${selectedCameraUnitId}_${Date.now()}.pdf`;
+        const { success, filePath } = await uploadContractPdf(pdfBytes, fileName);
+        console.timeEnd("⏱ Upload PDF");
+
+        if (success && filePath) {
+          console.time("⏱ Update rental row with PDF URL");
+          const updateResult = await updateRentalContractUrl(rentalData.id, filePath);
+          console.timeEnd("⏱ Update rental row with PDF URL");
+
+          if (updateResult.success) {
+            setSubmittedRentalData((prev) => ({ ...prev, contract_pdf_url: filePath }));
+          } else {
+            console.warn("Failed to update rental with contract URL:", updateResult.error);
+          }
+        }
+      } catch (bgErr) {
+        console.error("Background contract upload failed:", bgErr);
+      } finally {
+        console.timeEnd("⏱ Contract generation & upload");
+      }
+    })();
+
+    console.timeEnd("⏱ Total rental submission");
+
+  } catch (err) {
+    setRequestError(err.message || "Could not submit rental request.");
+    setShowContractModal(true);
+    console.timeEnd("⏱ Total rental submission");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
+  /** View contract PDF */
+  const handleViewPdf = async (contractFilePath) => {
+    if (!contractFilePath) {
+      setPdfViewError("No contract file available.");
+      return;
+    }
+    setIsGeneratingPdfUrl(true);
+    setPdfViewError('');
+    setPdfSignedUrl('');
+    try {
+      const signedUrl = await getSignedContractUrl(contractFilePath);
+      setPdfSignedUrl(signedUrl);
+    } catch (err) {
+      setPdfViewError(err.message || "Could not generate link.");
+    } finally {
+      setIsGeneratingPdfUrl(false);
+    }
+  };
+
+  const handleOpenPdfInNewTab = () => {
+    if (pdfSignedUrl) {
+      window.open(pdfSignedUrl, '_blank', 'noopener,noreferrer');
+    } else if (submittedRentalData?.contract_pdf_url) {
+      handleViewPdf(submittedRentalData.contract_pdf_url);
+    }
   };
 
   return {
@@ -108,11 +156,13 @@ const useRentalSubmission = (user) => {
     submittedRentalData,
     showContractModal,
     pdfSignedUrl,
+    isGeneratingPdfUrl,
+    pdfViewError,
     sigCanvasRef,
     handleRentNow,
     submitRentalRequest,
     handleViewPdf,
-    resetSubmission,
+    handleOpenPdfInNewTab,
     setShowContractModal,
   };
 };
