@@ -1,176 +1,104 @@
-import { useState, useRef } from 'react';
-import { checkCameraAvailability, createUserRentalRequest } from '../services/rentalService';
-import { generateSignedContractPdf, uploadContractPdf, getSignedContractUrl } from '../services/pdfService';
-import { getUserById } from '../services/userService';
-import { isUserVerified } from '../services/verificationService';
+import { useState, useRef } from "react";
+import { createUserRentalRequest } from "../services/rentalService";
+import { generateSignedContractPdf, uploadContractPdf, getSignedContractUrl } from "../services/pdfService";
+import { getUserById } from "../services/userService";
+import { isUserVerified } from "../services/verificationService";
 
 const useRentalSubmission = (user) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [requestError, setRequestError] = useState('');
+  const [requestError, setRequestError] = useState("");
   const [requestSuccess, setRequestSuccess] = useState(false);
   const [submittedRentalData, setSubmittedRentalData] = useState(null);
-  const [isGeneratingContract, setIsGeneratingContract] = useState(false);
   const [showContractModal, setShowContractModal] = useState(false);
-  const [signatureDataUrl, setSignatureDataUrl] = useState(null);
-  const [pdfSignedUrl, setPdfSignedUrl] = useState('');
-  const [isGeneratingPdfUrl, setIsGeneratingPdfUrl] = useState(false);
-  const [pdfViewError, setPdfViewError] = useState('');
+  const [pdfSignedUrl, setPdfSignedUrl] = useState("");
 
   const sigCanvasRef = useRef();
 
-  const handleRentNow = async (isAvailable, isAvailabilityChecked, calculatedPrice) => {
-    if (!isAvailable || !isAvailabilityChecked || !calculatedPrice || isSubmitting || isGeneratingContract) {
-      setRequestError("Please confirm availability and price before renting.");
-      return;
-    }
-
-    // Show contract modal for signature
-    setSignatureDataUrl(null);
-    if (sigCanvasRef.current) {
-      sigCanvasRef.current.clear();
-    }
+  // Step 1: open contract modal
+  const handleRentNow = () => {
+    if (sigCanvasRef.current) sigCanvasRef.current.clear();
     setShowContractModal(true);
-    setRequestError('');
+    setRequestError("");
   };
 
-  const submitRentalRequest = async (signatureDataUrlFromModal, {
-    selectedCameraUnitId,
+  // Step 2: finalize and submit request
+  const submitRentalRequest = async (signatureDataUrl, {
     cameraModelName,
     startDate,
     endDate,
-    calculatedPrice
   }) => {
-    if (!signatureDataUrlFromModal) {
-      setRequestError("Signature data is missing.");
-      setShowContractModal(true);
-      return;
-    }
-
-    // Safety: re-check verification right before submitting
     try {
+      if (!signatureDataUrl) throw new Error("Please sign the contract before submitting.");
+
+      // Check verification
       const canRent = await isUserVerified(user.id);
-      if (!canRent) {
-        setRequestError("Your account is not verified. Please complete verification in your Profile before renting.");
-        return;
-      }
-    } catch (e) {
-      setRequestError(e.message || "Unable to verify your account status.");
-      return;
-    }
+      if (!canRent) throw new Error("Your account is not verified. Please complete verification first.");
 
-    if (!cameraModelName || !selectedCameraUnitId || !calculatedPrice) {
-      setRequestError("Missing required information (camera model, available unit, dates, price, or signature).");
-      return;
-    }
-
-    setRequestError('');
-    setIsGeneratingContract(true);
-    setShowContractModal(false);
-
-    try {
-      // Perform a final availability check on the specific unit we found
-      const { isAvailable: finalCheck } = await checkCameraAvailability(selectedCameraUnitId, startDate, endDate);
-      if (!finalCheck) {
-        throw new Error("The selected camera unit is no longer available. Please check availability again.");
-      }
-
-      let customerName = "User";
-      let customerEmail = "user_email_placeholder";
-      let customerContact = "user_contact_placeholder";
-
+      // Fetch user info for contract
+      let customerName = "User", customerEmail = "", customerContact = "";
       try {
-        if (user) {
-          const userData = await getUserById(user.id);
-          customerName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || userData.email || "User";
-          customerEmail = userData.email || "user_email_placeholder";
-          customerContact = userData.contact_number || "user_contact_placeholder";
-        }
-      } catch (userFetchError) {
-        console.error("Error fetching user ", userFetchError);
+        const userData = await getUserById(user.id);
+        customerName = `${userData.first_name || ""} ${userData.last_name || ""}`.trim() || userData.email;
+        customerEmail = userData.email;
+        customerContact = userData.contact_number || "";
+      } catch (err) {
+        console.warn("Could not fetch full user data, using defaults.");
+        customerEmail = user.email;
       }
 
+      // Generate + upload contract
       const rentalDetails = {
         cameraName: cameraModelName,
         startDate: new Date(startDate).toLocaleDateString(),
         endDate: new Date(endDate).toLocaleDateString(),
-        customerName: customerName,
+        customerName,
       };
-
-      const pdfBytes = await generateSignedContractPdf(signatureDataUrlFromModal, rentalDetails);
-      const fileName = `contract_${selectedCameraUnitId}_${Date.now()}.pdf`;
+      const pdfBytes = await generateSignedContractPdf(signatureDataUrl, rentalDetails);
+      const fileName = `contract_${user.id}_${Date.now()}.pdf`;
       const { success, filePath } = await uploadContractPdf(pdfBytes, fileName);
+      if (!success || !filePath) throw new Error("Contract upload failed.");
 
-      if (!success || !filePath) {
-        throw new Error("Contract upload did not return a valid file path.");
-      }
-
+      // Insert rental request (unit assigned inside service)
       setIsSubmitting(true);
-      const { data: rentalData, error } = await createUserRentalRequest({
-        cameraId: selectedCameraUnitId,
-        startDate: startDate,
-        endDate: endDate,
+      const result = await createUserRentalRequest({
+        cameraModelName,
+        startDate,
+        endDate,
         contractPdfUrl: filePath,
-        customerInfo: {
-          name: customerName,
-          contact: customerContact,
-          email: customerEmail,
-        },
-        total_price: calculatedPrice.total,
+        customerInfo: { name: customerName, contact: customerContact, email: customerEmail },
       });
 
-      if (error) throw new Error(error.message || "Failed to submit rental request.");
+      if (result.error) throw new Error(result.error);
 
       setRequestSuccess(true);
-      setSubmittedRentalData(rentalData);
-      setSignatureDataUrl(null);
-      setPdfSignedUrl(null);
-      setPdfViewError('');
+      setSubmittedRentalData(result.data);
+      setShowContractModal(false);
     } catch (err) {
-      setRequestError(err.message || "An error occurred while processing your contract or submitting the request. Please try again.");
+      setRequestError(err.message || "Failed to submit rental request.");
       setShowContractModal(true);
     } finally {
-      setIsGeneratingContract(false);
       setIsSubmitting(false);
     }
   };
 
-  const handleViewPdf = async (contractFilePath) => {
-    if (!contractFilePath) {
-      setPdfViewError("Contract file path is missing.");
-      return;
-    }
-    setIsGeneratingPdfUrl(true);
-    setPdfViewError('');
-    setPdfSignedUrl(null);
+  // Step 3: contract PDF viewer
+  const handleViewPdf = async (filePath) => {
     try {
-      const signedUrl = await getSignedContractUrl(contractFilePath);
-      setPdfSignedUrl(signedUrl);
+      const url = await getSignedContractUrl(filePath);
+      setPdfSignedUrl(url);
+      window.open(url, "_blank", "noopener,noreferrer");
     } catch (err) {
-      setPdfViewError(err.message || "Could not generate link to view/download contract.");
-    } finally {
-      setIsGeneratingPdfUrl(false);
-    }
-  };
-
-  const handleOpenPdfInNewTab = () => {
-    if (pdfSignedUrl) {
-      window.open(pdfSignedUrl, '_blank', 'noopener,noreferrer');
-    } else if (submittedRentalData?.contract_pdf_url) {
-      handleViewPdf(submittedRentalData.contract_pdf_url);
+      setRequestError("Could not open contract.");
     }
   };
 
   const resetSubmission = () => {
     setIsSubmitting(false);
-    setRequestError('');
+    setRequestError("");
     setRequestSuccess(false);
     setSubmittedRentalData(null);
-    setIsGeneratingContract(false);
     setShowContractModal(false);
-    setSignatureDataUrl(null);
-    setPdfSignedUrl('');
-    setIsGeneratingPdfUrl(false);
-    setPdfViewError('');
+    setPdfSignedUrl("");
   };
 
   return {
@@ -178,20 +106,14 @@ const useRentalSubmission = (user) => {
     requestError,
     requestSuccess,
     submittedRentalData,
-    isGeneratingContract,
     showContractModal,
-    signatureDataUrl,
     pdfSignedUrl,
-    isGeneratingPdfUrl,
-    pdfViewError,
     sigCanvasRef,
     handleRentNow,
     submitRentalRequest,
     handleViewPdf,
-    handleOpenPdfInNewTab,
     resetSubmission,
     setShowContractModal,
-    setRequestError,
   };
 };
 

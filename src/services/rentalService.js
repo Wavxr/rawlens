@@ -1,6 +1,14 @@
 import { supabase } from "../lib/supabaseClient";
 import { adminCreateInitialRentalPayment } from "./paymentService";
 
+// Reusable query for fetching detailed rental information
+const DETAILED_RENTAL_QUERY = `
+  *,
+  cameras (*, camera_inclusions (*, inclusion_items (*))),
+  users!rentals_user_id_fkey (id, first_name, last_name, email, contact_number),
+  payments (*)
+`;
+
 // ------------------------------------------
 //    -- Functions --
 // ------------------------------------------
@@ -8,7 +16,6 @@ import { adminCreateInitialRentalPayment } from "./paymentService";
 export function calculateRentalDays(startDateStr, endDateStr) {
   const start = new Date(startDateStr);
   const end = new Date(endDateStr);
-
   start.setHours(0, 0, 0, 0);
   end.setHours(0, 0, 0, 0);
 
@@ -55,7 +62,6 @@ export async function calculateTotalPrice(cameraId, startDate, endDate) {
 // Check if a specific camera is available for a given date range.
 export async function checkCameraAvailability(cameraId, startDate, endDate) {
   try {
-    // Prefer secure RPC that runs with SECURITY DEFINER and returns only a boolean
     const { data: isAvailable, error } = await supabase.rpc('check_camera_availability', {
       p_camera_id: cameraId,
       p_start_date: startDate,
@@ -68,10 +74,7 @@ export async function checkCameraAvailability(cameraId, startDate, endDate) {
       throw error;
     }
 
-    return {
-      isAvailable,
-      conflictingBookings: []
-    };
+    return { isAvailable, conflictingBookings: [] };
   } catch (error) {
     console.error("Error in checkCameraAvailability:", error);
     return { isAvailable: false, error: error.message || "Failed to check availability." };
@@ -100,14 +103,6 @@ export async function updateRentalStatus(rentalId, statusUpdates) {
     };
   }
 }
-
-// Reusable query for fetching detailed rental information
-const DETAILED_RENTAL_QUERY = `
-  *,
-  cameras (*, camera_inclusions (*, inclusion_items (*))),
-  users!rentals_user_id_fkey (id, first_name, last_name, email, contact_number),
-  payments (*)
-`;
 
 // Get a single rental by its ID with all details
 export async function getRentalById(rentalId) {
@@ -189,76 +184,32 @@ export async function getUserRentals(userId) {
 //    -- User Functions --
 // ------------------------------------------
 
-// Allows a registered user to initiate a rental request with contract
+// Create a rental request for a user
 export async function createUserRentalRequest(bookingData) {
   try {
     const { cameraId, cameraModelName, startDate, endDate, contractPdfUrl, customerInfo } = bookingData;
 
-    // --- VALIDATION ---
-    if (!startDate || !endDate || !contractPdfUrl) {
-      throw new Error("Start date, end date, and contract file path are required.");
-    }
-    
-    if (!cameraId && !cameraModelName) {
-      throw new Error("Either camera ID or camera model name is required.");
-    }
-    
-    const start = new Date(new Date(startDate).setHours(0, 0, 0, 0));
-    const end = new Date(new Date(endDate).setHours(0, 0, 0, 0));
+    // simple validation
+    if (!startDate || !endDate || !contractPdfUrl) throw new Error("Missing required fields.");
+    if (!cameraId && !cameraModelName) throw new Error("Camera ID or model name required.");
 
-    if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) {
-      throw new Error("Please select valid dates. End date must be on or after start date.");
-    }
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (end < start) throw new Error("End date must be after start date.");
 
-    // --- USER AUTHENTICATION ---
+    // get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      throw new Error("Authentication error. Please log in.");
-    }
+    if (authError || !user) throw new Error("Please log in first.");
 
-    let finalCameraId = cameraId;
-    let cameraInfo = null;
+    // smart allocation for least requested unit
+    const finalCameraId = cameraId || await getAvailableUnitsOfModel(cameraModelName, startDate, endDate);
 
-    // --- SMART CAMERA UNIT ASSIGNMENT ---
-    if (cameraModelName && !cameraId) {
-      // User selected a model name, find an available unit
-      const unitResult = await findAvailableCameraUnit(cameraModelName, startDate, endDate);
-      
-      if (!unitResult.success) {
-        throw new Error(unitResult.error || "No available camera units for the selected dates.");
-      }
-      
-      finalCameraId = unitResult.cameraId;
-      cameraInfo = unitResult.cameraUnit;
-    } else if (cameraId) {
-      // User selected a specific camera ID, verify it's available
-      const availabilityResult = await checkCameraAvailability(cameraId, startDate, endDate);
-      
-      if (!availabilityResult.isAvailable) {
-        // If the specific unit is not available, try to find another unit of the same model
-        const { data: cameraData } = await getCameraInfo(cameraId);
-        
-        if (cameraData) {
-          const unitResult = await findAvailableCameraUnit(cameraData.name, startDate, endDate);
-          
-          if (unitResult.success) {
-            finalCameraId = unitResult.cameraId;
-            cameraInfo = unitResult.cameraUnit;
-          } else {
-            throw new Error("Selected camera is not available for the chosen dates.");
-          }
-        } else {
-          throw new Error("Selected camera is not available for the chosen dates.");
-        }
-      }
-    }
-
-    // --- PRICE CALCULATION ---
+    // Price calculation
     const { totalPrice, pricePerDay, rentalDays } = await calculateTotalPrice(finalCameraId, startDate, endDate);
 
-    // --- DATABASE INSERTION ---
+    // Insert rental
     const { data, error: insertError } = await supabase
-      .from('rentals')
+      .from("rentals")
       .insert({
         user_id: user.id,
         camera_id: finalCameraId,
@@ -266,31 +217,22 @@ export async function createUserRentalRequest(bookingData) {
         end_date: endDate,
         total_price: totalPrice,
         price_per_day: pricePerDay,
-        booking_type: 'registered_user',
-        rental_status: 'pending',
-        shipping_status: null,
-        contract_pdf_url: contractPdfUrl, 
+        booking_type: "registered_user",
+        rental_status: "pending",
+        contract_pdf_url: contractPdfUrl,
         customer_name: customerInfo?.name || null,
         customer_contact: customerInfo?.contact || null,
         customer_email: customerInfo?.email || null
       })
-      .select(); 
+      .select()
+      .single();
 
-    if (insertError) {
-        console.error("Supabase insert error:", insertError);
-        throw insertError;
-    }
+    if (insertError) throw insertError;
 
-    // Return success and the newly created rental data with camera info
-    return { 
-      success: true, 
-      data: data[0],
-      assignedCameraUnit: cameraInfo
-    };
-  } catch (error) {
-    console.error("Error in createUserRentalRequest:", error);
-    // Return a user-friendly error message
-    return { error: error.message || "Failed to create rental request. Please try again." };
+    return { success: true, data };
+  } catch (err) {
+    console.error("createUserRentalRequest error:", err);
+    return { error: err.message || "Failed to create rental request." };
   }
 }
 
@@ -449,80 +391,24 @@ export async function findConflictingRentals(cameraId, startDate, endDate, exclu
   }
 }
 
-// Get available units of the same camera model for given dates
-export async function getAvailableUnitsOfModel(cameraModelName, startDate, endDate, excludeRentalId = null) {
+// Get an available camera unit for the model within date range
+export async function getAvailableUnitsOfModel(cameraModelName, startDate, endDate) {
   try {
-    // First get all units of this model
-    const { data: allUnits, error: cameraError } = await supabase
-      .from('cameras')
-      .select('id, name, serial_number, camera_status')
-      .eq('name', cameraModelName)
-      .neq('camera_status', 'unavailable')
-      .order('serial_number', { ascending: true });
+    const { data: cameraId, error } = await supabase.rpc('allocate_camera_unit', {
+      p_camera_name: cameraModelName,
+      p_start_date: startDate,
+      p_end_date: endDate
+    });
 
-    if (cameraError) throw cameraError;
-
-    if (!allUnits || allUnits.length === 0) {
-      return { data: [], error: null };
-    }
-
-    // Check availability for each unit
-    const availableUnits = [];
-    for (const unit of allUnits) {
-      const { isAvailable } = await checkCameraAvailability(unit.id, startDate, endDate);
-      
-      // If there's an exclude rental ID, check if this unit would be available if we exclude that rental
-      if (!isAvailable && excludeRentalId) {
-        const { data: conflicts } = await findConflictingRentals(unit.id, startDate, endDate, excludeRentalId);
-        if (conflicts && conflicts.length === 0) {
-          availableUnits.push(unit);
-        }
-      } else if (isAvailable) {
-        availableUnits.push(unit);
-      }
-    }
-
-    return { data: availableUnits, error: null };
-  } catch (error) {
-    console.error("Error getting available units of model:", error);
-    return { data: null, error: error.message || "Failed to get available units." };
-  }
-}
-
-// Smart function to find and assign an available camera unit of the requested model
-export async function findAvailableCameraUnit(cameraModelName, startDate, endDate) {
-  try {
-    const { data: availableUnits, error } = await getAvailableUnitsOfModel(cameraModelName, startDate, endDate);
-    
     if (error) {
-      throw new Error(error);
+      console.error("Error allocating camera unit:", error);
+      throw new Error("No available unit could be allocated for this model.");
     }
 
-    if (!availableUnits || availableUnits.length === 0) {
-      return { 
-        success: false, 
-        error: `No available units of ${cameraModelName} for the selected dates.`,
-        availableUnits: [] 
-      };
-    }
-
-    // Return the first available unit (could be enhanced with priority logic later)
-    const selectedUnit = availableUnits[0];
-    
-    return { 
-      success: true, 
-      cameraId: selectedUnit.id,
-      cameraUnit: selectedUnit,
-      availableUnits,
-      error: null 
-    };
-  } catch (error) {
-    console.error("Error finding available camera unit:", error);
-    return { 
-      success: false, 
-      error: error.message || "Failed to find available camera unit.",
-      availableUnits: [] 
-    };
+    return cameraId; // UUID of the selected camera unit
+  } catch (err) {
+    console.error("getAvailableUnitsOfModel error:", err);
+    throw err;
   }
 }
 
@@ -531,11 +417,12 @@ export async function getCameraInfo(cameraIdOrName) {
   try {
     let query = supabase
       .from('cameras')
-      .select('id, name, serial_number, camera_status, pricing_tier_id');
+      .select('id, name, serial_number, camera_status, description, image_url, cost, camera_condition');
 
-    // Check if it's a UUID (camera ID) or a name
-    if (cameraIdOrName.includes('-') && cameraIdOrName.length === 36) {
-      // Looks like a UUID
+    // Check if it's a UUID (camera ID) using proper regex
+    if (typeof cameraIdOrName === 'string' && 
+        cameraIdOrName.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+      // This is a UUID
       query = query.eq('id', cameraIdOrName);
     } else {
       // Treat as camera name
@@ -802,7 +689,6 @@ export async function adminForceDeleteRental(rentalId) {
     return { success: false, error: err.message || "Failed to delete rental." };
   }
 }
-
 
 // Admin removes a cancelled rental (frees up the dates)
 export async function adminRemoveCancelledRental(rentalId) {
