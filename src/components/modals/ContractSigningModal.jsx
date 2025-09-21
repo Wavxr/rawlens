@@ -15,6 +15,7 @@ const ContractSigningModal = ({
   isGeneratingContract, // This prop indicates if the PDF is being generated
 }) => {
   const [signatureDataUrl, setSignatureDataUrl] = useState(null);
+  const [showSignatureWarning, setShowSignatureWarning] = useState(false);
   const canvasWrapperRef = useRef(null);
   const sigCanvasRef = useRef();
 
@@ -22,6 +23,7 @@ const ContractSigningModal = ({
     if (sigCanvasRef.current) {
       sigCanvasRef.current.clear();
       setSignatureDataUrl(null);
+      setShowSignatureWarning(false); // Hide warning when clearing
     }
   };
 
@@ -29,10 +31,16 @@ const ContractSigningModal = ({
     if (sigCanvasRef.current) {
       const dataURL = sigCanvasRef.current.toDataURL();
       const isEmpty = dataURL === 'image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
-      if (dataURL && !isEmpty) {
+      
+      // Check if signature canvas is empty using the signature pad method as well
+      const isCanvasEmpty = sigCanvasRef.current.isEmpty && sigCanvasRef.current.isEmpty();
+      
+      if (dataURL && !isEmpty && !isCanvasEmpty) {
         setSignatureDataUrl(dataURL);
+        setShowSignatureWarning(false); // Hide warning when signature is saved
       } else {
-        alert('Please provide a signature.');
+        setShowSignatureWarning(true); // Show warning if signature is empty
+        return;
       }
     }
   };
@@ -128,8 +136,19 @@ const ContractSigningModal = ({
   }, [isOpen]);
 
   const handleSubmitClick = () => {
+    // Double-check signature is valid before submitting
     if (signatureDataUrl) {
-      onSubmitRequest(signatureDataUrl);
+      // Additional validation: ensure the signature data URL is not the default empty canvas
+      const isEmpty = signatureDataUrl === 'image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+      
+      if (!isEmpty && signatureDataUrl.length > 100) { // Basic length check for valid signature data
+        onSubmitRequest(signatureDataUrl);
+      } else {
+        alert('Invalid signature. Please sign again.');
+        setSignatureDataUrl(null); // Reset to allow re-signing
+      }
+    } else {
+      alert('Please provide a signature before submitting.');
     }
   };
 
@@ -139,7 +158,7 @@ const ContractSigningModal = ({
   const isSubmitDisabled = isSubmitting || isGeneratingContract;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 overflow-y-auto">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4 overflow-y-auto">
       <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
 
@@ -278,6 +297,11 @@ const ContractSigningModal = ({
                 >
                   Clear
                 </button>
+                {showSignatureWarning && (
+                  <p className="mt-2 text-red-600 text-xs">
+                    Please sign to acknowledge that you agree to the terms and conditions.
+                  </p>
+                )}
               </div>
               <div className="flex justify-end space-x-3">
                 <button
