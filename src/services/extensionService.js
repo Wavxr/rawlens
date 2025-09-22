@@ -7,6 +7,29 @@ import { checkCameraAvailability } from "./rentalService";
 //   --  Generic Functions --
 // ------------------------------------------
 
+// Get rental extension details by ID
+export async function getExtensionById(extensionId) {
+  try {
+    const { data, error } = await supabase
+      .from('rental_extensions')
+      .select(`
+        *,
+        rental:rentals(
+          *,
+          camera:cameras(*),
+          user:users(*)
+        ),
+        requested_by_user:users!requested_by(*)
+      `)
+      .eq('id', extensionId)
+      .single();
+    
+    return { data, error };
+  } catch (error) {
+    return { data: null, error };
+  }
+}
+
 // Checks if the camera associated with a rental is available for an extension period.
 // Checks availability from the day *after* the current rental end date.
 export async function checkCameraAvailabilityForExtension(rentalId, newEndDate) {

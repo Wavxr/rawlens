@@ -5,6 +5,21 @@ import { uploadFile, objectPath, getSignedUrl } from './storageService';
 //   --  Generic Functions -- 
 // ------------------------------------------
 
+// Get payment details by ID
+export async function getPaymentById(paymentId) {
+  try {
+    const { data, error } = await supabase
+      .from('payments')
+      .select('*')
+      .eq('id', paymentId)
+      .single();
+    
+    return { data, error };
+  } catch (error) {
+    return { data: null, error };
+  }
+}
+
 // Upload payment receipt for a payment record
 export async function uploadPaymentReceipt(paymentId, rentalId, file) {
   try {
