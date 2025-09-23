@@ -638,7 +638,7 @@ export default function Cameras() {
                         </h3>
                         <div className="space-y-2 md:space-y-3">
                           <div>
-                            <label className="text-xs font-medium text-gray-300 mb-1 block flex items-center gap-1">
+                            <label className="text-xs font-medium text-gray-300 mb-1 flex items-center gap-1">
                               <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
                               Standard (1-3 days) *
                             </label>
@@ -658,7 +658,7 @@ export default function Cameras() {
                             </div>
                           </div>
                           <div>
-                            <label className="text-xs font-medium text-gray-300 mb-1 block flex items-center gap-1">
+                            <label className="text-xs font-medium text-gray-300 mb-1 flex items-center gap-1">
                               <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
                               Discounted (4+ days) *
                             </label>
