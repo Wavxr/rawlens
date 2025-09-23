@@ -1,7 +1,7 @@
 // Rentals.jsx
 import { useState, useEffect, useRef } from "react";
 import useRentalStore from "../../stores/rentalStore";
-import { subscribeToRentalUpdates, unsubscribeFromRentalUpdates } from "../../services/realtimeService";
+import { subscribeToAllRentals, unsubscribeFromChannel } from "../../services/realtimeService";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Calendar,
@@ -79,9 +79,9 @@ export default function Rentals() {
 
   useEffect(() => {
     loadAllRentals();
-    const channel = subscribeToRentalUpdates(null, "admin");
+    const channel = subscribeToAllRentals();
     return () => {
-      unsubscribeFromRentalUpdates(channel);
+      unsubscribeFromChannel(channel);
     };
   }, [loadAllRentals]);
 

@@ -1,7 +1,11 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import useAuthStore from '../../stores/useAuthStore';
 import useRentalStore from '../../stores/rentalStore';
-import { subscribeToRentalUpdates, unsubscribeFromRentalUpdates } from '../../services/realtimeService';
+import { 
+  subscribeToUserRentals, 
+  subscribeToUserPayments, 
+  unsubscribeFromChannel 
+} from '../../services/realtimeService';
 import { userCancelRentalRequest, userCancelConfirmedRental } from '../../services/rentalService';
 import { Loader2, Calendar, Camera as CameraIcon, AlertCircle, Clock, CheckCircle2, XCircle, Trash2 } from 'lucide-react';
 import PaymentUploadSection from '../../components/payment/PaymentUploadSection';
@@ -50,7 +54,7 @@ const StatusPill = ({ status }) => {
   };
 
   const config = statusConfig[status] || {
-    bg: 'bg-gradient-to-r from-slate-50 to-gray-50',
+    bg: 'bg-gradient-to-r from-slate-50 to-gray-50/50',
     text: 'text-slate-700',
     border: 'border-slate-200',
     icon: AlertCircle,
@@ -346,7 +350,8 @@ const EmptyState = ({ title, subtitle, icon: Icon }) => (
 const Requests = () => {
   const { user, loading: authLoading } = useAuthStore();
   const { rentals, loading, error, loadRentals } = useRentalStore();
-  const subscriptionRef = useRef(null);
+  const rentalSubscriptionRef = useRef(null);
+  const paymentSubscriptionRef = useRef(null);
 
   const handleUploadComplete = () => {
     // Refresh rentals data after successful upload
@@ -366,15 +371,29 @@ const Requests = () => {
     if (user?.id) {
       loadRentals(user.id);
 
-      if (!subscriptionRef.current) {
-        subscriptionRef.current = subscribeToRentalUpdates(user.id, 'user');
+      // Subscribe to user rentals
+      if (!rentalSubscriptionRef.current) {
+        rentalSubscriptionRef.current = subscribeToUserRentals(user.id);
+      }
+
+      // Subscribe to user payments
+      if (!paymentSubscriptionRef.current) {
+        paymentSubscriptionRef.current = subscribeToUserPayments(user.id, (payload) => {
+          console.log('Payment update received in Cart:', payload);
+          loadRentals(user.id);
+        });
       }
     }
 
     return () => {
-      if (subscriptionRef.current) {
-        unsubscribeFromRentalUpdates(subscriptionRef.current);
-        subscriptionRef.current = null;
+      // Clean up subscriptions
+      if (rentalSubscriptionRef.current) {
+        unsubscribeFromChannel(rentalSubscriptionRef.current);
+        rentalSubscriptionRef.current = null;
+      }
+      if (paymentSubscriptionRef.current) {
+        unsubscribeFromChannel(paymentSubscriptionRef.current);
+        paymentSubscriptionRef.current = null;
       }
     };
   }, [user?.id, loadRentals]);

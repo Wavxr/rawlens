@@ -1,3 +1,5 @@
+// src/services/realtimeService.js
+
 import { supabase } from '../lib/supabaseClient';
 import { getRentalById } from './rentalService';
 import { getUserById } from './userService';
@@ -5,295 +7,356 @@ import { getPaymentById } from './paymentService';
 import { getExtensionById } from './extensionService';
 import useRentalStore from '../stores/rentalStore';
 import useUserStore from '../stores/userStore';
-
+import usePaymentStore from '../stores/paymentStore';
+import useExtensionStore from '../stores/extensionStore';
 
 // ====================================================
-// --- RENTALS TABLES ---
+// --- Generic Subscription Helpers ---
 // ====================================================
 
-// Subscribe to rental updates in real-time.
-export function subscribeToRentalUpdates(targetId, role = 'user') {
-  if (!targetId && role === 'user') {
-    return null;
-  }
-
+// Generic real-time handler for any table
+function createRealtimeSubscription({ channelName, table, schema = 'public', event = '*', filter, onPayload }) {
   const channel = supabase
-  .channel(`rentals_${role}_${targetId || 'all'}`)
-  .on(
-    'postgres_changes',
-    {
-      event: '*',
-      schema: 'public',
-      table: 'rentals'
-    },
-    async (payload) => {
-      console.log('Real-time event received:', payload);
-      
-      const { eventType } = payload;
-      const rentalId = eventType === 'DELETE' ? payload.old.id : payload.new.id;
-
-      // Email notifications are now handled server-side via database triggers
-
-      // For user role, ensure the update belongs to them.
-      if (role === 'user' && eventType !== 'DELETE') {
-        const userId = payload.new.user_id;
-        if (userId !== targetId) {
-          return; // Not for this user
-        }
+    .channel(channelName)
+    .on(
+      'postgres_changes',
+      { event, schema, table, filter },
+      async (payload) => {
+        const eventType = payload.eventType;
+        const record = eventType === 'DELETE' ? payload.old : payload.new;
+        await onPayload(eventType, record, payload);
       }
+    )
+    .subscribe((status) => {
+      console.log(`${channelName} subscription status:`, status);
+    });
 
+  return channel;
+}
+
+// Utility to unsubscribe from channels
+export function unsubscribeFromChannel(channel) {
+  if (channel) {
+    supabase.removeChannel(channel);
+  }
+}
+
+// ====================================================
+// --- RENTALS TABLE ---
+// ====================================================
+
+// Subscribe to rental updates in real-time (User-specific)
+export function subscribeToUserRentals(userId) {
+  if (!userId) return null;
+
+  const channelName = `user_rentals_${userId}`;
+
+  return createRealtimeSubscription({
+    channelName,
+    table: 'rentals',
+    event: '*',
+    filter: `user_id=eq.${userId}`,
+    onPayload: async (eventType, record, payload) => {
       const { addOrUpdateRental, removeRental } = useRentalStore.getState();
 
       switch (eventType) {
         case 'INSERT':
         case 'UPDATE': {
-          // Fetch the full rental details to ensure data consistency
-          const { data, error } = await getRentalById(rentalId);
-          const fullRental = data;
+          // Fetch full details to ensure data consistency
+          const { data, error } = await getRentalById(record.id);
           if (error) {
-            console.error(`[Realtime] Failed to fetch details for rental ${rentalId}:`, error);
+            console.error(`[Realtime] Failed to fetch details for rental ${record.id}:`, error);
             return;
           }
-          if (fullRental) {
-            addOrUpdateRental(fullRental);
+          if (data) {
+            addOrUpdateRental(data);
           }
           break;
         }
         case 'DELETE':
-          removeRental(rentalId);
+          removeRental(record.id);
           break;
         default:
           break;
       }
     }
-  )
-  .subscribe((status) => {
-    console.log(`Rental subscription status: ${status}`);
   });
-
-  return channel;
 }
 
-// Unsubscribe from a rental updates channel.
-export function unsubscribeFromRentalUpdates(channel) {
-  if (channel) {
-    supabase.removeChannel(channel);
-  }
-}
+// Subscribe to all rental updates (Admin)
+export function subscribeToAllRentals() {
+  const channelName = 'admin_all_rentals';
 
-// ====================================================
-// --- USERS TABLES ---
-// ====================================================
+  return createRealtimeSubscription({
+    channelName,
+    table: 'rentals',
+    event: '*',
+    onPayload: async (eventType, record, payload) => {
+      const { addOrUpdateRental, removeRental } = useRentalStore.getState();
 
-// Subscribe to user updates in real-time.
-export function subscribeToUserUpdates(targetId, callback, role = 'user') {
-  if (!targetId && role === 'user') {
-    return null;
-  }
-
-  const channel = supabase
-    .channel(`users_${role}_${targetId || 'all'}`)
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'users'
-      },
-      async (payload) => {
-        const { eventType } = payload;
-        const userId = eventType === 'DELETE' ? payload.old.id : payload.new.id;
-
-        // For user role, only listen to their own changes
-        if (role === 'user' && userId !== targetId) return;
-
-        const { addOrUpdateUser, removeUser } = useUserStore.getState();
-
-        switch (eventType) {
-          case 'INSERT':
-          case 'UPDATE': {
-            const user = await getUserById(userId);
-            if (user) addOrUpdateUser(user);
-            break;
-          }
-          case 'DELETE':
-            removeUser(userId);
-            break;
-          default:
-            break;
-        }
-
-        // If a callback is provided, execute it.
-        if (callback) {
-          callback(payload);
-        }
-      }
-    )
-    .subscribe();
-
-  return channel;
-}
-
-// Unsubscribe from a user updates channel.
-export function unsubscribeFromUserUpdates(channel) {
-  if (channel) {
-    supabase.removeChannel(channel);
-  }
-}
-
-
-// ====================================================
-// --- PAYMENTS TABLES ---
-// ====================================================
-
-// Subscribe to payment updates in real-time.
-export function subscribeToPaymentUpdates(targetId, callback, role = 'user') {
-  if (!targetId && role === 'user') {
-    return null;
-  }
-
-  const channel = supabase
-    .channel(`payments_${role}_${targetId || 'all'}`)
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'payments'
-      },
-      async (payload) => {
-        console.log('Payment real-time event received:', payload);
-        
-        const { eventType } = payload;
-        const paymentId = eventType === 'DELETE' ? payload.old.id : payload.new.id;
-
-        // For user role, ensure the update belongs to them.
-        if (role === 'user' && eventType !== 'DELETE') {
-          const userId = payload.new.user_id;
-          if (userId !== targetId) {
-            return; // Not for this user
-          }
-        }
-
-        // Fetch the full payment details to ensure data consistency
-        let fullPayment = null;
-        if (eventType !== 'DELETE') {
-          const { data, error } = await getPaymentById(paymentId);
+      switch (eventType) {
+        case 'INSERT':
+        case 'UPDATE': {
+          // Fetch full details to ensure data consistency
+          const { data, error } = await getRentalById(record.id);
           if (error) {
-            console.error(`[Realtime] Failed to fetch details for payment ${paymentId}:`, error);
+            console.error(`[Realtime] Failed to fetch details for rental ${record.id}:`, error);
             return;
           }
-          fullPayment = data;
+          if (data) {
+            addOrUpdateRental(data);
+          }
+          break;
         }
-
-        // If a callback is provided, execute it with the payment data
-        if (callback) {
-          callback({
-            ...payload,
-            paymentData: fullPayment,
-            eventType
-          });
-        }
+        case 'DELETE':
+          removeRental(record.id);
+          break;
+        default:
+          break;
       }
-    )
-    .subscribe((status) => {
-      console.log(`Payment subscription status: ${status}`);
-    });
-
-  return channel;
-}
-
-// Unsubscribe from payment updates channel.
-export function unsubscribeFromPaymentUpdates(channel) {
-  if (channel) {
-    supabase.removeChannel(channel);
-  }
+    }
+  });
 }
 
 // ====================================================
-// --- RENTAL_EXTENSIONS TABLES ---
+// --- USERS TABLE ---
 // ====================================================
 
-// Subscribe to rental extension updates in real-time.
-export function subscribeToExtensionUpdates(targetId, callback, role = 'user') {
-  if (!targetId && role === 'user') {
-    return null;
-  }
+// Subscribe to user updates in real-time (User-specific)
+export function subscribeToUserUpdates(userId, callback) {
+  if (!userId) return null;
 
-  const channel = supabase
-    .channel(`extensions_${role}_${targetId || 'all'}`)
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'rental_extensions'
-      },
-      async (payload) => {
-        console.log('Extension real-time event received:', payload);
-        
-        const { eventType } = payload;
-        const extensionId = eventType === 'DELETE' ? payload.old.id : payload.new.id;
+  const channelName = `user_profile_${userId}`;
 
-        // For user role, ensure the update belongs to them (either as requester or rental owner).
-        if (role === 'user' && eventType !== 'DELETE') {
-          const requestedBy = payload.new.requested_by;
-          // We need to check if user owns the rental as well, but for simplicity here,
-          // we'll check if they requested the extension
-          if (requestedBy !== targetId) {
-            // Additional check: see if they own the rental
-            // This requires fetching rental data, but for performance we'll skip this
-            // and let RLS handle the security at database level
-            return;
-          }
+  return createRealtimeSubscription({
+    channelName,
+    table: 'users',
+    event: '*',
+    filter: `id=eq.${userId}`,
+    onPayload: async (eventType, record, payload) => {
+      const { addOrUpdateUser, removeUser } = useUserStore.getState();
+
+      switch (eventType) {
+        case 'INSERT':
+        case 'UPDATE': {
+          const user = await getUserById(record.id);
+          if (user) addOrUpdateUser(user);
+          break;
         }
+        case 'DELETE':
+          removeUser(record.id);
+          break;
+        default:
+          break;
+      }
 
-        // Fetch the full extension details to ensure data consistency
-        let fullExtension = null;
-        if (eventType !== 'DELETE') {
-          const { data, error } = await getExtensionById(extensionId);
+      callback?.(payload);
+    }
+  });
+}
+
+// Subscribe to all user updates (Admin)
+export function subscribeToAllUsers(callback) {
+  const channelName = 'admin_all_users';
+
+  return createRealtimeSubscription({
+    channelName,
+    table: 'users',
+    event: '*',
+    onPayload: async (eventType, record, payload) => {
+      const { addOrUpdateUser, removeUser } = useUserStore.getState();
+
+      switch (eventType) {
+        case 'INSERT':
+        case 'UPDATE': {
+          const user = await getUserById(record.id);
+          if (user) addOrUpdateUser(user);
+          break;
+        }
+        case 'DELETE':
+          removeUser(record.id);
+          break;
+        default:
+          break;
+      }
+
+      callback?.(payload);
+    }
+  });
+}
+
+// ====================================================
+// --- PAYMENTS TABLE ---
+// ====================================================
+
+// Subscribe to user-specific payments
+export function subscribeToUserPayments(userId, callback) {
+  if (!userId) return null;
+
+  const channelName = `user_payments_${userId}`;
+
+  return createRealtimeSubscription({
+    channelName,
+    table: 'payments',
+    event: '*',
+    filter: `user_id=eq.${userId}`,
+    onPayload: async (eventType, record, payload) => {
+      const { addOrUpdatePayment, removePayment } = usePaymentStore.getState();
+
+      switch (eventType) {
+        case 'INSERT':
+        case 'UPDATE': {
+          // Hydrate full shape to match initial load
+          const { data, error } = await getPaymentById(record.id);
           if (error) {
-            console.error(`[Realtime] Failed to fetch details for extension ${extensionId}:`, error);
-            return;
+            console.error(`[Realtime] Failed to fetch payment ${record.id}:`, error);
+            addOrUpdatePayment(record); // fallback to raw record
+          } else if (data) {
+            addOrUpdatePayment(data);
           }
-          fullExtension = data;
+          break;
         }
-
-        // If a callback is provided, execute it with the extension data
-        if (callback) {
-          callback({
-            ...payload,
-            extensionData: fullExtension,
-            eventType
-          });
-        }
+        case 'DELETE':
+          removePayment(record.id);
+          break;
+        default:
+          break;
       }
-    )
-    .subscribe((status) => {
-      console.log(`Extension subscription status: ${status}`);
-    });
 
-  return channel;
+      callback?.({ ...payload, eventType });
+    }
+  });
 }
 
-// Unsubscribe from rental extension updates channel.
-export function unsubscribeFromExtensionUpdates(channel) {
-  if (channel) {
-    supabase.removeChannel(channel);
-  }
+// Subscribe to all payments (Admin)
+export function subscribeToAllPayments(callback) {
+  const channelName = 'admin_all_payments';
+
+  return createRealtimeSubscription({
+    channelName,
+    table: 'payments',
+    event: '*',
+    onPayload: async (eventType, record, payload) => {
+      const { addOrUpdatePayment, removePayment } = usePaymentStore.getState();
+
+      switch (eventType) {
+        case 'INSERT':
+        case 'UPDATE': {
+          // Hydrate full shape to match initial load
+          const { data, error } = await getPaymentById(record.id);
+          if (error) {
+            console.error(`[Realtime] Failed to fetch payment ${record.id}:`, error);
+            addOrUpdatePayment(record); // fallback to raw record
+          } else if (data) {
+            addOrUpdatePayment(data);
+          }
+          break;
+        }
+        case 'DELETE':
+          removePayment(record.id);
+          break;
+        default:
+          break;
+      }
+
+      callback?.({ ...payload, eventType });
+    }
+  });
 }
+
+// ====================================================
+// --- RENTAL_EXTENSIONS TABLE ---
+// ====================================================
+
+// Subscribe to user-specific extensions
+export function subscribeToUserExtensions(userId, callback) {
+  if (!userId) return null;
+
+  const channelName = `user_extensions_${userId}`;
+
+  return createRealtimeSubscription({
+    channelName,
+    table: 'rental_extensions',
+    event: '*',
+    filter: `requested_by=eq.${userId}`,
+    onPayload: async (eventType, record, payload) => {
+      const { addOrUpdateExtension, removeExtension } = useExtensionStore.getState();
+
+      switch (eventType) {
+        case 'INSERT':
+        case 'UPDATE':
+          addOrUpdateExtension(record);
+          break;
+        case 'DELETE':
+          removeExtension(record.id);
+          break;
+        default:
+          break;
+      }
+
+      callback?.({ ...payload, eventType });
+    }
+  });
+}
+
+// Subscribe to all extensions (Admin)
+export function subscribeToAllExtensions(callback) {
+  const channelName = 'admin_all_extensions';
+
+  return createRealtimeSubscription({
+    channelName,
+    table: 'rental_extensions',
+    event: '*',
+    onPayload: async (eventType, record, payload) => {
+      const { addOrUpdateExtension, removeExtension } = useExtensionStore.getState();
+
+      switch (eventType) {
+        case 'INSERT':
+        case 'UPDATE':
+          addOrUpdateExtension(record);
+          break;
+        case 'DELETE':
+          removeExtension(record.id);
+          break;
+        default:
+          break;
+      }
+
+      callback?.({ ...payload, eventType });
+    }
+  });
+}
+
+// ====================================================
+// --- COMBINED SUBSCRIPTIONS ---
+// ====================================================
 
 // Subscribe to both rental extension updates and related payment updates for a user
-export function subscribeToExtensionAndPaymentUpdates(userId, extensionCallback, paymentCallback, role = 'user') {
-  const extensionChannel = subscribeToExtensionUpdates(userId, extensionCallback, role);
-  const paymentChannel = subscribeToPaymentUpdates(userId, paymentCallback, role);
+export function subscribeToUserExtensionsAndPayments(userId, extensionCallback, paymentCallback) {
+  const extensionChannel = subscribeToUserExtensions(userId, extensionCallback);
+  const paymentChannel = subscribeToUserPayments(userId, paymentCallback);
   
   return {
     extensionChannel,
     paymentChannel,
     unsubscribe: () => {
-      unsubscribeFromExtensionUpdates(extensionChannel);
-      unsubscribeFromPaymentUpdates(paymentChannel);
+      unsubscribeFromChannel(extensionChannel);
+      unsubscribeFromChannel(paymentChannel);
+    }
+  };
+}
+
+// Subscribe to all rentals and payments (Admin dashboard)
+export function subscribeToAllRentalsAndPayments(rentalCallback, paymentCallback) {
+  const rentalChannel = subscribeToAllRentals();
+  const paymentChannel = subscribeToAllPayments(paymentCallback);
+  
+  return {
+    rentalChannel,
+    paymentChannel,
+    unsubscribe: () => {
+      unsubscribeFromChannel(rentalChannel);
+      unsubscribeFromChannel(paymentChannel);
     }
   };
 }

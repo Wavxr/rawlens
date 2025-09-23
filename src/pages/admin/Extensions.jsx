@@ -1,68 +1,88 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Calendar, 
   Clock, 
   User, 
-  CameraIcon, 
   CheckCircle2, 
   XCircle, 
   AlertTriangle,
   PhilippinePeso,
   Loader2,
   Search,
-  Filter,
-  Eye,
   MessageSquare,
-  ChevronRight,
   Zap
 } from 'lucide-react';
 import { 
-  adminGetPendingExtensions, 
+  adminGetPendingExtensions,
   adminApproveExtension, 
   adminRejectExtension,
   checkCameraAvailabilityForExtension 
 } from '../../services/extensionService';
+import { subscribeToAllExtensions, unsubscribeFromChannel } from '../../services/realtimeService';
 import useAuthStore from '../../stores/useAuthStore';
+import useExtensionStore from '../../stores/extensionStore';
 import { toast } from 'react-toastify';
 
 const Extensions = () => {
   const user = useAuthStore(state => state.user);
-  const [extensions, setExtensions] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // Fixed: use the correct function name from extension store
+  const { extensions, loading, setExtensions } = useExtensionStore();
   const [processingExtension, setProcessingExtension] = useState({});
   const [checkingConflicts, setCheckingConflicts] = useState({});
   const [conflicts, setConflicts] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('pending');
   const [selectedExtension, setSelectedExtension] = useState(null);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectNotes, setRejectNotes] = useState('');
+  const extensionSubscriptionRef = useRef(null);
 
   useEffect(() => {
-    loadPendingExtensions();
-  }, []);
-
-  const loadPendingExtensions = async () => {
-    try {
-      setLoading(true);
-      const result = await adminGetPendingExtensions();
-      if (result.success) {
-        setExtensions(result.data);
-        // Auto-check conflicts for all pending extensions
-        result.data.forEach(ext => {
-          if (ext.extension_status === 'pending') {
-            checkConflictForExtension(ext.id, ext.rental_id, ext.requested_end_date);
-          }
-        });
-      } else {
-        toast.error(result.error || 'Failed to load extensions');
+    console.log('Extensions useEffect triggered, user role:', user?.role);
+    
+    const loadExtensions = async () => {
+      try {
+        const result = await adminGetPendingExtensions();
+        if (result.success) {
+          setExtensions(result.data);
+        }
+      } catch (error) {
+        console.error('Error loading extensions:', error);
       }
-    } catch (error) {
-      toast.error('Error loading extension requests');
-    } finally {
-      setLoading(false);
+    };
+    
+    loadExtensions();
+    
+    // Prevent duplicate subscriptions
+    if (user?.role === 'admin' && !extensionSubscriptionRef.current) {
+      console.log('Setting up extension subscription for admin');
+      extensionSubscriptionRef.current = subscribeToAllExtensions((payload) => {
+        console.log('Extension update received in admin Extensions:', payload);
+      });
+      console.log('Extension subscription ref set:', extensionSubscriptionRef.current);
     }
-  };
+
+    return () => {
+      if (extensionSubscriptionRef.current) {
+        console.log('Cleaning up extension subscription:', extensionSubscriptionRef.current);
+        unsubscribeFromChannel(extensionSubscriptionRef.current);
+      }
+      extensionSubscriptionRef.current = null;
+      console.log('Extension subscription ref cleared');
+    };
+  }, [user?.role, setExtensions]);
+
+  useEffect(() => {
+    // When extensions from the store change, check for conflicts (only for pending extensions)
+    if (extensions.length > 0) {
+      extensions.forEach(ext => {
+        // Only check conflicts for pending extensions that haven't been checked yet
+        if (ext.extension_status === 'pending' && !conflicts[ext.id]) {
+          checkConflictForExtension(ext.id, ext.rental_id, ext.requested_end_date);
+        }
+      });
+    }
+  }, [extensions, conflicts]); // Added conflicts to dependency array
 
   const checkConflictForExtension = async (extensionId, rentalId, newEndDate) => {
     try {
@@ -104,7 +124,6 @@ const Extensions = () => {
       
       if (result.success) {
         toast.success('Extension approved successfully! 🎉');
-        await loadPendingExtensions();
       } else {
         toast.error(result.error || 'Failed to approve extension');
       }
@@ -127,7 +146,6 @@ const Extensions = () => {
         setShowRejectModal(false);
         setSelectedExtension(null);
         setRejectNotes('');
-        await loadPendingExtensions();
       } else {
         toast.error(result.error || 'Failed to reject extension');
       }
@@ -173,6 +191,7 @@ const Extensions = () => {
       ext.rentals?.users?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ext.rentals?.id?.toLowerCase().includes(searchTerm.toLowerCase());
 
+    // Show only pending by default, unless user changes filter
     const matchesStatus = statusFilter === 'all' || ext.extension_status === statusFilter;
 
     return matchesSearch && matchesStatus;
@@ -295,9 +314,9 @@ const Extensions = () => {
             </div>
             <h3 className="text-base sm:text-lg font-semibold text-white mb-2">No Extension Requests</h3>
             <p className="text-sm text-gray-400">
-              {searchTerm || statusFilter !== 'all' 
+              {searchTerm || statusFilter !== 'pending' 
                 ? 'No extension requests match your filters.' 
-                : 'No extension requests found.'}
+                : 'No pending extension requests found.'}
             </p>
           </div>
         ) : (

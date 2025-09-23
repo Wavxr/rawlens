@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { getSignedUrl } from "../../services/storageService"
 import { getUsers } from "../../services/userService"
-import { subscribeToUserUpdates, unsubscribeFromUserUpdates } from "../../services/realtimeService";
+import { subscribeToAllUsers, unsubscribeFromChannel } from "../../services/realtimeService";
 import useUserStore from "../../stores/userStore";
 import { adminUpdateVerificationStatus } from "../../services/verificationService"
 import {
@@ -65,11 +65,23 @@ export default function AdminUsers() {
   const [appealFilter, setAppealFilter] = useState(false)
   const { users, setUsers, addOrUpdateUser } = useUserStore();
 
+  const userSubscriptionRef = useRef(null);
+
   useEffect(() => {
-    const channel = subscribeToUserUpdates(null, "admin");
+    // Subscribe to all user updates for admin
+    if (!userSubscriptionRef.current) {
+      userSubscriptionRef.current = subscribeToAllUsers(null, (payload) => {
+        console.log('User update received in admin Users:', payload);
+      }, "admin");
+    }
+
     return () => {
-      unsubscribeFromUserUpdates(channel);
-    };
+    if (userSubscriptionRef.current) {
+      unsubscribeFromChannel(userSubscriptionRef.current);
+      userSubscriptionRef.current = null;
+    }
+  };
+
   }, []);
 
   useEffect(() => {

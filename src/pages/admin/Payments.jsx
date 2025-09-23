@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { 
   CreditCard, 
   Eye, 
@@ -7,13 +7,10 @@ import {
   Clock, 
   Calendar,
   User,
-  CameraIcon,
   PhilippinePeso,
   Loader2,
   Search,
-  Filter,
   ExternalLink,
-  AlertCircle,
   FileText,
   RefreshCw
 } from 'lucide-react';
@@ -23,13 +20,14 @@ import {
   adminVerifyExtensionPayment,
   getPaymentReceiptUrl
 } from '../../services/paymentService';
+import { subscribeToAllPayments, unsubscribeFromChannel } from '../../services/realtimeService';
 import useAuthStore from '../../stores/useAuthStore';
+import usePaymentStore from '../../stores/paymentStore';
 import { toast } from 'react-toastify';
 
 const Payments = () => {
   const user = useAuthStore(state => state.user);
-  const [payments, setPayments] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { payments, loading, setPayments } = usePaymentStore();
   const [processingPayment, setProcessingPayment] = useState({});
   const [viewingReceipt, setViewingReceipt] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
@@ -38,26 +36,43 @@ const Payments = () => {
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [receiptUrl, setReceiptUrl] = useState('');
+  const paymentSubscriptionRef = useRef(null);
 
   useEffect(() => {
-    loadSubmittedPayments();
-  }, []);
-
-  const loadSubmittedPayments = async () => {
-    try {
-      setLoading(true);
-      const result = await adminGetSubmittedPayments();
-      if (result.success) {
-        setPayments(result.data);
-      } else {
-        toast.error(result.error || 'Failed to load payments');
+    console.log('Payments useEffect triggered, user role:', user?.role);
+    
+    const loadPayments = async () => {
+      try {
+        const result = await adminGetSubmittedPayments();
+        if (result.success) {
+          setPayments(result.data);
+        }
+      } catch (error) {
+        console.error('Error loading payments:', error);
       }
-    } catch (error) {
-      toast.error('Error loading payment submissions');
-    } finally {
-      setLoading(false);
+    };
+    
+    if (user?.role === 'admin') {
+      loadPayments();
     }
-  };
+
+    if (user?.role === 'admin' && !paymentSubscriptionRef.current) {
+      console.log('Setting up payment subscription for admin');
+      paymentSubscriptionRef.current = subscribeToAllPayments(payload => {
+        console.log('Payment update received in admin Payments:', payload);
+      });
+      console.log('Payment subscription ref set:', paymentSubscriptionRef.current);
+    }
+
+    return () => {
+      console.log('Cleaning up payment subscription');
+      if (paymentSubscriptionRef.current) {
+        unsubscribeFromChannel(paymentSubscriptionRef.current);
+      }
+      paymentSubscriptionRef.current = null;
+      console.log('Payment subscription cleanup complete');
+    };
+  }, [user?.role, setPayments]);
 
   const handleViewReceipt = async (paymentId) => {
     try {
@@ -91,7 +106,6 @@ const Payments = () => {
       
       if (result.success) {
         toast.success('Payment verified successfully! 🎉');
-        await loadSubmittedPayments();
         setShowReceiptModal(false);
       } else {
         toast.error(result.error || 'Failed to verify payment');
@@ -104,14 +118,9 @@ const Payments = () => {
   };
 
   const handleRejectPayment = async (payment) => {
-    // This would require creating a reject payment function
-    // For now, we'll use a simple status update
     try {
       setProcessingPayment(prev => ({ ...prev, [payment.id]: 'rejecting' }));
-      
-      // TODO: Implement adminRejectPayment function
       toast.info('Payment rejection functionality needs to be implemented');
-      
     } catch (error) {
       toast.error('Error rejecting payment');
     } finally {
@@ -172,15 +181,19 @@ const Payments = () => {
     };
   };
 
-  // Filter payments based on search, type, and status
   const filteredPayments = payments.filter(payment => {
-    const matchesSearch = 
-      payment.rentals?.cameras?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.users?.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.users?.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.users?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.rentals?.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.id?.toLowerCase().includes(searchTerm.toLowerCase());
+    const lowerSearch = (searchTerm || '').toLowerCase();
+    const fields = [
+      payment?.rentals?.cameras?.name,
+      payment?.users?.first_name,
+      payment?.users?.last_name,
+      payment?.users?.email,
+      payment?.rentals?.id,
+      payment?.id,
+    ];
+    const matchesSearch = fields
+      .map(v => (v == null ? '' : String(v)).toLowerCase())
+      .some(text => text.includes(lowerSearch));
 
     const matchesType = paymentTypeFilter === 'all' || payment.payment_type === paymentTypeFilter;
     const matchesStatus = statusFilter === 'all' || payment.payment_status === statusFilter;
@@ -206,7 +219,6 @@ const Payments = () => {
   return (
     <div className="min-h-screen bg-gray-950">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8">
-        {/* Header */}
         <div className="mb-6 sm:mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4">
             <div className="flex items-center gap-2 sm:gap-3">
@@ -219,7 +231,19 @@ const Payments = () => {
               </div>
             </div>
             <button
-              onClick={loadSubmittedPayments}
+              onClick={() => {
+                const loadPayments = async () => {
+                  try {
+                    const result = await adminGetSubmittedPayments();
+                    if (result.success) {
+                      setPayments(result.data);
+                    }
+                  } catch (error) {
+                    console.error('Error loading payments:', error);
+                  }
+                };
+                loadPayments();
+              }}
               disabled={loading}
               className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-blue-600 text-white font-medium text-sm rounded-md sm:rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
             >
@@ -228,7 +252,6 @@ const Payments = () => {
             </button>
           </div>
 
-          {/* Stats Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6">
             {[
               { 
@@ -276,7 +299,6 @@ const Payments = () => {
             })}
           </div>
 
-          {/* Filters */}
           <div className="bg-gray-900 rounded-lg sm:rounded-xl border border-gray-800 p-3 sm:p-4">
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
               <div className="flex-1">
@@ -318,7 +340,6 @@ const Payments = () => {
           </div>
         </div>
 
-        {/* Payment Cards */}
         {filteredPayments.length === 0 ? (
           <div className="bg-gray-900 rounded-lg sm:rounded-xl border border-gray-800 p-6 sm:p-8 text-center">
             <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-lg bg-gray-800 flex items-center justify-center mx-auto mb-3 sm:mb-4">
@@ -343,7 +364,6 @@ const Payments = () => {
 
               return (
                 <div key={payment.id} className="bg-gray-800 rounded-lg sm:rounded-xl border border-gray-700 overflow-hidden">
-                  {/* Header */}
                   <div className={`px-3 sm:px-6 py-3 sm:py-4 border-b border-gray-700 ${
                     payment.payment_type === 'extension' 
                       ? 'bg-purple-900/20' 
@@ -374,7 +394,6 @@ const Payments = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {/* Amount */}
                         <div className="text-right mr-2 sm:mr-4">
                           <div className="text-lg sm:text-2xl font-bold text-white flex items-center gap-1">
                             <PhilippinePeso className="w-3 h-3 sm:w-5 sm:h-5" />
@@ -382,7 +401,6 @@ const Payments = () => {
                           </div>
                         </div>
 
-                        {/* Status Badge */}
                         <span className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${
                           payment.payment_status === 'submitted'
                             ? 'bg-amber-900/30 text-amber-400'
@@ -396,9 +414,7 @@ const Payments = () => {
                     </div>
                   </div>
 
-                  {/* Content */}
                   <div className="p-3 sm:p-6">
-                    {/* Payment Details Grid */}
                     <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6">
                       <div className="bg-gray-900/50 rounded-md sm:rounded-lg p-2 sm:p-4">
                         <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1 sm:mb-2">
@@ -436,7 +452,6 @@ const Payments = () => {
                       </div>
                     </div>
 
-                    {/* Payer Information */}
                     <div className="bg-gray-900/30 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
                       <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
                         <User className="w-3 h-3 sm:w-4 sm:h-4 text-blue-400" />
@@ -460,7 +475,6 @@ const Payments = () => {
                       </div>
                     </div>
 
-                    {/* Actions */}
                     <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                       <button
                         onClick={() => handleViewReceipt(payment.id)}
@@ -526,11 +540,9 @@ const Payments = () => {
           </div>
         )}
 
-        {/* Receipt Modal */}
         {showReceiptModal && selectedPayment && receiptUrl && (
           <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
             <div className="bg-gray-900 border border-gray-700 rounded-lg sm:rounded-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
-              {/* Modal Header */}
               <div className="flex items-center justify-between p-3 sm:p-6 border-b border-gray-700">
                 <div>
                   <h3 className="text-base sm:text-lg font-semibold text-white">Payment Receipt</h3>
@@ -590,7 +602,6 @@ const Payments = () => {
                 </div>
               </div>
               
-              {/* Receipt Image */}
               <div className="flex-1 p-3 sm:p-6 overflow-auto">
                 <div className="flex items-center justify-center bg-gray-800 rounded-lg min-h-[300px] sm:min-h-[400px]">
                   <img

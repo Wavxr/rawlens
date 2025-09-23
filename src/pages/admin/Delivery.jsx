@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ToastContainer, toast } from 'react-toastify';
 import useRentalStore from "../../stores/rentalStore";
-import { subscribeToRentalUpdates, unsubscribeFromRentalUpdates } from "../../services/realtimeService";
+import { subscribeToAllRentals, unsubscribeFromChannel } from "../../services/realtimeService";
 import {
   Search,
   Package,
@@ -160,9 +160,9 @@ export default function Delivery() {
 
   useEffect(() => {
     loadAllRentals();
-    const channel = subscribeToRentalUpdates(null, 'admin');
+    const channel = subscribeToAllRentals();
     return () => {
-      unsubscribeFromRentalUpdates(channel);
+      unsubscribeFromChannel(channel);
     };
   }, [loadAllRentals]);
 

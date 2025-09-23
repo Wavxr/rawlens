@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import { updateUserProfile } from "../../services/userService";
 import { getSignedUrl } from "../../services/storageService";
-import { subscribeToUserUpdates, unsubscribeFromUserUpdates } from "../../services/realtimeService";
+import { subscribeToUserUpdates, unsubscribeFromChannel } from "../../services/realtimeService";
 import useAuthStore from "../../stores/useAuthStore";
 import useSettingsStore from "../../stores/settingsStore";
 import PushNotificationPrompt from "../../components/notifications/PushNotificationPrompt";
@@ -75,11 +75,11 @@ export default function Profile() {
         useAuthStore.getState().fetchUserData(userId);
       };
 
-      const subscription = subscribeToUserUpdates(userId, handleUserUpdate, 'user');
+      const subscription = subscribeToUserUpdates(userId, handleUserUpdate);
 
       return () => {
         if (subscription) {
-          unsubscribeFromUserUpdates(subscription);
+          unsubscribeFromChannel(subscription);
         }
       };
     }

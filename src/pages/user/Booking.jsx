@@ -6,7 +6,7 @@ import useRentalStore from "../../stores/rentalStore"
 import { userConfirmDelivered, userConfirmSentBack } from "../../services/deliveryService"
 import { userCancelConfirmedRental } from "../../services/rentalService"
 import { getSignedContractUrl } from "../../services/pdfService"
-import { subscribeToRentalUpdates, unsubscribeFromRentalUpdates } from "../../services/realtimeService"
+import { subscribeToUserRentals, subscribeToUserExtensions, subscribeToUserPayments, unsubscribeFromChannel } from "../../services/realtimeService"
 import {
   Package,
   Truck,
@@ -51,7 +51,9 @@ export default function Rentals() {
   const [contractViewError, setContractViewError] = useState({})
   const [activeFilter, setActiveFilter] = useState("payment_pending")
   const [selectedRental, setSelectedRental] = useState(null)
-  const subscriptionRef = useRef(null)
+  const rentalSubscriptionRef = useRef(null);
+  const extensionSubscriptionRef = useRef(null);
+  const paymentSubscriptionRef = useRef(null);
   const [now, setNow] = useState(Date.now())
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState({});
@@ -69,14 +71,40 @@ export default function Rentals() {
     if (!authLoading && user?.id) {
       loadRentals(user.id);
 
-      if (!subscriptionRef.current) {
-        subscriptionRef.current = subscribeToRentalUpdates(user.id, 'user');
-      }
+        // Subscribe to user rentals
+        if (!rentalSubscriptionRef.current) {
+          rentalSubscriptionRef.current = subscribeToUserRentals(user.id);
+        }
+
+        // Subscribe to user extensions
+        if (!extensionSubscriptionRef.current) {
+          extensionSubscriptionRef.current = subscribeToUserExtensions(user.id, (payload) => {
+            console.log('Extension update received in Booking:', payload);
+            loadRentals(user.id); // Refresh rentals to get updated extension data
+          });
+        }
+
+        // Subscribe to user payments
+        if (!paymentSubscriptionRef.current) {
+          paymentSubscriptionRef.current = subscribeToUserPayments(user.id, (payload) => {
+            console.log('Payment update received in Booking:', payload);
+            loadRentals(user.id); // Refresh rentals to get updated payment status
+          });
+        }
 
       return () => {
-        if (subscriptionRef.current) {
-          unsubscribeFromRentalUpdates(subscriptionRef.current);
-          subscriptionRef.current = null;
+        // Clean up subscriptions
+        if (rentalSubscriptionRef.current) {
+          unsubscribeFromChannel(rentalSubscriptionRef.current);
+          rentalSubscriptionRef.current = null;
+        }
+        if (extensionSubscriptionRef.current) {
+          unsubscribeFromChannel(extensionSubscriptionRef.current);
+          extensionSubscriptionRef.current = null;
+        }
+        if (paymentSubscriptionRef.current) {
+          unsubscribeFromChannel(paymentSubscriptionRef.current);
+          paymentSubscriptionRef.current = null;
         }
       };
     }

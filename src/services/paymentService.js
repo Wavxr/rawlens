@@ -10,7 +10,14 @@ export async function getPaymentById(paymentId) {
   try {
     const { data, error } = await supabase
       .from('payments')
-      .select('*')
+      .select(`
+        *,
+        rentals (
+          *,
+          cameras (*)
+        ),
+        users (id, first_name, last_name, email, contact_number)
+      `)
       .eq('id', paymentId)
       .single();
     
