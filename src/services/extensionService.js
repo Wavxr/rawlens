@@ -294,3 +294,28 @@ export async function adminGetPendingExtensions() {
     return { success: false, data: null, error: error.message || "Failed to fetch pending extensions." };
   }
 }
+
+// Admin gets all extension requests (for store population and real-time consistency)
+export async function adminGetAllExtensions() {
+  try {
+    const { data, error } = await supabase
+      .from("rental_extensions")
+      .select(`
+        *,
+        rentals (
+          id, 
+          start_date, 
+          end_date, 
+          camera_id, 
+          cameras (name),
+          users (id, first_name, last_name, email, contact_number)
+        )
+      `)
+      .order("requested_at", { ascending: false });
+
+    if (error) throw error;
+    return { success: true, data: data || [], error: null };
+  } catch (error) {
+    return { success: false, data: null, error: error.message || "Failed to fetch extensions." };
+  }
+}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Calendar, 
   Clock, 
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { 
   adminGetPendingExtensions,
+  adminGetAllExtensions,
   adminApproveExtension, 
   adminRejectExtension,
   checkCameraAvailabilityForExtension 
@@ -25,8 +26,10 @@ import { toast } from 'react-toastify';
 
 const Extensions = () => {
   const user = useAuthStore(state => state.user);
-  // Fixed: use the correct function name from extension store
-  const { extensions, loading, setExtensions } = useExtensionStore();
+  // Use the extension store similar to payments
+  const { extensions, setExtensions, getExtensionsByStatus } = useExtensionStore();
+  const [loading, setLoading] = useState(true);
+  const [storeReady, setStoreReady] = useState(false);
   const [processingExtension, setProcessingExtension] = useState({});
   const [checkingConflicts, setCheckingConflicts] = useState({});
   const [conflicts, setConflicts] = useState({});
@@ -36,55 +39,50 @@ const Extensions = () => {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectNotes, setRejectNotes] = useState('');
   const extensionSubscriptionRef = useRef(null);
+  const checkedConflictsRef = useRef(new Set()); // Track which extensions have been checked
+
+  // Get filtered extensions from store (similar to payments)
+  const allExtensions = storeReady ? extensions : [];
+  const pendingExtensions = storeReady ? getExtensionsByStatus('pending') : [];
 
   useEffect(() => {
-    console.log('Extensions useEffect triggered, user role:', user?.role);
-    
     const loadExtensions = async () => {
       try {
-        const result = await adminGetPendingExtensions();
+        // Load ALL extensions (not just pending) to populate the store properly
+        const result = await adminGetAllExtensions();
         if (result.success) {
           setExtensions(result.data);
+          setStoreReady(true);
+        } else {
+          console.error('API Error:', result.error);
         }
       } catch (error) {
         console.error('Error loading extensions:', error);
+      } finally {
+        setLoading(false);
       }
     };
     
     loadExtensions();
     
-    // Prevent duplicate subscriptions
-    if (user?.role === 'admin' && !extensionSubscriptionRef.current) {
-      console.log('Setting up extension subscription for admin');
-      extensionSubscriptionRef.current = subscribeToAllExtensions((payload) => {
-        console.log('Extension update received in admin Extensions:', payload);
-      });
-      console.log('Extension subscription ref set:', extensionSubscriptionRef.current);
-    }
+    // Subscribe to real-time updates - the store will be updated by the realtime service
+    const channel = subscribeToAllExtensions((payload) => {
+      // The real-time service handles updating the store with hydrated data
+      console.log('Extension update received:', payload.eventType, payload.hydratedData?.id);
+    });
+
+    extensionSubscriptionRef.current = channel;
 
     return () => {
       if (extensionSubscriptionRef.current) {
-        console.log('Cleaning up extension subscription:', extensionSubscriptionRef.current);
         unsubscribeFromChannel(extensionSubscriptionRef.current);
       }
-      extensionSubscriptionRef.current = null;
-      console.log('Extension subscription ref cleared');
+      // Clear checked conflicts on unmount
+      checkedConflictsRef.current.clear();
     };
-  }, [user?.role, setExtensions]);
+  }, []); // Empty dependency array like payments
 
-  useEffect(() => {
-    // When extensions from the store change, check for conflicts (only for pending extensions)
-    if (extensions.length > 0) {
-      extensions.forEach(ext => {
-        // Only check conflicts for pending extensions that haven't been checked yet
-        if (ext.extension_status === 'pending' && !conflicts[ext.id]) {
-          checkConflictForExtension(ext.id, ext.rental_id, ext.requested_end_date);
-        }
-      });
-    }
-  }, [extensions, conflicts]); // Added conflicts to dependency array
-
-  const checkConflictForExtension = async (extensionId, rentalId, newEndDate) => {
+  const checkConflictForExtension = useCallback(async (extensionId, rentalId, newEndDate) => {
     try {
       setCheckingConflicts(prev => ({ ...prev, [extensionId]: true }));
       const result = await checkCameraAvailabilityForExtension(rentalId, newEndDate);
@@ -108,7 +106,20 @@ const Extensions = () => {
     } finally {
       setCheckingConflicts(prev => ({ ...prev, [extensionId]: false }));
     }
-  };
+  }, []); // Empty dependency array since it only uses state setters
+
+  useEffect(() => {
+    // When extensions from the store change, check for conflicts (only for pending extensions)
+    if (pendingExtensions.length > 0 && storeReady) {
+      pendingExtensions.forEach(ext => {
+        // Only check conflicts for pending extensions that haven't been checked yet
+        if (!checkedConflictsRef.current.has(ext.id)) {
+          checkedConflictsRef.current.add(ext.id);
+          checkConflictForExtension(ext.id, ext.rental_id, ext.requested_end_date);
+        }
+      });
+    }
+  }, [pendingExtensions.length, storeReady, checkConflictForExtension]);
 
   const handleApproveExtension = async (extensionId) => {
     // Check for conflicts first
@@ -182,8 +193,8 @@ const Extensions = () => {
     }
   };
 
-  // Filter extensions based on search and status
-  const filteredExtensions = extensions.filter(ext => {
+  // Filter extensions based on search and status (use allExtensions from store)
+  const filteredExtensions = allExtensions.filter(ext => {
     const matchesSearch = 
       ext.rentals?.cameras?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ext.rentals?.users?.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -197,7 +208,7 @@ const Extensions = () => {
     return matchesSearch && matchesStatus;
   });
 
-  if (loading) {
+  if (loading || !storeReady) {
     return (
       <div className="min-h-screen bg-gray-950">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
@@ -232,13 +243,13 @@ const Extensions = () => {
             {[
               { 
                 label: 'Pending Requests', 
-                value: extensions.filter(e => e.extension_status === 'pending').length,
+                value: allExtensions.filter(e => e.extension_status === 'pending').length,
                 color: 'from-amber-500 to-orange-500',
                 icon: Clock
               },
               { 
                 label: 'Approved Today', 
-                value: extensions.filter(e => 
+                value: allExtensions.filter(e => 
                   e.extension_status === 'approved' && 
                   new Date(e.approved_at).toDateString() === new Date().toDateString()
                 ).length,
@@ -253,7 +264,7 @@ const Extensions = () => {
               },
               { 
                 label: 'Total Extensions', 
-                value: extensions.length,
+                value: allExtensions.length,
                 color: 'from-blue-500 to-indigo-500',
                 icon: Calendar
               }

@@ -288,12 +288,24 @@ export function subscribeToUserExtensions(userId, callback) {
     filter: `requested_by=eq.${userId}`,
     onPayload: async (eventType, record, payload) => {
       const { addOrUpdateExtension, removeExtension } = useExtensionStore.getState();
+      let hydratedData = null;
 
       switch (eventType) {
         case 'INSERT':
-        case 'UPDATE':
-          addOrUpdateExtension(record);
+        case 'UPDATE': {
+          // Hydrate full shape to match initial load using getExtensionById
+          const { getExtensionById } = await import('./extensionService');
+          const { data, error } = await getExtensionById(record.id);
+          if (error) {
+            console.error(`[Realtime] Failed to fetch extension ${record.id}:`, error);
+            // Don't add incomplete data, just log the error
+            return;
+          } else if (data) {
+            hydratedData = data;
+            addOrUpdateExtension(data);
+          }
           break;
+        }
         case 'DELETE':
           removeExtension(record.id);
           break;
@@ -301,7 +313,7 @@ export function subscribeToUserExtensions(userId, callback) {
           break;
       }
 
-      callback?.({ ...payload, eventType });
+      callback?.({ ...payload, eventType, hydratedData });
     }
   });
 }
@@ -316,12 +328,37 @@ export function subscribeToAllExtensions(callback) {
     event: '*',
     onPayload: async (eventType, record, payload) => {
       const { addOrUpdateExtension, removeExtension } = useExtensionStore.getState();
+      let hydratedData = null;
 
       switch (eventType) {
         case 'INSERT':
-        case 'UPDATE':
-          addOrUpdateExtension(record);
+        case 'UPDATE': {
+          // Hydrate full shape to match initial load - use same structure as adminGetAllExtensions
+          const { data, error } = await supabase
+            .from('rental_extensions')
+            .select(`
+              *,
+              rentals (
+                id, 
+                start_date, 
+                end_date, 
+                camera_id, 
+                cameras (name),
+                users (id, first_name, last_name, email, contact_number)
+              )
+            `)
+            .eq('id', record.id)
+            .single();
+            
+          if (error) {
+            console.error(`[Realtime] Failed to fetch extension ${record.id}:`, error);
+            return;
+          } else if (data) {
+            hydratedData = data;
+            addOrUpdateExtension(data);
+          }
           break;
+        }
         case 'DELETE':
           removeExtension(record.id);
           break;
@@ -329,7 +366,7 @@ export function subscribeToAllExtensions(callback) {
           break;
       }
 
-      callback?.({ ...payload, eventType });
+      callback?.({ ...payload, eventType, hydratedData });
     }
   });
 }
