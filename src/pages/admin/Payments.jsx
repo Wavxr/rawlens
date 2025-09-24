@@ -7,11 +7,16 @@ import {
   adminVerifyExtensionPayment 
 } from '../../services/paymentService';
 import { subscribeToAllPayments, unsubscribeFromChannel } from '../../services/realtimeService';
+import usePaymentStore from '../../stores/paymentStore';
 
 const Payments = () => {
-  const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [storeReady, setStoreReady] = useState(false);
   const channelRef = useRef(null);
+  const { payments, setPayments, getPaymentsByStatus } = usePaymentStore();
+
+  // Get only submitted payments from the store
+  const submittedPayments = storeReady ? getPaymentsByStatus('submitted') : [];
 
   useEffect(() => {
     const fetchPayments = async () => {
@@ -19,6 +24,7 @@ const Payments = () => {
         const response = await adminGetSubmittedPayments();
         if (response.success) {
           setPayments(response.data);
+          setStoreReady(true);
         } else {
           console.error('API Error:', response.error);
         }
@@ -27,40 +33,12 @@ const Payments = () => {
       } finally {
         setLoading(false);
       }
-    };
+    };    fetchPayments();
 
-    fetchPayments();
-
+    // Subscribe to real-time updates - the store will be updated by the realtime service
     const channel = subscribeToAllPayments((payload) => {
-      setPayments(prev => {
-        const updated = [...prev];
-        
-        switch (payload.eventType) {
-          case 'INSERT':
-          case 'UPDATE':
-            if (payload.new.payment_status === 'submitted') {
-              const existingIndex = updated.findIndex(p => p.id === payload.new.id);
-              if (existingIndex > -1) {
-                updated[existingIndex] = payload.new;
-              } else {
-                updated.unshift(payload.new);
-              }
-            } else {
-              const removeIndex = updated.findIndex(p => p.id === payload.new.id);
-              if (removeIndex > -1) {
-                updated.splice(removeIndex, 1);
-              }
-            }
-            break;
-          case 'DELETE':
-            const deleteIndex = updated.findIndex(p => p.id === payload.old.id);
-            if (deleteIndex > -1) {
-              updated.splice(deleteIndex, 1);
-            }
-            break;
-        }
-        return updated;
-      });
+      // The real-time service handles updating the store with hydrated data
+      // We don't need to manually manage updates here
     });
 
     channelRef.current = channel;
@@ -88,7 +66,7 @@ const Payments = () => {
     }
   };
 
-  if (loading) {
+  if (loading || !storeReady) {
     return (
       <div className="p-4 sm:p-6 bg-slate-50 min-h-screen">
         <h1 className="text-2xl font-bold text-slate-900 mb-6">Payment Applications</h1>
@@ -104,7 +82,7 @@ const Payments = () => {
     <div className="p-4 sm:p-6 bg-slate-50 min-h-screen">
       <h1 className="text-2xl font-bold text-slate-900 mb-6">Payment Applications</h1>
 
-      {payments.length === 0 ? (
+      {submittedPayments.length === 0 ? (
         <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8 text-center">
           <CreditCard className="mx-auto h-12 w-12 text-slate-400 mb-4" />
           <h3 className="text-lg font-medium text-slate-900 mb-1">No pending payments</h3>
@@ -112,7 +90,7 @@ const Payments = () => {
         </div>
       ) : (
         <div className="space-y-4">
-          {payments.map((payment) => (
+          {submittedPayments.map((payment) => (
             <div key={payment.id} className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
               {/* Header - User & Payment Type */}
               <div className="bg-slate-800 text-white p-4">
@@ -151,8 +129,9 @@ const Payments = () => {
                   </h3>
                   <ul className="text-sm text-slate-600 space-y-1">
                     <li><span className="font-medium">Rental ID:</span> {payment.rental_id}</li>
+                    <li><span className="font-medium">Camera:</span> {payment.rentals?.cameras?.name || 'N/A'}</li>
                     <li><span className="font-medium">Dates:</span> {payment.rentals?.start_date} to {payment.rentals?.end_date}</li>
-                    <li><span className="font-medium">Total Price:</span> ₱{Number(payment.rentals?.total_price).toLocaleString('en-PH')}</li>
+                    <li><span className="font-medium">Total Price:</span> ₱{Number(payment.rentals?.total_price || 0).toLocaleString('en-PH')}</li>
                     <li><span className="font-medium">Status:</span> {payment.rentals?.rental_status}</li>
                   </ul>
                 </div>
@@ -164,7 +143,7 @@ const Payments = () => {
                     Payment Details
                   </h3>
                   <ul className="text-sm text-slate-600 space-y-1">
-                    <li><span className="font-medium">Amount:</span> ₱{Number(payment.amount).toLocaleString('en-PH')}</li>
+                    <li><span className="font-medium">Amount:</span> ₱{Number(payment.amount || 0).toLocaleString('en-PH')}</li>
                     <li><span className="font-medium">Method:</span> {payment.payment_method || 'N/A'}</li>
                     <li><span className="font-medium">Reference:</span> {payment.payment_reference || 'N/A'}</li>
                     <li>

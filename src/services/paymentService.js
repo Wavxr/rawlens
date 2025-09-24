@@ -225,8 +225,11 @@ export async function adminGetSubmittedPayments() {
       .from('payments')
       .select(`
         *,
-        rentals (*),
-        users (id, first_name, last_name, email)
+        rentals (
+          *,
+          cameras (*)
+        ),
+        users (id, first_name, last_name, email, contact_number)
       `)
       .eq('payment_status', 'submitted')
       .order('created_at', { ascending: false });

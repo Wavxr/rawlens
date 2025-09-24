@@ -202,6 +202,7 @@ export function subscribeToUserPayments(userId, callback) {
     filter: `user_id=eq.${userId}`,
     onPayload: async (eventType, record, payload) => {
       const { addOrUpdatePayment, removePayment } = usePaymentStore.getState();
+      let hydratedData = null;
 
       switch (eventType) {
         case 'INSERT':
@@ -210,8 +211,10 @@ export function subscribeToUserPayments(userId, callback) {
           const { data, error } = await getPaymentById(record.id);
           if (error) {
             console.error(`[Realtime] Failed to fetch payment ${record.id}:`, error);
-            addOrUpdatePayment(record); // fallback to raw record
+            // Don't add incomplete data, just log the error
+            return;
           } else if (data) {
+            hydratedData = data;
             addOrUpdatePayment(data);
           }
           break;
@@ -223,7 +226,7 @@ export function subscribeToUserPayments(userId, callback) {
           break;
       }
 
-      callback?.({ ...payload, eventType });
+      callback?.({ ...payload, eventType, hydratedData });
     }
   });
 }
@@ -238,6 +241,7 @@ export function subscribeToAllPayments(callback) {
     event: '*',
     onPayload: async (eventType, record, payload) => {
       const { addOrUpdatePayment, removePayment } = usePaymentStore.getState();
+      let hydratedData = null;
 
       switch (eventType) {
         case 'INSERT':
@@ -246,8 +250,11 @@ export function subscribeToAllPayments(callback) {
           const { data, error } = await getPaymentById(record.id);
           if (error) {
             console.error(`[Realtime] Failed to fetch payment ${record.id}:`, error);
-            addOrUpdatePayment(record); // fallback to raw record
+            // Don't add incomplete data, just log the error
+            return;
           } else if (data) {
+            // Only add/update if we have complete hydrated data
+            hydratedData = data;
             addOrUpdatePayment(data);
           }
           break;
@@ -259,7 +266,7 @@ export function subscribeToAllPayments(callback) {
           break;
       }
 
-      callback?.({ ...payload, eventType });
+      callback?.({ ...payload, eventType, hydratedData });
     }
   });
 }
