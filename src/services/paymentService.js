@@ -129,9 +129,31 @@ export async function adminCreateInitialRentalPayment(rentalId, userId, amount) 
   }
 }
 
-// Create extension payment when user requests extension
-export async function adminCreateExtensionPayment(extensionId, rentalId, userId, amount) {
+// Create extension payment when user requests extension or admin extends
+export async function adminCreateExtensionPayment(extensionId, rentalId, userId, amount, paymentFile = null) {
   try {
+    let paymentReceiptUrl = null;
+
+    // Upload payment file if provided
+    if (paymentFile) {
+      const fileExt = paymentFile.name.split('.').pop();
+      const fileName = `extension_${extensionId}_${Date.now()}.${fileExt}`;
+      const filePath = `payments/extensions/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('payment-receipts')
+        .upload(filePath, paymentFile);
+
+      if (uploadError) throw uploadError;
+
+      // Get the public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('payment-receipts')
+        .getPublicUrl(filePath);
+
+      paymentReceiptUrl = publicUrl;
+    }
+
     const { data, error } = await supabase
       .from('payments')
       .insert({
@@ -140,7 +162,8 @@ export async function adminCreateExtensionPayment(extensionId, rentalId, userId,
         user_id: userId,
         amount: amount,
         payment_type: 'extension',
-        payment_status: 'pending'
+        payment_status: paymentFile ? 'submitted' : 'pending',
+        payment_receipt_url: paymentReceiptUrl
       })
       .select()
       .single();

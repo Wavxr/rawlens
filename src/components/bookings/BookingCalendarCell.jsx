@@ -16,12 +16,15 @@ const BookingCalendarCell = ({
   selectedPotentialBooking,
   onDateRangeSelect,
   onDayClick,
+  onBookingContextMenu,
   isDarkMode,
   hasConflicts // Add this prop to indicate conflicts
 }) => {
   const [isSelecting, setIsSelecting] = useState(false);
   const [dragStart, setDragStart] = useState(null);
   const [showTooltip, setShowTooltip] = useState(false);
+  const [longPressTimer, setLongPressTimer] = useState(null);
+  const [isLongPressing, setIsLongPressing] = useState(false);
 
   if (!date) {
     // Empty cell for padding
@@ -101,12 +104,65 @@ const BookingCalendarCell = ({
 
   // Handle click for viewing booking details or single date selection
   const handleClick = () => {
+    if (isLongPressing) {
+      setIsLongPressing(false);
+      return;
+    }
+
     if (hasBookings) {
       onDayClick(camera, date, bookings);
     } else {
       // Single date selection for booking creation - use local date to avoid timezone issues
       const formattedDate = formatDateForInput(date);
       onDateRangeSelect(camera, formattedDate, formattedDate);
+    }
+  };
+
+  // Handle right-click context menu
+  const handleContextMenu = (e) => {
+    e.preventDefault();
+    if (hasBookings && onBookingContextMenu) {
+      // For simplicity, use the first booking if multiple exist
+      onBookingContextMenu(e, bookings[0]);
+    }
+  };
+
+  // Handle long press for mobile context menu
+  const handleTouchStart = (e) => {
+    if (hasBookings && onBookingContextMenu) {
+      const timer = setTimeout(() => {
+        setIsLongPressing(true);
+        // Trigger haptic feedback if available
+        if ('vibrate' in navigator) {
+          navigator.vibrate(50);
+        }
+        // Create a synthetic mouse event for the context menu
+        const touch = e.touches[0];
+        const syntheticEvent = {
+          preventDefault: () => {},
+          clientX: touch.clientX,
+          clientY: touch.clientY
+        };
+        onBookingContextMenu(syntheticEvent, bookings[0]);
+      }, 1000); // 1 second long press
+
+      setLongPressTimer(timer);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      setLongPressTimer(null);
+    }
+    // Reset long press state after a short delay
+    setTimeout(() => setIsLongPressing(false), 100);
+  };
+
+  const handleTouchMove = () => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      setLongPressTimer(null);
     }
   };
 
@@ -195,6 +251,10 @@ const BookingCalendarCell = ({
       }}
       onMouseUp={handleMouseUp}
       onClick={handleClick}
+      onContextMenu={handleContextMenu}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchMove={handleTouchMove}
     >
       {/* Day number and booking indicator */}
       <div className={`w-full flex justify-between items-center text-[10px] sm:text-[11px] ${dayTextColor}`}>

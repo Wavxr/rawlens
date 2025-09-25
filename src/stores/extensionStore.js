@@ -7,6 +7,9 @@ const useExtensionStore = create()(
       extensions: [],
       loading: false,
       error: null,
+      selectedExtension: null,
+      filterStatus: 'all', // 'all', 'pending', 'approved', 'rejected'
+      filterRole: 'all', // 'all', 'user', 'admin'
 
       // Set all extensions
       setExtensions: (extensions) =>
@@ -93,6 +96,44 @@ const useExtensionStore = create()(
       getRejectedExtensions: () => {
         const state = get();
         return state.extensions.filter(e => e.extension_status === 'rejected');
+      },
+
+      // Set selected extension
+      setSelectedExtension: (extension) =>
+        set({ selectedExtension: extension }, false, 'setSelectedExtension'),
+
+      // Clear selected extension
+      clearSelectedExtension: () =>
+        set({ selectedExtension: null }, false, 'clearSelectedExtension'),
+
+      // Set filter status
+      setFilterStatus: (status) =>
+        set({ filterStatus: status }, false, 'setFilterStatus'),
+
+      // Set filter role
+      setFilterRole: (role) =>
+        set({ filterRole: role }, false, 'setFilterRole'),
+
+      // Get filtered extensions based on current filters
+      getFilteredExtensions: () => {
+        const state = get();
+        let filtered = state.extensions;
+
+        if (state.filterStatus !== 'all') {
+          filtered = filtered.filter(e => e.extension_status === state.filterStatus);
+        }
+
+        if (state.filterRole !== 'all') {
+          filtered = filtered.filter(e => e.requested_by_role === state.filterRole);
+        }
+
+        return filtered;
+      },
+
+      // Get extensions by requested_by_role
+      getExtensionsByRole: (role) => {
+        const state = get();
+        return state.extensions.filter(e => e.requested_by_role === role);
       }
     }),
     {

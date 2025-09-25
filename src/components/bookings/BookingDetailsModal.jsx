@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import { X, ExternalLink, CheckCircle, Package, Calendar, User, Phone, Mail, DollarSign, FileText } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, ExternalLink, CheckCircle, Package, Calendar, User, Phone, Mail, DollarSign, FileText, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { adminConfirmReceived, adminConfirmReturned, adminMarkDelivered } from '../../services/bookingService';
+import { checkExtensionEligibility } from '../../services/extensionService';
+import useExtensionStore from '../../stores/extensionStore';
 
 const StatusBadge = ({ status, isDarkMode }) => {
   const getStatusStyles = () => {
@@ -41,14 +43,39 @@ const BookingDetailsModal = ({
   booking,
   camera,
   onBookingUpdate,
+  onExtendRental,
   isDarkMode
 }) => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [canExtend, setCanExtend] = useState(false);
+  const [extensionCheckLoading, setExtensionCheckLoading] = useState(false);
+  
+  const { getExtensionsByRentalId } = useExtensionStore();
+
+  // Check extension eligibility when modal opens
+  useEffect(() => {
+    if (open && booking) {
+      checkCanExtend();
+    }
+  }, [open, booking]);
+
+  const checkCanExtend = async () => {
+    setExtensionCheckLoading(true);
+    try {
+      const result = await checkExtensionEligibility(booking.id);
+      setCanExtend(result.isEligible);
+    } catch (error) {
+      setCanExtend(false);
+    } finally {
+      setExtensionCheckLoading(false);
+    }
+  };
 
   if (!open || !booking) return null;
 
   const isTemporaryBooking = booking.booking_type === 'temporary';
+  const rentalExtensions = getExtensionsByRentalId(booking.id);
   const customerName = booking.customer_name || 
                       (booking.users ? `${booking.users.first_name} ${booking.users.last_name}`.trim() : '') ||
                       'Unknown Customer';
@@ -293,6 +320,71 @@ const BookingDetailsModal = ({
                 View Contract PDF
                 <ExternalLink className="w-3 h-3" />
               </a>
+            </div>
+          )}
+
+          {/* Extension History */}
+          {rentalExtensions.length > 0 && (
+            <div className={`p-4 rounded-lg ${sectionBg}`}>
+              <h4 className={`font-medium mb-4 ${textColor}`}>
+                <Clock className="w-4 h-4 inline mr-2" />
+                Extension History
+              </h4>
+              
+              <div className="space-y-3">
+                {rentalExtensions.map((extension) => (
+                  <div key={extension.id} className={`p-3 rounded border ${isDarkMode ? 'border-gray-600 bg-gray-700/50' : 'border-gray-200 bg-gray-50'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className={`text-sm font-medium ${textColor}`}>
+                        Extension #{extension.id.slice(0, 8)}
+                      </span>
+                      <span className={`px-2 py-1 text-xs rounded-full ${
+                        extension.extension_status === 'approved' 
+                          ? (isDarkMode ? 'bg-green-900/50 text-green-200' : 'bg-green-100 text-green-800')
+                          : extension.extension_status === 'pending'
+                          ? (isDarkMode ? 'bg-yellow-900/50 text-yellow-200' : 'bg-yellow-100 text-yellow-800')
+                          : (isDarkMode ? 'bg-red-900/50 text-red-200' : 'bg-red-100 text-red-800')
+                      }`}>
+                        {extension.extension_status.charAt(0).toUpperCase() + extension.extension_status.slice(1)}
+                      </span>
+                    </div>
+                    <div className={`text-sm ${secondaryTextColor}`}>
+                      <div>Extended by: {extension.extension_days} day{extension.extension_days > 1 ? 's' : ''}</div>
+                      <div>New end date: {new Date(extension.requested_end_date).toLocaleDateString()}</div>
+                      <div>Additional cost: ₱{extension.additional_price}</div>
+                      <div>Requested by: {extension.requested_by_role === 'admin' ? 'Admin' : 'Customer'}</div>
+                      {extension.admin_notes && (
+                        <div className="mt-1 italic">Notes: {extension.admin_notes}</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Extension Action */}
+          {canExtend && onExtendRental && (
+            <div className={`p-4 rounded-lg ${sectionBg} border-l-4 border-blue-500`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className={`font-medium ${textColor}`}>
+                    <Clock className="w-4 h-4 inline mr-2" />
+                    Extend Rental
+                  </h4>
+                  <p className={`text-sm ${secondaryTextColor} mt-1`}>
+                    Camera is delivered and rental is active. You can extend this rental.
+                  </p>
+                </div>
+                <button
+                  onClick={() => onExtendRental(booking)}
+                  disabled={extensionCheckLoading}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                >
+                  <Clock className="w-4 h-4" />
+                  Extend Rental
+                </button>
+              </div>
             </div>
           )}
 

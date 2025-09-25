@@ -1,13 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Loader2, Sun, Moon, Plus, Menu } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Loader2, Sun, Moon, Plus, Menu, Clock } from 'lucide-react';
 import { getAllCameras } from '../../services/cameraService';
 import { getCalendarBookings, getPotentialBookings } from '../../services/bookingService';
+import { adminGetAllExtensions } from '../../services/extensionService';
 import BookingCalendarGrid from '../../components/bookings/BookingCalendarGrid';
 import PotentialBookingsSidebar from '../../components/bookings/PotentialBookingsSidebar';
 import MobilePotentialBookingsPanel from '../../components/bookings/MobilePotentialBookingsPanel';
+import ExtensionRequestSidebar from '../../components/bookings/ExtensionRequestSidebar';
 import CreateBookingModal from '../../components/bookings/CreateBookingModal';
 import BookingDetailsModal from '../../components/bookings/BookingDetailsModal';
 import EditPotentialBookingModal from '../../components/bookings/EditPotentialBookingModal';
+import ExtendBookingModal from '../../components/bookings/ExtendBookingModal';
+import BookingContextMenu from '../../components/bookings/BookingContextMenu';
+import useExtensionStore from '../../stores/extensionStore';
 
 // Date helper functions
 function startOfMonth(date) {
@@ -59,9 +64,13 @@ const Bookings = () => {
   const [calendarBookings, setCalendarBookings] = useState([]);
   const [potentialBookings, setPotentialBookings] = useState([]);
   const [bookingsByCamera, setBookingsByCamera] = useState({});
+  
+  // Extension store
+  const { extensions, getPendingExtensions } = useExtensionStore();
 
   // UI state
   const [showPotentialSidebar, setShowPotentialSidebar] = useState(false);
+  const [showExtensionSidebar, setShowExtensionSidebar] = useState(false);
   const [selectedPotentialBooking, setSelectedPotentialBooking] = useState(null);
   const [selectedDateRange, setSelectedDateRange] = useState(null);
   const [highlightedDates, setHighlightedDates] = useState([]);
@@ -80,6 +89,17 @@ const Bookings = () => {
     camera: null
   });
   const [editingBooking, setEditingBooking] = useState(null);
+  const [extendBookingModal, setExtendBookingModal] = useState({
+    open: false,
+    booking: null
+  });
+  
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState({
+    open: false,
+    position: { x: 0, y: 0 },
+    booking: null
+  });
 
   // Calculate date range for current month
   const monthStartIso = useMemo(() => formatISODate(startOfMonth(monthDate)), [monthDate]);
@@ -171,11 +191,58 @@ const Bookings = () => {
       // No bookings, could initiate booking creation
       handleDateRangeSelect(camera, date, date);
     }
-    // Close mobile panel when calendar is interacted with
+    // Close sidebars when calendar is interacted with
     if (window.innerWidth < 1024) { // lg breakpoint
       setShowPotentialSidebar(false);
+      setShowExtensionSidebar(false);
       clearPotentialSelection();
     }
+  };
+
+  // Handle right-click context menu
+  const handleBookingContextMenu = (e, booking) => {
+    e.preventDefault();
+    setContextMenu({
+      open: true,
+      position: { x: e.clientX, y: e.clientY },
+      booking
+    });
+  };
+
+  // Close context menu
+  const handleCloseContextMenu = () => {
+    setContextMenu({ open: false, position: { x: 0, y: 0 }, booking: null });
+  };
+
+  // Context menu actions
+  const handleContextViewDetails = (booking) => {
+    const camera = cameras.find(c => c.id === booking.camera_id);
+    setBookingDetailsModal({
+      open: true,
+      booking,
+      camera
+    });
+  };
+
+  const handleContextEditBooking = (booking) => {
+    setEditingBooking(booking);
+  };
+
+  const handleContextExtendRental = (booking) => {
+    setExtendBookingModal({
+      open: true,
+      booking
+    });
+  };
+
+  const handleContextCancelBooking = (booking) => {
+    // TODO: Implement cancel booking functionality
+    console.log('Cancel booking:', booking);
+  };
+
+  const handleContextMarkDelivered = (booking) => {
+    // TODO: Implement mark as delivered/returned functionality
+    console.log('Mark as delivered/returned:', booking);
   };
 
   // Handle potential booking selection
@@ -208,6 +275,7 @@ const Bookings = () => {
     loadBookingData(); // Refresh data
     setCreateBookingModal({ open: false, camera: null, dateRange: null });
     setBookingDetailsModal({ open: false, booking: null, camera: null });
+    setExtendBookingModal({ open: false, booking: null });
   };
 
   // Handle edit booking
@@ -278,8 +346,11 @@ const Bookings = () => {
                 : `${buttonBg} ${buttonBorder} ${buttonTextColor}`
             }`}
             onClick={() => {
-              setShowPotentialSidebar(!showPotentialSidebar);
-              if (showPotentialSidebar) {
+              const newState = !showPotentialSidebar;
+              setShowPotentialSidebar(newState);
+              if (newState) {
+                setShowExtensionSidebar(false); // Close extension sidebar
+              } else {
                 clearPotentialSelection();
               }
             }}
@@ -292,6 +363,34 @@ const Bookings = () => {
                 isDarkMode ? 'bg-blue-800 text-blue-200' : 'bg-blue-200 text-blue-800'
               }`}>
                 {potentialBookings.length}
+              </span>
+            )}
+          </button>
+
+          {/* Extension Requests Toggle */}
+          <button
+            className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded border transition text-sm sm:text-base ${
+              showExtensionSidebar 
+                ? (isDarkMode ? 'bg-purple-900 border-purple-700 text-purple-200' : 'bg-purple-100 border-purple-300 text-purple-800')
+                : `${buttonBg} ${buttonBorder} ${buttonTextColor}`
+            }`}
+            onClick={() => {
+              const newState = !showExtensionSidebar;
+              setShowExtensionSidebar(newState);
+              if (newState) {
+                setShowPotentialSidebar(false); // Close potential bookings sidebar
+                clearPotentialSelection();
+              }
+            }}
+          >
+            <Clock className="w-4 h-4" />
+            <span className="hidden xs:inline">Extension</span>
+            <span className="hidden sm:inline">Requests</span>
+            {getPendingExtensions().length > 0 && (
+              <span className={`px-2 py-0.5 text-xs rounded-full ${
+                isDarkMode ? 'bg-purple-800 text-purple-200' : 'bg-purple-200 text-purple-800'
+              }`}>
+                {getPendingExtensions().length}
               </span>
             )}
           </button>
@@ -309,7 +408,7 @@ const Bookings = () => {
       <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
         {/* Calendar Grid */}
         <div className={`transition-all duration-300 ${
-          showPotentialSidebar 
+          showPotentialSidebar || showExtensionSidebar
             ? 'lg:w-2/3' // On large screens with sidebar
             : 'w-full' // Full width when no sidebar
         }`}>
@@ -327,6 +426,7 @@ const Bookings = () => {
               selectedPotentialBooking={selectedPotentialBooking}
               onDateRangeSelect={handleDateRangeSelect}
               onDayClick={handleDayClick}
+              onBookingContextMenu={handleBookingContextMenu}
               isDarkMode={isDarkMode}
               showPotentialSidebar={showPotentialSidebar}
             />
@@ -350,6 +450,18 @@ const Bookings = () => {
             </div>
           </div>
         )}
+
+        {/* Desktop Extension Requests Sidebar - Hidden on mobile */}
+        {showExtensionSidebar && (
+          <div className={`hidden lg:block lg:w-1/3 transition-all duration-300`}>
+            <div className="lg:sticky lg:top-6">
+              <ExtensionRequestSidebar
+                isOpen={showExtensionSidebar}
+                onClose={() => setShowExtensionSidebar(false)}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Mobile Potential Bookings Panel - Only visible on mobile */}
@@ -369,6 +481,14 @@ const Bookings = () => {
         }}
       />
 
+      {/* Mobile Extension Requests Panel - Only visible on mobile */}
+      <div className="lg:hidden">
+        <ExtensionRequestSidebar
+          isOpen={showExtensionSidebar}
+          onClose={() => setShowExtensionSidebar(false)}
+        />
+      </div>
+
       {/* Modals */}
       <CreateBookingModal
         open={createBookingModal.open}
@@ -386,6 +506,7 @@ const Bookings = () => {
         booking={bookingDetailsModal.booking}
         camera={bookingDetailsModal.camera}
         onBookingUpdate={handleBookingUpdate}
+        onExtendRental={(booking) => setExtendBookingModal({ open: true, booking })}
         isDarkMode={isDarkMode}
       />
 
@@ -396,6 +517,25 @@ const Bookings = () => {
         cameras={cameras || []}
         onSuccess={handleEditSuccess}
         isDarkMode={isDarkMode}
+      />
+
+      <ExtendBookingModal
+        isOpen={extendBookingModal.open}
+        onClose={() => setExtendBookingModal({ open: false, booking: null })}
+        booking={extendBookingModal.booking}
+      />
+
+      {/* Context Menu */}
+      <BookingContextMenu
+        isOpen={contextMenu.open}
+        position={contextMenu.position}
+        booking={contextMenu.booking}
+        onClose={handleCloseContextMenu}
+        onViewDetails={handleContextViewDetails}
+        onEditBooking={handleContextEditBooking}
+        onExtendRental={handleContextExtendRental}
+        onCancelBooking={handleContextCancelBooking}
+        onMarkDelivered={handleContextMarkDelivered}
       />
     </div>
   );

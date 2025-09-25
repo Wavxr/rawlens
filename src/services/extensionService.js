@@ -206,6 +206,135 @@ export async function userGetExtensionHistory(userId) {
 //   -- Admin Functions --
 // ------------------------------------------
 
+// Admin creates a rental extension
+export async function createAdminExtension(rentalId, extensionData, paymentFile) {
+  try {
+    // First, validate that the rental exists and is eligible for extension
+    const { data: rental, error: rentalError } = await supabase
+      .from("rentals")
+      .select("id, user_id, end_date, price_per_day, camera_id, rental_status, shipping_status")
+      .eq("id", rentalId)
+      .single();
+
+    if (rentalError || !rental) {
+      return { success: false, data: null, error: "Rental not found." };
+    }
+
+    // Check eligibility
+    const eligibilityResult = await checkExtensionEligibility(rentalId);
+    if (!eligibilityResult.isEligible) {
+      return { success: false, data: null, error: eligibilityResult.error };
+    }
+
+    const currentEnd = new Date(rental.end_date);
+    const newEnd = new Date(extensionData.newEndDate);
+    currentEnd.setHours(0, 0, 0, 0);
+    newEnd.setHours(0, 0, 0, 0);
+
+    if (newEnd <= currentEnd) {
+      return { success: false, data: null, error: "New end date must be after current end date." };
+    }
+
+    // Check camera availability for extension period
+    const availabilityCheck = await checkCameraAvailabilityForExtension(rentalId, extensionData.newEndDate);
+    if (!availabilityCheck.isAvailable) {
+      return { success: false, data: null, error: availabilityCheck.error };
+    }
+
+    const extensionDays = Math.ceil((newEnd - currentEnd) / (1000 * 3600 * 24));
+    const additionalPrice = extensionDays * rental.price_per_day;
+
+    // Create extension record with admin role
+    const { data: extensionRecord, error: extensionError } = await supabase
+      .from("rental_extensions")
+      .insert({
+        rental_id: rentalId,
+        requested_by: extensionData.adminId,
+        requested_by_role: 'admin',
+        original_end_date: rental.end_date,
+        requested_end_date: extensionData.newEndDate,
+        extension_days: extensionDays,
+        additional_price: additionalPrice,
+        extension_status: "pending",
+        admin_notes: extensionData.notes || null
+      })
+      .select()
+      .single();
+
+    if (extensionError) {
+      return { success: false, data: null, error: "Failed to create extension request." };
+    }
+
+    // Handle payment file upload if provided
+    if (paymentFile) {
+      try {
+        const paymentResult = await adminCreateExtensionPayment(
+          extensionRecord.id,
+          rentalId,
+          rental.user_id,
+          additionalPrice,
+          paymentFile
+        );
+
+        if (!paymentResult.success) {
+          return { success: false, data: null, error: `Extension created, but payment upload failed: ${paymentResult.error}` };
+        }
+
+        return { success: true, data: { extension: extensionRecord, payment: paymentResult.data }, error: null };
+      } catch (paymentError) {
+        return { success: false, data: null, error: `Extension created, but payment processing failed: ${paymentError.message}` };
+      }
+    }
+
+    return { success: true, data: { extension: extensionRecord }, error: null };
+  } catch (error) {
+    return { success: false, data: null, error: error.message || "Failed to create admin extension." };
+  }
+}
+
+// Check if rental is eligible for extension
+export async function checkExtensionEligibility(rentalId) {
+  try {
+    const { data: rental, error: rentalError } = await supabase
+      .from("rentals")
+      .select("id, rental_status, shipping_status")
+      .eq("id", rentalId)
+      .single();
+
+    if (rentalError || !rental) {
+      return { isEligible: false, error: "Rental not found." };
+    }
+
+    // Check if rental is active and delivered
+    if (rental.rental_status !== 'active') {
+      return { isEligible: false, error: "Rental must be in active status to extend." };
+    }
+
+    if (rental.shipping_status !== 'delivered') {
+      return { isEligible: false, error: "Camera must be delivered to extend rental." };
+    }
+
+    // Check for existing pending extensions
+    const { data: pendingExtensions, error: extensionError } = await supabase
+      .from("rental_extensions")
+      .select("id")
+      .eq("rental_id", rentalId)
+      .eq("extension_status", "pending");
+
+    if (extensionError) {
+      return { isEligible: false, error: "Failed to check existing extensions." };
+    }
+
+    if (pendingExtensions && pendingExtensions.length > 0) {
+      return { isEligible: false, error: "Rental already has a pending extension request." };
+    }
+
+    return { isEligible: true, error: null };
+  } catch (error) {
+    return { isEligible: false, error: error.message || "Extension eligibility check failed." };
+  }
+}
+
 // Admin approves a rental extension request.
 export async function adminApproveExtension(extensionId, adminId) {
   try {

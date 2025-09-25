@@ -49,7 +49,8 @@ const CameraMiniCalendar = ({
   highlightedDates, 
   selectedPotentialBooking,
   onDateRangeSelect,
-  onDayClick, 
+  onDayClick,
+  onBookingContextMenu,
   isDarkMode,
   showPotentialSidebar 
 }) => {
@@ -160,6 +161,7 @@ const CameraMiniCalendar = ({
               selectedPotentialBooking={selectedPotentialBooking}
               onDateRangeSelect={onDateRangeSelect}
               onDayClick={onDayClick}
+              onBookingContextMenu={onBookingContextMenu}
               isDarkMode={isDarkMode}
               hasConflicts={hasConflicts}
             />
@@ -178,6 +180,7 @@ const BookingCalendarGrid = ({
   selectedPotentialBooking,
   onDateRangeSelect,
   onDayClick,
+  onBookingContextMenu,
   isDarkMode,
   showPotentialSidebar
 }) => {
@@ -204,6 +207,7 @@ const BookingCalendarGrid = ({
           selectedPotentialBooking={selectedPotentialBooking}
           onDateRangeSelect={onDateRangeSelect}
           onDayClick={onDayClick}
+          onBookingContextMenu={onBookingContextMenu}
           isDarkMode={isDarkMode}
           showPotentialSidebar={showPotentialSidebar}
         />
