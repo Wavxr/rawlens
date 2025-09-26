@@ -696,28 +696,25 @@ export async function adminCancelRental(rentalId) {
   });
 }
 
-// Admin force deletes a rental and its payments (use with caution)
+// Admin force deletes a rental and all related records (payments, extensions)
 export async function adminForceDeleteRental(rentalId) {
   try {
-    // Delete payments (ignore error if none exist)
     await supabase.from("payments").delete().eq("rental_id", rentalId);
+    await supabase.from("rental_extensions").delete().eq("rental_id", rentalId);
 
-    // Delete rental
     const { error } = await supabase.from("rentals").delete().eq("id", rentalId);
     if (error) throw error;
 
-    return { success: true, message: "Rental and payments deleted successfully." };
+    return { success: true, message: "Rental and related records deleted." };
   } catch (err) {
     console.error("adminForceDeleteRental error:", err);
     if (err.code === "23503") {
-      return {
-        success: false,
-        error: "Cannot delete rental due to related records. Please try again or contact support.",
-      };
+      return { success: false, error: "Delete blocked by existing dependencies." };
     }
     return { success: false, error: err.message || "Failed to delete rental." };
   }
 }
+
 
 // Admin removes a cancelled rental (frees up the dates)
 export async function adminRemoveCancelledRental(rentalId) {
