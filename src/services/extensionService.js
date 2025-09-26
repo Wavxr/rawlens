@@ -1,11 +1,35 @@
 // extensionService.js
 import { supabase } from "../lib/supabaseClient";
-import { adminCreateExtensionPayment } from "./paymentService"; // Import the payment creation function
-import { checkCameraAvailability } from "./rentalService";
+import { createPayment, uploadPaymentReceipt } from "./paymentService";
 
 // ------------------------------------------
 //   --  Generic Functions --
 // ------------------------------------------
+
+// Create a new rental extension record.
+async function createRentalExtension(rentalId, userId, newEndDate, originalEndDate, extensionDays, additionalPrice, adminId = null, notes = null) {
+  const { data, error } = await supabase
+    .from("rental_extensions")
+    .insert({
+      rental_id: rentalId,
+      requested_by: adminId || userId,
+      requested_by_role: adminId ? 'admin' : 'user',
+      original_end_date: originalEndDate,
+      requested_end_date: newEndDate,
+      extension_days: extensionDays,
+      additional_price: additionalPrice,
+      extension_status: "pending",
+      admin_notes: notes,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error("Failed to create extension request.");
+  }
+
+  return data;
+}
 
 // Get rental extension details by ID
 export async function getExtensionById(extensionId) {
@@ -84,7 +108,7 @@ export async function checkCameraAvailabilityForExtension(rentalId, newEndDate) 
 //  -- User Functions  --
 // ------------------------------------------
 
-// User requests a rental extension.
+// User requests a rental extension. (from RentalExtensionManager - not used by admin)
 export async function userRequestRentalExtension(rentalId, userId, newEndDate) {
   try {
     const { data: rental, error: rentalError } = await supabase
@@ -122,36 +146,24 @@ export async function userRequestRentalExtension(rentalId, userId, newEndDate) {
 
     const additionalPrice = extensionDays * rental.price_per_day;
 
-    const { data: extensionRecord, error: extensionError } = await supabase
-      .from("rental_extensions")
-      .insert({
-        rental_id: rentalId,
-        requested_by: userId,
-        original_end_date: rental.end_date,
-        requested_end_date: newEndDate,
-        extension_days: extensionDays,
-        additional_price: additionalPrice,
-        extension_status: "pending",
-      })
-      .select()
-      .single();
-
-    if (extensionError) {
-      return { success: false, data: null, error: "Failed to create extension request." };
-    }
-
-    const paymentResult = await adminCreateExtensionPayment(
-      extensionRecord.id,
+    const extensionRecord = await createRentalExtension(
       rentalId,
       userId,
+      newEndDate,
+      rental.end_date,
+      extensionDays,
       additionalPrice
     );
 
-    if (!paymentResult.success) {
-      return { success: false, data: null, error: `Extension created, but payment failed: ${paymentResult.error}` };
-    }
+    const payment = await createPayment({
+      rentalId,
+      extensionId: extensionRecord.id,
+      userId,
+      amount: additionalPrice,
+      type: "extension",
+    });
 
-    return { success: true, data: { extension: extensionRecord, payment: paymentResult.data }, error: null };
+    return { success: true, data: { extension: extensionRecord, payment }, error: null };
   } catch (error) {
     return { success: false, data: null, error: error.message || "Extension request failed." };
   }
@@ -206,7 +218,7 @@ export async function userGetExtensionHistory(userId) {
 //   -- Admin Functions --
 // ------------------------------------------
 
-// Admin creates a rental extension
+// Admin creates a rental extension from booking page (not used by user)
 export async function createAdminExtension(rentalId, extensionData, paymentFile) {
   try {
     // First, validate that the rental exists and is eligible for extension
@@ -244,49 +256,31 @@ export async function createAdminExtension(rentalId, extensionData, paymentFile)
     const extensionDays = Math.ceil((newEnd - currentEnd) / (1000 * 3600 * 24));
     const additionalPrice = extensionDays * rental.price_per_day;
 
-    // Create extension record with admin role
-    const { data: extensionRecord, error: extensionError } = await supabase
-      .from("rental_extensions")
-      .insert({
-        rental_id: rentalId,
-        requested_by: extensionData.adminId,
-        requested_by_role: 'admin',
-        original_end_date: rental.end_date,
-        requested_end_date: extensionData.newEndDate,
-        extension_days: extensionDays,
-        additional_price: additionalPrice,
-        extension_status: "pending",
-        admin_notes: extensionData.notes || null
-      })
-      .select()
-      .single();
+    const extensionRecord = await createRentalExtension(
+      rentalId,
+      rental.user_id,
+      extensionData.newEndDate,
+      rental.end_date,
+      extensionDays,
+      additionalPrice,
+      extensionData.adminId,
+      extensionData.notes
+    );
 
-    if (extensionError) {
-      return { success: false, data: null, error: "Failed to create extension request." };
-    }
+    const payment = await createPayment({
+      rentalId,
+      extensionId: extensionRecord.id,
+      userId: rental.user_id,
+      amount: additionalPrice,
+      type: "extension",
+    });
 
-    // Handle payment file upload if provided
+    // If file provided, use generic uploader
     if (paymentFile) {
-      try {
-        const paymentResult = await adminCreateExtensionPayment(
-          extensionRecord.id,
-          rentalId,
-          rental.user_id,
-          additionalPrice,
-          paymentFile
-        );
-
-        if (!paymentResult.success) {
-          return { success: false, data: null, error: `Extension created, but payment upload failed: ${paymentResult.error}` };
-        }
-
-        return { success: true, data: { extension: extensionRecord, payment: paymentResult.data }, error: null };
-      } catch (paymentError) {
-        return { success: false, data: null, error: `Extension created, but payment processing failed: ${paymentError.message}` };
-      }
+      await uploadPaymentReceipt(payment.id, rentalId, paymentFile);
     }
 
-    return { success: true, data: { extension: extensionRecord }, error: null };
+    return { success: true, data: { extension: extensionRecord, payment }, error: null };
   } catch (error) {
     return { success: false, data: null, error: error.message || "Failed to create admin extension." };
   }

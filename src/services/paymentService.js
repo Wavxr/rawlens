@@ -5,6 +5,26 @@ import { uploadFile, objectPath, getSignedUrl } from './storageService';
 //   --  Generic Functions -- 
 // ------------------------------------------
 
+// Create a new payment record
+export async function createPayment({ rentalId, extensionId = null, userId, amount, type }) {
+  const { data, error } = await supabase
+    .from("payments")
+    .insert({
+      rental_id: rentalId,
+      extension_id: extensionId,
+      user_id: userId,
+      amount,
+      payment_type: type,
+      payment_status: "pending",
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+
 // Get payment details by ID
 export async function getPaymentById(paymentId) {
   try {
@@ -49,6 +69,7 @@ export async function uploadPaymentReceipt(paymentId, rentalId, file) {
     // Generate file path & upload
     const ext = file.name.split(".").pop();
     const filePath = objectPath(rentalId, "payment-receipt", ext);
+    console.log("Uploading to path:", filePath);
     const uploadedPath = await uploadFile("payment-receipts", filePath, file);
 
     // Signed URL (7 days)
@@ -109,69 +130,15 @@ export async function getPaymentReceiptUrl(paymentId) {
 // Create initial rental payment when admin approves rental
 export async function adminCreateInitialRentalPayment(rentalId, userId, amount) {
   try {
-    const { data, error } = await supabase
-      .from('payments')
-      .insert({
-        rental_id: rentalId,
-        user_id: userId,
-        amount: amount,
-        payment_type: 'rental',
-        payment_status: 'pending'
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
+    const data = await createPayment({
+      rentalId,
+      userId,
+      amount,
+      type: 'rental',
+    });
     return { success: true, data };
   } catch (error) {
     console.error('Error creating initial rental payment:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-// Create extension payment when user requests extension or admin extends
-export async function adminCreateExtensionPayment(extensionId, rentalId, userId, amount, paymentFile = null) {
-  try {
-    let paymentReceiptUrl = null;
-
-    // Upload payment file if provided
-    if (paymentFile) {
-      const fileExt = paymentFile.name.split('.').pop();
-      const fileName = `extension_${extensionId}_${Date.now()}.${fileExt}`;
-      const filePath = `payments/extensions/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('payment-receipts')
-        .upload(filePath, paymentFile);
-
-      if (uploadError) throw uploadError;
-
-      // Get the public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('payment-receipts')
-        .getPublicUrl(filePath);
-
-      paymentReceiptUrl = publicUrl;
-    }
-
-    const { data, error } = await supabase
-      .from('payments')
-      .insert({
-        rental_id: rentalId,
-        extension_id: extensionId,
-        user_id: userId,
-        amount: amount,
-        payment_type: 'extension',
-        payment_status: paymentFile ? 'submitted' : 'pending',
-        payment_receipt_url: paymentReceiptUrl
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return { success: true, data };
-  } catch (error) {
-    console.error('Error creating extension payment:', error);
     return { success: false, error: error.message };
   }
 }
