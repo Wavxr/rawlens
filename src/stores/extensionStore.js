@@ -8,7 +8,7 @@ const useExtensionStore = create()(
       loading: false,
       error: null,
       selectedExtension: null,
-      filterStatus: 'all', // 'all', 'pending', 'approved', 'rejected'
+      filterStatus: 'pending', // 'all', 'pending', 'approved', 'rejected'
       filterRole: 'all', // 'all', 'user', 'admin'
 
       // Set all extensions
