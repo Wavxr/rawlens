@@ -65,16 +65,29 @@ const Payments = () => {
     setExpandedPayments(newExpanded);
   };
 
-  const handleVerifyPayment = async (paymentId, paymentType) => {
+  const handleVerifyPayment = async (paymentId, paymentType, payment) => {
     // Add to verifying set
     setVerifyingPayments(prev => new Set([...prev, paymentId]));
     
     let result;
     
     try {
+      // Check if rental/extension is approved before allowing payment verification
       if (paymentType === 'rental') {
+        const rentalStatus = payment.rentals?.rental_status;
+        if (rentalStatus !== 'confirmed') {
+          throw new Error(`Rental must be approved first (current status: ${rentalStatus})`);
+        }
         result = await adminVerifyRentalPayment(paymentId);
       } else if (paymentType === 'extension') {
+        // Find the extension associated with this payment
+        const extensionId = payment.extension_id;
+        if (!extensionId) {
+          throw new Error('Extension payment must have an associated extension');
+        }
+        
+        // Check extension status from the payment data
+        // Note: We need to ensure the extension is approved
         result = await adminVerifyExtensionPayment(paymentId);
       }
 
@@ -192,29 +205,64 @@ const Payments = () => {
                         <div className="space-y-2">
                           <h3 className="font-medium text-slate-900 text-sm flex items-center">
                             <Calendar className="h-3.5 w-3.5 mr-1.5 text-slate-600" />
-                            Rental Details
+                            {payment.payment_type === 'extension' ? 'Extension Details' : 'Rental Details'}
                           </h3>
                           <div className="bg-slate-50 rounded-lg p-2.5 space-y-1.5">
                             <div className="flex justify-between items-start">
-                              <span className="text-xs font-medium text-slate-500">ID:</span>
+                              <span className="text-xs font-medium text-slate-500">Rental ID:</span>
                               <span className="text-xs text-slate-900 font-mono">{payment.rental_id}</span>
                             </div>
                             <div className="flex justify-between items-start">
                               <span className="text-xs font-medium text-slate-500">Camera:</span>
                               <span className="text-xs text-slate-900 text-right">{payment.rentals?.cameras?.name || 'N/A'}</span>
                             </div>
-                            <div className="flex justify-between items-start">
-                              <span className="text-xs font-medium text-slate-500">Dates:</span>
-                              <span className="text-xs text-slate-900 text-right">{payment.rentals?.start_date} to {payment.rentals?.end_date}</span>
-                            </div>
-                            <div className="flex justify-between items-start">
-                              <span className="text-xs font-medium text-slate-500">Total:</span>
-                              <span className="text-xs text-slate-900 font-semibold">₱{Number(payment.rentals?.total_price || 0).toLocaleString('en-PH')}</span>
-                            </div>
-                            <div className="flex justify-between items-start">
-                              <span className="text-xs font-medium text-slate-500">Status:</span>
-                              <span className="text-xs text-slate-900">{payment.rentals?.rental_status}</span>
-                            </div>
+                            {payment.payment_type === 'extension' && payment.rental_extensions ? (
+                              <>
+                                <div className="flex justify-between items-start">
+                                  <span className="text-xs font-medium text-slate-500">Extension Status:</span>
+                                  <span className={`text-xs font-semibold ${
+                                    payment.rental_extensions.extension_status === 'approved' 
+                                      ? 'text-green-700' 
+                                      : payment.rental_extensions.extension_status === 'pending'
+                                      ? 'text-amber-700'
+                                      : 'text-red-700'
+                                  }`}>
+                                    {payment.rental_extensions.extension_status}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between items-start">
+                                  <span className="text-xs font-medium text-slate-500">Original End:</span>
+                                  <span className="text-xs text-slate-900 text-right">{payment.rental_extensions.original_end_date}</span>
+                                </div>
+                                <div className="flex justify-between items-start">
+                                  <span className="text-xs font-medium text-slate-500">New End:</span>
+                                  <span className="text-xs text-slate-900 text-right">{payment.rental_extensions.requested_end_date}</span>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div className="flex justify-between items-start">
+                                  <span className="text-xs font-medium text-slate-500">Dates:</span>
+                                  <span className="text-xs text-slate-900 text-right">{payment.rentals?.start_date} to {payment.rentals?.end_date}</span>
+                                </div>
+                                <div className="flex justify-between items-start">
+                                  <span className="text-xs font-medium text-slate-500">Total:</span>
+                                  <span className="text-xs text-slate-900 font-semibold">₱{Number(payment.rentals?.total_price || 0).toLocaleString('en-PH')}</span>
+                                </div>
+                                <div className="flex justify-between items-start">
+                                  <span className="text-xs font-medium text-slate-500">Rental Status:</span>
+                                  <span className={`text-xs font-semibold ${
+                                    payment.rentals?.rental_status === 'confirmed' 
+                                      ? 'text-green-700' 
+                                      : payment.rentals?.rental_status === 'pending'
+                                      ? 'text-amber-700'
+                                      : 'text-red-700'
+                                  }`}>
+                                    {payment.rentals?.rental_status}
+                                  </span>
+                                </div>
+                              </>
+                            )}
                             <div className="flex justify-between items-start">
                               <span className="text-xs font-medium text-slate-500">User Email:</span>
                               <span className="text-xs text-slate-900 text-right">{payment.users?.email}</span>
@@ -263,18 +311,47 @@ const Payments = () => {
 
                     {/* Footer - Actions */}
                     <div className="bg-slate-50 px-3 py-2.5 border-t border-slate-200 flex justify-end">
-                      <button
-                        onClick={() => handleVerifyPayment(payment.id, payment.payment_type)}
-                        disabled={verifyingPayments.has(payment.id)}
-                        className="inline-flex items-center px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white text-xs font-medium rounded-lg transition-colors shadow-sm"
-                      >
-                        {verifyingPayments.has(payment.id) ? (
-                          <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                        ) : (
-                          <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
-                        )}
-                        {verifyingPayments.has(payment.id) ? 'Verifying...' : 'Verify Payment'}
-                      </button>
+                      {(() => {
+                        // Check if rental/extension is approved
+                        let canVerify = false;
+                        let errorMessage = '';
+                        
+                        if (payment.payment_type === 'rental') {
+                          canVerify = payment.rentals?.rental_status === 'confirmed';
+                          if (!canVerify) {
+                            errorMessage = 'Rental must be approved first';
+                          }
+                        } else if (payment.payment_type === 'extension') {
+                          canVerify = payment.rental_extensions?.extension_status === 'approved';
+                          if (!canVerify) {
+                            errorMessage = 'Extension must be approved first';
+                          }
+                        }
+                        
+                        const isDisabled = verifyingPayments.has(payment.id) || !canVerify;
+                        
+                        return (
+                          <div className="flex flex-col items-end gap-1">
+                            {!canVerify && errorMessage && (
+                              <span className="text-xs text-red-600 font-medium">
+                                {errorMessage}
+                              </span>
+                            )}
+                            <button
+                              onClick={() => handleVerifyPayment(payment.id, payment.payment_type, payment)}
+                              disabled={isDisabled}
+                              className="inline-flex items-center px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white text-xs font-medium rounded-lg transition-colors shadow-sm"
+                            >
+                              {verifyingPayments.has(payment.id) ? (
+                                <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                              ) : (
+                                <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
+                              )}
+                              {verifyingPayments.has(payment.id) ? 'Verifying...' : 'Verify Payment'}
+                            </button>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 )}

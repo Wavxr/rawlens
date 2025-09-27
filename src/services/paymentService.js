@@ -28,7 +28,7 @@ export async function createPayment({ rentalId, extensionId = null, userId, amou
 // Get payment details by ID
 export async function getPaymentById(paymentId) {
   try {
-    const { data, error } = await supabase
+    const { data: payment, error } = await supabase
       .from('payments')
       .select(`
         *,
@@ -41,7 +41,22 @@ export async function getPaymentById(paymentId) {
       .eq('id', paymentId)
       .single();
     
-    return { data, error };
+    if (error) return { data: null, error };
+
+    // If it's an extension payment, fetch the extension data separately
+    if (payment.payment_type === 'extension' && payment.extension_id) {
+      const { data: extension, error: extensionError } = await supabase
+        .from('rental_extensions')
+        .select('id, extension_status, requested_end_date, original_end_date')
+        .eq('id', payment.extension_id)
+        .single();
+
+      if (!extensionError && extension) {
+        payment.rental_extensions = extension;
+      }
+    }
+
+    return { data: payment, error: null };
   } catch (error) {
     return { data: null, error };
   }
@@ -146,6 +161,26 @@ export async function adminCreateInitialRentalPayment(rentalId, userId, amount) 
 // Verify rental payment and update rental status
 export async function adminVerifyRentalPayment(paymentId) {
   try {
+    // First, get the payment with rental details to check status
+    const { data: paymentWithRental, error: fetchError } = await supabase
+      .from('payments')
+      .select(`
+        *,
+        rentals!inner (
+          id,
+          rental_status
+        )
+      `)
+      .eq('id', paymentId)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    // Check if rental is approved (confirmed status)
+    if (paymentWithRental.rentals.rental_status !== 'confirmed') {
+      throw new Error(`Rental must be approved first. Current status: ${paymentWithRental.rentals.rental_status}`);
+    }
+
     // Update payment status to verified
     const { data: payment, error: paymentError } = await supabase
       .from('payments')
@@ -174,8 +209,36 @@ export async function adminVerifyRentalPayment(paymentId) {
 // Verify extension payment and update rental end date
 export async function adminVerifyExtensionPayment(paymentId) {
   try {
+    // First, get the payment details
+    const { data: payment, error: fetchError } = await supabase
+      .from('payments')
+      .select('*')
+      .eq('id', paymentId)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    // Check if it's an extension payment
+    if (payment.payment_type !== 'extension' || !payment.extension_id) {
+      throw new Error('Payment is not associated with an extension');
+    }
+
+    // Get extension details separately
+    const { data: extension, error: extensionError } = await supabase
+      .from('rental_extensions')
+      .select('id, extension_status, requested_end_date')
+      .eq('id', payment.extension_id)
+      .single();
+
+    if (extensionError) throw extensionError;
+
+    // Check if extension is approved
+    if (extension.extension_status !== 'approved') {
+      throw new Error(`Extension must be approved first. Current status: ${extension.extension_status}`);
+    }
+
     // Update payment status to verified
-    const { data: payment, error: paymentError } = await supabase
+    const { data: updatedPayment, error: paymentError } = await supabase
       .from('payments')
       .update({ payment_status: 'verified' })
       .eq('id', paymentId)
@@ -183,15 +246,6 @@ export async function adminVerifyExtensionPayment(paymentId) {
       .single();
 
     if (paymentError) throw paymentError;
-
-    // Get extension details
-    const { data: extension, error: extensionError } = await supabase
-      .from('rental_extensions')
-      .select('requested_end_date')
-      .eq('id', payment.extension_id)
-      .single();
-
-    if (extensionError) throw extensionError;
 
     // Update rental end date
     const { error: rentalError } = await supabase
@@ -201,7 +255,7 @@ export async function adminVerifyExtensionPayment(paymentId) {
 
     if (rentalError) throw rentalError;
 
-    return { success: true, data: payment };
+    return { success: true, data: updatedPayment };
   } catch (error) {
     console.error('Error verifying extension payment:', error);
     return { success: false, error: error.message };
@@ -211,7 +265,8 @@ export async function adminVerifyExtensionPayment(paymentId) {
 // Get all submitted payments for admin review
 export async function adminGetSubmittedPayments() {
   try {
-    const { data, error } = await supabase
+    // First get the payments
+    const { data: paymentsData, error: paymentsError } = await supabase
       .from('payments')
       .select(`
         *,
@@ -224,8 +279,33 @@ export async function adminGetSubmittedPayments() {
       .eq('payment_status', 'submitted')
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
-    return { success: true, data };
+    if (paymentsError) throw paymentsError;
+
+    // Then get extension data for extension payments
+    const extensionPayments = paymentsData.filter(p => p.payment_type === 'extension' && p.extension_id);
+    
+    if (extensionPayments.length > 0) {
+      const extensionIds = extensionPayments.map(p => p.extension_id);
+      const { data: extensionsData, error: extensionsError } = await supabase
+        .from('rental_extensions')
+        .select('id, extension_status, requested_end_date, original_end_date')
+        .in('id', extensionIds);
+
+      if (extensionsError) throw extensionsError;
+
+      // Attach extension data to payments
+      const paymentsWithExtensions = paymentsData.map(payment => {
+        if (payment.payment_type === 'extension' && payment.extension_id) {
+          const extension = extensionsData.find(ext => ext.id === payment.extension_id);
+          return { ...payment, rental_extensions: extension };
+        }
+        return payment;
+      });
+
+      return { success: true, data: paymentsWithExtensions };
+    }
+
+    return { success: true, data: paymentsData };
   } catch (error) {
     console.error('Error getting submitted payments:', error);
     return { success: false, error: error.message };
