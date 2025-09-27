@@ -6,13 +6,35 @@ const DateFilterInput = ({
   endDate,
   onStartDateChange,
   onEndDateChange,
-  minStartDate = new Date().toISOString().split("T")[0],
+  minStartDate = null, // We'll calculate this dynamically
   minEndDate = null,
   disabled = false,
   label = "Rental Period",
   idPrefix = "date-filter",
 }) => {
-  const calculatedMinEndDate = minEndDate || startDate || minStartDate;
+  // Calculate minimum start date based on Philippines timezone
+  const getMinStartDate = () => {
+    if (minStartDate) return minStartDate; // Allow override for admin or other uses
+    
+    // Get current time in Philippines (UTC+8)
+    const now = new Date();
+    const philippinesTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Manila" }));
+    
+    // If it's past 5 PM (17:00) in Philippines, users cannot book for today
+    const cutoffHour = 17; // 5 PM
+    const isAfterCutoff = philippinesTime.getHours() >= cutoffHour;
+    
+    // If after 5 PM, minimum date is tomorrow; otherwise, today
+    const minDate = new Date(philippinesTime);
+    if (isAfterCutoff) {
+      minDate.setDate(minDate.getDate() + 1);
+    }
+    
+    return minDate.toISOString().split("T")[0];
+  };
+
+  const calculatedMinStartDate = getMinStartDate();
+  const calculatedMinEndDate = minEndDate || startDate || calculatedMinStartDate;
 
   return (
     <div className="lg:col-span-2">
@@ -24,7 +46,7 @@ const DateFilterInput = ({
           id={`${idPrefix}-start-date`}
           value={startDate}
           onChange={onStartDateChange}
-          min={minStartDate}
+          min={calculatedMinStartDate}
           disabled={disabled}
           className="flex-1 px-1 py-3 text-sm rounded-l-xl border-0 focus:outline-none focus:ring-0 disabled:bg-gray-100"
         />

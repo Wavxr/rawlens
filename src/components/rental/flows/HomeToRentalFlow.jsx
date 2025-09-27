@@ -203,7 +203,6 @@ const HomeToRentalFlow = ({
             endDate={endDate}
             onStartDateChange={(e) => handleDateChange(e, 'start')}
             onEndDateChange={(e) => handleDateChange(e, 'end')}
-            minStartDate={new Date().toISOString().split('T')[0]}
             disabled={isCheckingAvailability || isSubmitting || isGeneratingContract}
             label=""
             idPrefix="rental-flow-desktop"

@@ -181,7 +181,6 @@ export default function Search() {
                     endDate={endDate}
                     onStartDateChange={handleStartDateChange}
                     onEndDateChange={handleEndDateChange}
-                    minStartDate={new Date().toISOString().split('T')[0]}
                     disabled={filterLoading}
                     idPrefix="search-filter"
                   />

@@ -219,7 +219,6 @@ const MobileRentalFooter = ({
                 endDate={tempEndDate}
                 onStartDateChange={(e) => setTempStartDate(e.target.value)}
                 onEndDateChange={(e) => setTempEndDate(e.target.value)}
-                minStartDate={new Date().toISOString().split('T')[0]}
                 disabled={isCheckingAvailability || isSubmitting || isGeneratingContract}
                 label=""
                 idPrefix="rental-flow-mobile"
