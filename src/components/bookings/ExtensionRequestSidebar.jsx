@@ -6,7 +6,7 @@ import { adminGetAllExtensions, adminApproveExtension, adminRejectExtension } fr
 import { supabase } from '../../lib/supabaseClient';
 import ExtensionRequestCard from './ExtensionRequestCard';
 
-const ExtensionRequestSidebar = ({ isOpen, onClose }) => {
+const ExtensionRequestSidebar = ({ isOpen, onClose, isDarkMode }) => {
   const isMobile = useIsMobile();
   const {
     extensions,
@@ -142,76 +142,132 @@ const ExtensionRequestSidebar = ({ isOpen, onClose }) => {
     };
   }, [extensions]);
 
+  // Theme classes
+  const bgColor = isDarkMode ? 'bg-gray-800' : 'bg-white';
+  const borderColor = isDarkMode ? 'border-gray-700' : 'border-slate-200';
+  const textColor = isDarkMode ? 'text-gray-100' : 'text-slate-800';
+  const secondaryTextColor = isDarkMode ? 'text-gray-400' : 'text-slate-600';
+  const headerBg = isDarkMode ? 'bg-gray-900/50' : 'bg-slate-50';
+
   if (!isOpen) return null;
 
   const sidebarClasses = isMobile
     ? "fixed inset-0 bg-white dark:bg-gray-900 z-50 overflow-y-auto"
-    : "w-96 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 flex flex-col h-full overflow-hidden";
+    : `h-full lg:h-auto lg:max-h-[calc(100vh-8rem)] flex flex-col border rounded-xl ${bgColor} ${borderColor}`;
 
   return (
     <div className={sidebarClasses}>
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center gap-2">
-          <Clock className="w-5 h-5 text-blue-600" />
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Extension Requests
-          </h2>
-          {extensionCounts.pending > 0 && (
-            <span className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full">
-              {extensionCounts.pending}
-            </span>
+      <div className={`p-3 sm:p-4 border-b ${borderColor} ${headerBg}`}>
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className={`font-semibold text-sm sm:text-base ${textColor} flex items-center gap-2`}>
+              <Clock className="w-4 h-4 text-blue-600" />
+              Extension Requests
+            </h3>
+            <p className={`text-xs sm:text-sm ${secondaryTextColor}`}>
+              {filterStatus === 'all' 
+                ? `${extensions.length} total requests`
+                : `${filteredExtensions.length} of ${extensions.length} requests`
+              }
+              {extensionCounts.pending > 0 && (
+                <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
+                  isDarkMode ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-800'
+                }`}>
+                  {extensionCounts.pending} pending
+                </span>
+              )}
+            </p>
+          </div>
+          {isMobile && (
+            <button
+              onClick={onClose}
+              className={`p-1 rounded hover:bg-gray-600/20 ${secondaryTextColor}`}
+              title="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
           )}
         </div>
-        <button
-          onClick={onClose}
-          className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-        >
-          <X className="w-5 h-5" />
-        </button>
-      </div>
 
-      {/* Filters */}
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center gap-2 mb-3">
-          <Filter className="w-4 h-4 text-gray-500" />
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Filters</span>
-        </div>
-        
-        <div className="grid grid-cols-2 gap-3">
-          {/* Status Filter */}
-          <div>
-            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-              Status
-            </label>
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-            >
-              <option value="all">All ({extensionCounts.total})</option>
-              <option value="pending">Pending ({extensionCounts.pending})</option>
-              <option value="approved">Approved</option>
-              <option value="rejected">Rejected</option>
-            </select>
+        {/* Filter Options */}
+        {extensions.length > 0 && (
+          <div className="flex gap-1 sm:gap-2 mt-3">
+            {[
+              { 
+                key: 'all', 
+                label: 'All',
+                count: extensionCounts.total
+              },
+              { 
+                key: 'pending', 
+                label: 'Pending',
+                count: extensionCounts.pending
+              },
+              { 
+                key: 'approved', 
+                label: 'Approved',
+                count: extensions.filter(e => e.extension_status === 'approved').length
+              },
+              { 
+                key: 'rejected', 
+                label: 'Rejected',
+                count: extensions.filter(e => e.extension_status === 'rejected').length
+              }
+            ].map(({ key, label, count }) => (
+              <button
+                key={key}
+                onClick={() => setFilterStatus(key)}
+                className={`px-2 sm:px-3 py-1 text-xs rounded transition ${
+                  filterStatus === key
+                    ? (isDarkMode ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-800')
+                    : (isDarkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200')
+                }`}
+              >
+                <span className="hidden sm:inline">{label} </span>
+                <span className="sm:hidden">{label.charAt(0)}</span>
+                ({count})
+              </button>
+            ))}
           </div>
+        )}
 
-          {/* Role Filter */}
-          <div>
-            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-              Requested By
-            </label>
-            <select
-              value={filterRole}
-              onChange={(e) => setFilterRole(e.target.value)}
-              className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-            >
-              <option value="all">All</option>
-              <option value="user">Users ({extensionCounts.user})</option>
-              <option value="admin">Admins ({extensionCounts.admin})</option>
-            </select>
+        {/* Role Filter - Secondary row */}
+        {extensions.length > 0 && (
+          <div className="flex gap-1 sm:gap-2 mt-2">
+            {[
+              { 
+                key: 'all', 
+                label: 'All Roles',
+                count: extensionCounts.total
+              },
+              { 
+                key: 'user', 
+                label: 'Users',
+                count: extensionCounts.user
+              },
+              { 
+                key: 'admin', 
+                label: 'Admins',
+                count: extensionCounts.admin
+              }
+            ].map(({ key, label, count }) => (
+              <button
+                key={key}
+                onClick={() => setFilterRole(key)}
+                className={`px-2 sm:px-3 py-1 text-xs rounded transition ${
+                  filterRole === key
+                    ? (isDarkMode ? 'bg-purple-900 text-purple-200' : 'bg-purple-100 text-purple-800')
+                    : (isDarkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200')
+                }`}
+              >
+                <span className="hidden sm:inline">{label} </span>
+                <span className="sm:hidden">{label.charAt(0)}</span>
+                ({count})
+              </button>
+            ))}
           </div>
-        </div>
+        )}
       </div>
 
       {/* Content */}
@@ -222,94 +278,50 @@ const ExtensionRequestSidebar = ({ isOpen, onClose }) => {
           </div>
         ) : error ? (
           <div className="p-4">
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg p-3">
-              <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+            <div className={`border rounded-lg p-3 ${
+              isDarkMode ? 'bg-red-900/20 border-red-700 text-red-200' : 'bg-red-50 border-red-200 text-red-800'
+            }`}>
+              <p className="text-sm">{error}</p>
               <button
                 onClick={loadExtensions}
-                className="mt-2 text-sm text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-200"
+                className={`mt-2 text-sm underline ${
+                  isDarkMode ? 'text-red-400 hover:text-red-200' : 'text-red-600 hover:text-red-800'
+                }`}
               >
                 Try Again
               </button>
             </div>
           </div>
+        ) : extensions.length === 0 ? (
+          <div className="p-4 sm:p-6 text-center">
+            <Clock className={`w-8 h-8 sm:w-12 sm:h-12 mx-auto mb-3 ${secondaryTextColor}`} />
+            <p className={`text-sm sm:text-base ${secondaryTextColor}`}>No extension requests</p>
+            <p className={`text-xs sm:text-sm mt-1 ${secondaryTextColor}`}>
+              Extension requests will appear here
+            </p>
+          </div>
         ) : filteredExtensions.length === 0 ? (
-          <div className="p-8 text-center">
-            <Clock className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-gray-500 dark:text-gray-400">
-              {extensions.length === 0 ? 'No extension requests yet' : 'No extensions match your filters'}
+          <div className="p-4 sm:p-6 text-center">
+            <Clock className={`w-8 h-8 sm:w-12 sm:h-12 mx-auto mb-3 ${secondaryTextColor}`} />
+            <p className={`text-sm sm:text-base ${secondaryTextColor}`}>
+              No requests match your filters
+            </p>
+            <p className={`text-xs sm:text-sm mt-1 ${secondaryTextColor}`}>
+              Try changing the filter to see other requests
             </p>
           </div>
         ) : (
-          <div className="p-4 space-y-3">
-            {/* Group extensions by role */}
-            {filterRole === 'all' && (
-              <>
-                {/* Admin Requests */}
-                {filteredExtensions.filter(e => e.requested_by_role === 'admin').length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <UserCheck className="w-4 h-4 text-purple-600" />
-                      <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Admin Requests
-                      </h3>
-                    </div>
-                    <div className="space-y-2">
-                      {filteredExtensions
-                        .filter(e => e.requested_by_role === 'admin')
-                        .map((extension) => (
-                          <ExtensionRequestCard
-                            key={extension.id}
-                            extension={extension}
-                            onApprove={handleApproveExtension}
-                            onReject={handleRejectExtension}
-                            loading={actionLoading[extension.id]}
-                          />
-                        ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* User Requests */}
-                {filteredExtensions.filter(e => e.requested_by_role === 'user').length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Users className="w-4 h-4 text-blue-600" />
-                      <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        User Requests
-                      </h3>
-                    </div>
-                    <div className="space-y-2">
-                      {filteredExtensions
-                        .filter(e => e.requested_by_role === 'user')
-                        .map((extension) => (
-                          <ExtensionRequestCard
-                            key={extension.id}
-                            extension={extension}
-                            onApprove={handleApproveExtension}
-                            onReject={handleRejectExtension}
-                            loading={actionLoading[extension.id]}
-                          />
-                        ))}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-
-            {/* Single role view */}
-            {filterRole !== 'all' && (
-              <div className="space-y-2">
-                {filteredExtensions.map((extension) => (
-                  <ExtensionRequestCard
-                    key={extension.id}
-                    extension={extension}
-                    onApprove={handleApproveExtension}
-                    onReject={handleRejectExtension}
-                    loading={actionLoading[extension.id]}
-                  />
-                ))}
-              </div>
-            )}
+          <div className="p-3 sm:p-4 space-y-2 sm:space-y-3">
+            {filteredExtensions.map(extension => (
+              <ExtensionRequestCard
+                key={extension.id}
+                extension={extension}
+                onApprove={handleApproveExtension}
+                onReject={handleRejectExtension}
+                loading={actionLoading[extension.id]}
+                isDarkMode={isDarkMode}
+              />
+            ))}
           </div>
         )}
       </div>

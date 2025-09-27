@@ -7,6 +7,7 @@ import BookingCalendarGrid from '../../components/bookings/BookingCalendarGrid';
 import PotentialBookingsSidebar from '../../components/bookings/PotentialBookingsSidebar';
 import MobilePotentialBookingsPanel from '../../components/bookings/MobilePotentialBookingsPanel';
 import ExtensionRequestSidebar from '../../components/bookings/ExtensionRequestSidebar';
+import MobileExtensionRequestSidebar from '../../components/bookings/MobileExtensionRequestSidebar';
 import CreateBookingModal from '../../components/bookings/CreateBookingModal';
 import BookingDetailsModal from '../../components/bookings/BookingDetailsModal';
 import EditPotentialBookingModal from '../../components/bookings/EditPotentialBookingModal';
@@ -429,6 +430,7 @@ const Bookings = () => {
               onBookingContextMenu={handleBookingContextMenu}
               isDarkMode={isDarkMode}
               showPotentialSidebar={showPotentialSidebar}
+              showExtensionSidebar={showExtensionSidebar}
             />
           )}
         </div>
@@ -458,6 +460,7 @@ const Bookings = () => {
               <ExtensionRequestSidebar
                 isOpen={showExtensionSidebar}
                 onClose={() => setShowExtensionSidebar(false)}
+                isDarkMode={isDarkMode}
               />
             </div>
           </div>
@@ -482,12 +485,11 @@ const Bookings = () => {
       />
 
       {/* Mobile Extension Requests Panel - Only visible on mobile */}
-      <div className="lg:hidden">
-        <ExtensionRequestSidebar
-          isOpen={showExtensionSidebar}
-          onClose={() => setShowExtensionSidebar(false)}
-        />
-      </div>
+      <MobileExtensionRequestSidebar
+        isOpen={showExtensionSidebar}
+        onClose={() => setShowExtensionSidebar(false)}
+        isDarkMode={isDarkMode}
+      />
 
       {/* Modals */}
       <CreateBookingModal
