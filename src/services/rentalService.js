@@ -404,7 +404,8 @@ export async function findConflictingRentals(cameraId, startDate, endDate, exclu
       `)
       .eq('camera_id', cameraId)
       .in('rental_status', ['pending', 'confirmed', 'active'])
-      .or(`start_date.lte.${endDate},end_date.gte.${startDate}`);
+      .lte('start_date', endDate)
+      .gte('end_date', startDate);
 
     if (excludeRentalId) {
       query = query.neq('id', excludeRentalId);

@@ -88,7 +88,8 @@ export async function checkCameraAvailabilityForExtension(rentalId, newEndDate) 
       .eq("camera_id", rental.camera_id)
       .neq("id", rentalId) // Exclude the current rental
       .in("rental_status", ["confirmed", "active"])
-      .or(`start_date.lte.${newEndDate},end_date.gte.${checkStartString}`);
+      .lte('start_date', newEndDate)
+      .gte('end_date', checkStartString);
 
     if (conflictError) {
       return { isAvailable: false, error: "Failed to check camera availability." };
