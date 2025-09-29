@@ -15,14 +15,13 @@ import NotFound from './pages/NotFound';
 
 // Admin
 import AdminDashboard from './pages/admin/AdminDashboard';
-import Dashboard from './pages/admin/Dashboard';
+import { Dashboard, Feedbacks as AdminFeedbacks, BookingTrends, MonthlyHeatmap, Revenue } from './pages/admin/Statistics';
 import AdminCameras from './pages/admin/Cameras';
 import AdminUsers from './pages/admin/Users';
 import AdminInclusions from './pages/admin/Inclusions';
 import AdminBookings from './pages/admin/Bookings';
 import AdminRentals from './pages/admin/Rental';
 import AdminDelivery from './pages/admin/Delivery';
-import AdminFeedbacks from './pages/admin/Feedbacks';
 import AdminExtensions from './pages/admin/Extensions';
 import AdminPayments from './pages/admin/Payments';
 import Settings from './pages/admin/Settings';
@@ -71,6 +70,9 @@ function App() {
               <Route path="payments" element={<AdminPayments />} />
               <Route path="delivery" element={<AdminDelivery />} />
               <Route path="feedbacks" element={<AdminFeedbacks />} />
+              <Route path="booking-trends" element={<BookingTrends />} />
+              <Route path="monthly-heatmap" element={<MonthlyHeatmap />} />
+              <Route path="revenue" element={<Revenue />} />
               <Route path="settings" element={<Settings />} />
             </Route>
           </Route>

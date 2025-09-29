@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getAllFeedbacks } from "../../services/feedbackService";
+import { getAllFeedbacks } from "../../../services/feedbackService";
 import { Star, MessageCircle, Camera, User, Mail, Filter } from "lucide-react";
 
 export default function Feedbacks() {

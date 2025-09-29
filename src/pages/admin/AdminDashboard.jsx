@@ -60,7 +60,7 @@ export default function AdminDashboard() {
       items: [
         { name: "Dashboard", path: "/admin", icon: LayoutDashboard, exact: true },
         { name: "Booking Trends", path: "/admin/booking-trends", icon: TrendingUp },
-        { name: "Monthly Heatmaps", path: "/admin/heatmaps", icon: Map },
+        { name: "Monthly Heatmap", path: "/admin/monthly-heatmap", icon: Map },
         { name: "Revenue", path: "/admin/revenue", icon: PhilippinePeso },
         { name: "Feedbacks", path: "/admin/feedbacks", icon: UserStar }
       ]
