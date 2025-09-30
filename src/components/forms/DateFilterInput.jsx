@@ -6,7 +6,7 @@ const DateFilterInput = ({
   endDate,
   onStartDateChange,
   onEndDateChange,
-  minStartDate = null, // We'll calculate this dynamically
+  minStartDate = null,
   minEndDate = null,
   disabled = false,
   label = "Rental Period",
@@ -14,14 +14,14 @@ const DateFilterInput = ({
 }) => {
   // Calculate minimum start date based on Philippines timezone
   const getMinStartDate = () => {
-    if (minStartDate) return minStartDate; // Allow override for admin or other uses
+    if (minStartDate) return minStartDate;
     
     // Get current time in Philippines (UTC+8)
     const now = new Date();
     const philippinesTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Manila" }));
     
     // If it's past 5 PM (17:00) in Philippines, users cannot book for today
-    const cutoffHour = 17; // 5 PM
+    const cutoffHour = 17;
     const isAfterCutoff = philippinesTime.getHours() >= cutoffHour;
     
     // If after 5 PM, minimum date is tomorrow; otherwise, today
@@ -37,10 +37,10 @@ const DateFilterInput = ({
   const calculatedMinEndDate = minEndDate || startDate || calculatedMinStartDate;
 
   return (
-    <div className="lg:col-span-2">
-      {/* Date Picker Container */}
-      <div className="flex items-center rounded-xl border border-gray-200 bg-white shadow-sm focus-within:ring-2 focus-within:ring-blue-500 transition">
-        {/* Start Date */}
+    <div className="w-full space-y-3">
+      {/* Start Date */}
+      <div className="relative">
+        <label className="block text-xs text-gray-600 mb-1.5">Start Date</label>
         <input
           type="date"
           id={`${idPrefix}-start-date`}
@@ -48,13 +48,13 @@ const DateFilterInput = ({
           onChange={onStartDateChange}
           min={calculatedMinStartDate}
           disabled={disabled}
-          className="flex-1 px-1 py-3 text-sm rounded-l-xl border-0 focus:outline-none focus:ring-0 disabled:bg-gray-100"
+          className="w-full px-3 py-2.5 text-sm rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-[#052844] focus:border-[#052844] disabled:bg-gray-100 disabled:text-gray-500 transition-all duration-150"
         />
+      </div>
 
-        {/* Separator */}
-        <span className="px-1 text-gray-400 text-sm">→</span>
-
-        {/* End Date */}
+      {/* End Date */}
+      <div className="relative">
+        <label className="block text-xs text-gray-600 mb-1.5">End Date</label>
         <input
           type="date"
           id={`${idPrefix}-end-date`}
@@ -62,7 +62,7 @@ const DateFilterInput = ({
           onChange={onEndDateChange}
           min={calculatedMinEndDate}
           disabled={disabled}
-          className="flex-1 px-1 py-3 text-sm rounded-r-xl border-0 focus:outline-none focus:ring-0 disabled:bg-gray-100"
+          className="w-full px-3 py-2.5 text-sm rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-[#052844] focus:border-[#052844] disabled:bg-gray-100 disabled:text-gray-500 transition-all duration-150"
         />
       </div>
     </div>
