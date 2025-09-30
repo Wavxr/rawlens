@@ -321,40 +321,8 @@ export default function AdminDashboard() {
         <div
           className={`flex-1 transition-all duration-200 ${sidebarCollapsed ? "lg:ml-16" : "lg:ml-60"}`}
         >
-          {/* Desktop Header */}
-          <header className="hidden lg:block bg-gray-900/80 backdrop-blur-xl border-b border-gray-800 px-5 py-3 sticky top-0 z-40">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <h1 className="text-lg font-semibold text-white">{getCurrentPageName()}</h1>
-                <div className="text-xs text-gray-400">
-                  {new Date().toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={toggleTheme}
-                  className="p-1.5 rounded-lg hover:bg-gray-800 transition-colors"
-                  aria-label="Toggle theme"
-                >
-                  {theme === 'dark' ? (
-                    <Sun className="h-4 w-4 text-yellow-400" />
-                  ) : (
-                    <Moon className="h-4 w-4 text-gray-400" />
-                  )}
-                </button>
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white text-xs font-medium">
-                  A
-                </div>
-              </div>
-            </div>
-          </header>
-
-          {/* Page Content - No padding top on mobile since no header */}
-          <main className="w-full h-screen lg:h-[calc(100vh-3rem)] overflow-auto hide-scrollbar">
+          {/* Page Content */}
+          <main className="w-full h-screen overflow-auto hide-scrollbar">
             <div className="w-full hide-scrollbar">
               <Outlet />
             </div>
