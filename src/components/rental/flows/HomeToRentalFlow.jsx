@@ -193,23 +193,41 @@ const HomeToRentalFlow = ({
   return (
     <>
       <div className="space-y-6">
-        <h2 className="text-2xl font-bold text-gray-900">Rental Details</h2>
-
-        {/* Date Selection */}
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-3">Select Rental Period</h3>
-          <DateFilterInput
-            startDate={startDate}
-            endDate={endDate}
-            onStartDateChange={(e) => handleDateChange(e, 'start')}
-            onEndDateChange={(e) => handleDateChange(e, 'end')}
-            disabled={isCheckingAvailability || isSubmitting || isGeneratingContract}
-            label=""
-            idPrefix="rental-flow-desktop"
-          />
+        {/* Header */}
+        <div className="border-b border-gray-200 pb-4">
+          <h2 className="text-2xl font-bold text-gray-900">Book Your Rental</h2>
+          <p className="text-sm text-gray-600 mt-1">Select your rental period and complete your booking</p>
         </div>
 
-        <CameraDetails camera={rentalFlowCamera} isMobile={false} />
+        {/* Date Selection - Side by Side */}
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">Select Rental Period</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs text-gray-600 mb-1.5">Start Date</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => handleDateChange(e, 'start')}
+                disabled={isCheckingAvailability || isSubmitting || isGeneratingContract}
+                className="w-full px-3 py-2.5 text-sm rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-[#052844] focus:border-[#052844] disabled:bg-gray-100 disabled:text-gray-500 transition-all duration-150"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1.5">End Date</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => handleDateChange(e, 'end')}
+                min={startDate}
+                disabled={isCheckingAvailability || isSubmitting || isGeneratingContract}
+                className="w-full px-3 py-2.5 text-sm rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-[#052844] focus:border-[#052844] disabled:bg-gray-100 disabled:text-gray-500 transition-all duration-150"
+              />
+            </div>
+          </div>
+        </div>
+
+        <CameraDetails camera={rentalFlowCamera} isMobile={false} calculatedPrice={calculatedPrice} />
 
         {/* Availability Indicator */}
         {isAvailabilityChecked && isAvailable && (
@@ -260,7 +278,7 @@ const HomeToRentalFlow = ({
               className={`flex items-center px-6 py-3 rounded-lg text-base font-medium transition-all ${
                 isCheckingAvailability || !startDate || !endDate
                 ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                : 'bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transform hover:-translate-y-0.5'
+                : 'bg-[#052844] hover:bg-[#063a5e] text-white shadow-md hover:shadow-lg transform hover:-translate-y-0.5'
               }`}
             >
               {isCheckingAvailability ? (

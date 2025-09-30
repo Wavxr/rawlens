@@ -1,47 +1,49 @@
-import React from 'react';
-import { CheckCircle, AlertCircle, Loader2, FileText, Eye } from 'lucide-react';
+"use client"
+import { CheckCircle, Loader2, FileText, Eye } from "lucide-react"
 
-const SuccessView = ({ 
-  camera, 
-  calculatedPrice, 
-  submittedRentalData, 
-  startDate, 
+const SuccessView = ({
+  camera,
+  calculatedPrice,
+  submittedRentalData,
+  startDate,
   endDate,
   pdfSignedUrl,
   pdfViewError,
   isGeneratingPdfUrl,
   onBackToBrowse,
   onViewPdf,
-  onOpenPdfInNewTab 
+  onOpenPdfInNewTab,
 }) => {
-  const displayCameraName = camera?.name || "Camera";
+  const displayCameraName = camera?.name || "Camera"
 
   return (
     <div className="text-center">
-      <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-3">
-        <CheckCircle className="h-6 w-6 text-green-600" />
+      <div className="mx-auto flex items-center justify-center h-14 w-14 rounded-full bg-blue-50 mb-4">
+        <CheckCircle className="h-7 w-7 text-[#052844]" />
       </div>
-      <h3 className="text-xl font-bold text-gray-900 mb-2">Request Submitted!</h3>
-      <p className="text-gray-600 mb-5 text-sm">
+      <h3 className="text-2xl font-bold text-neutral-900 mb-2">Request Submitted!</h3>
+      <p className="text-neutral-600 mb-6 text-sm leading-relaxed">
         Your rental request for <span className="font-semibold">{displayCameraName}</span> is pending admin approval.
       </p>
 
-      {/* Rental Details */}
-      <div className="bg-blue-50 rounded-lg p-4 mb-5 text-left max-w-md mx-auto">
-        <h4 className="font-semibold text-gray-900 mb-3 text-sm">Rental Details:</h4>
-        <div className="space-y-2">
+      <div className="bg-neutral-50 rounded-2xl p-5 mb-6 text-left border border-neutral-200">
+        <h4 className="font-semibold text-neutral-900 mb-4 text-sm uppercase tracking-wide">Rental Details</h4>
+        <div className="space-y-3">
           <p className="text-sm">
-            <span className="font-medium">Period:</span> {new Date(startDate).toLocaleDateString()} to {new Date(endDate).toLocaleDateString()}
-          </p>
-          <p className="text-sm">
-            <span className="font-medium">Total:</span> 
-            <span className="text-lg font-bold text-green-600">
-              {calculatedPrice?.total !== undefined ? `₱${calculatedPrice.total.toFixed(2)}` : 'N/A'}
+            <span className="font-medium text-neutral-600">Period:</span>{" "}
+            <span className="text-neutral-900">
+              {new Date(startDate).toLocaleDateString()} to {new Date(endDate).toLocaleDateString()}
             </span>
           </p>
           <p className="text-sm">
-            <span className="font-medium">Reference ID:</span> 
-            <span className="font-mono text-xs bg-white px-1.5 py-0.5 rounded">
+            <span className="font-medium text-neutral-600">Total:</span>{" "}
+            <span className="text-xl font-bold text-[#052844]">
+              {calculatedPrice?.total !== undefined ? `₱${calculatedPrice.total.toFixed(2)}` : "N/A"}
+            </span>
+          </p>
+          <p className="text-sm">
+            <span className="font-medium text-neutral-600">Reference ID:</span>{" "}
+            <span className="font-mono text-xs bg-white px-2 py-1 rounded border border-neutral-200">
               {submittedRentalData.id}
             </span>
           </p>
@@ -49,19 +51,17 @@ const SuccessView = ({
       </div>
 
       {/* Contract PDF Section */}
-      <div className="mb-5">
-        <h4 className="font-semibold text-gray-800 mb-3 flex items-center justify-center text-base">
-          <FileText className="mr-2 h-5 w-5 text-blue-500" />
+      <div className="mb-6">
+        <h4 className="font-semibold text-neutral-800 mb-4 flex items-center justify-center text-sm uppercase tracking-wide">
+          <FileText className="mr-2 h-5 w-5 text-neutral-600" />
           Your Rental Agreement
         </h4>
         {pdfViewError && (
-          <div className="mb-3 p-3 bg-red-50 text-red-700 rounded-lg border border-red-200 text-sm">
-            {pdfViewError}
-          </div>
+          <div className="mb-3 p-3 bg-red-50 text-red-700 rounded-xl border border-red-200 text-sm">{pdfViewError}</div>
         )}
         {pdfSignedUrl ? (
           <div className="space-y-3">
-            <div className="w-full h-48 border border-gray-300 rounded-lg overflow-hidden">
+            <div className="w-full h-48 border border-neutral-300 rounded-2xl overflow-hidden shadow-sm">
               <iframe
                 src={pdfSignedUrl}
                 title="Signed Rental Agreement"
@@ -73,10 +73,10 @@ const SuccessView = ({
             </div>
             <button
               onClick={onOpenPdfInNewTab}
-              className="flex items-center justify-center px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors mx-auto"
+              className="flex items-center justify-center px-5 py-2.5 bg-[#052844] text-white text-sm font-semibold rounded-xl hover:bg-[#063a5e] transition-all duration-200 mx-auto shadow-sm hover:shadow-md"
               disabled={isGeneratingPdfUrl}
             >
-              <Eye className="mr-1.5 h-4 w-4" />
+              <Eye className="mr-2 h-4 w-4" />
               Open in New Tab
             </button>
           </div>
@@ -84,20 +84,20 @@ const SuccessView = ({
           <button
             onClick={() => onViewPdf(submittedRentalData.contract_pdf_url)}
             disabled={isGeneratingPdfUrl}
-            className={`flex items-center justify-center px-4 py-2 rounded-lg transition-colors mx-auto text-sm ${
+            className={`flex items-center justify-center px-5 py-2.5 rounded-xl transition-all duration-200 mx-auto text-sm font-semibold shadow-sm ${
               isGeneratingPdfUrl
-              ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-              : 'bg-blue-600 text-white hover:bg-blue-700'
+                ? "bg-neutral-200 text-neutral-500 cursor-not-allowed"
+                : "bg-[#052844] text-white hover:bg-[#063a5e] hover:shadow-md"
             }`}
           >
             {isGeneratingPdfUrl ? (
               <>
-                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Preparing Document...
               </>
             ) : (
               <>
-                <Eye className="mr-1.5 h-4 w-4" />
+                <Eye className="mr-2 h-4 w-4" />
                 View Contract
               </>
             )}
@@ -105,17 +105,15 @@ const SuccessView = ({
         )}
       </div>
 
-      <p className="text-gray-600 mb-5 text-sm">
-        You will be notified once the admin confirms your booking.
-      </p>
+      <p className="text-neutral-600 mb-6 text-sm">You will be notified once the admin confirms your booking.</p>
       <button
         onClick={onBackToBrowse}
-        className="px-6 py-2.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 font-medium transition-all shadow-sm hover:shadow"
+        className="px-6 py-3 bg-[#052844] text-white text-sm font-semibold rounded-xl hover:bg-[#063a5e] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#052844] transition-all duration-200 shadow-sm hover:shadow-md"
       >
         Browse More Cameras
       </button>
     </div>
-  );
-};
+  )
+}
 
-export default SuccessView;
+export default SuccessView

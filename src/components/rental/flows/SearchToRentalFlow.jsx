@@ -174,11 +174,15 @@ const SearchToRentalFlow = ({
   return (
     <>
       <div className="space-y-6">
-        <h2 className="text-2xl font-bold text-gray-900">Rental Details</h2>
+        {/* Header */}
+        <div className="border-b border-gray-200 pb-4">
+          <h2 className="text-2xl font-bold text-gray-900">Book Your Rental</h2>
+          <p className="text-sm text-gray-600 mt-1">Select your rental period and complete your booking</p>
+        </div>
 
         {/* Selected Dates Display */}
         <div className="bg-blue-50 rounded-lg p-4">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Selected Rental Period</h3>
+          <h3 className="text-sm font-semibold text-gray-900 mb-2 uppercase tracking-wide">Selected Rental Period</h3>
           <div className="flex items-center text-blue-800">
             <Calendar className="mr-2 h-5 w-5" />
             <span className="font-medium">
@@ -187,7 +191,7 @@ const SearchToRentalFlow = ({
           </div>
         </div>
 
-        <CameraDetails camera={rentalFlowCamera} isMobile={false} />
+        <CameraDetails camera={rentalFlowCamera} isMobile={false} calculatedPrice={calculatedPrice} />
 
         {/* Availability Status */}
         {isCheckingAvailability && (
@@ -246,7 +250,7 @@ const SearchToRentalFlow = ({
           ) : isAvailabilityChecked && isAvailable ? (
             <button
               onClick={handleRentClick}
-              className="px-6 py-3 rounded-lg flex items-center justify-center text-base font-medium bg-green-600 hover:bg-green-700 text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all"
+              className="px-6 py-3 rounded-lg flex items-center justify-center text-base font-medium bg-[#052844] hover:bg-[#063a5e] text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#052844] shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all"
             >
               <FileText className="mr-3 h-5 w-5" />
               Rent Now
