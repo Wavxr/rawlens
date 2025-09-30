@@ -1,5 +1,20 @@
 import { useState, useEffect, useRef } from "react"
-import { Camera, ArrowRight, MapPin, Clock, Heart, Shield, Smartphone, CreditCard, RotateCcw, Play } from "lucide-react"
+import {
+  Camera,
+  ArrowRight,
+  MapPin,
+  Clock,
+  Heart,
+  Shield,
+  Smartphone,
+  CreditCard,
+  RotateCcw,
+  Play,
+  Mail,
+  Send,
+  Instagram,
+  Facebook,
+} from "lucide-react"
 
 /* -------------------------------------------------------------------------- */
 /*  Mock auth hook                                                            */
@@ -133,6 +148,32 @@ export default function Landing() {
   const [camerasRef, camerasVisible] = useScrollAnimation()
   const [processRef, processVisible] = useScrollAnimation()
   const [ctaRef, ctaVisible] = useScrollAnimation()
+  const [emailFormRef, emailFormVisible] = useScrollAnimation()
+  const [contactCtaRef, contactCtaVisible] = useScrollAnimation()
+  const [socialRef, socialVisible] = useScrollAnimation()
+
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    equipment: "",
+    rentalDates: "",
+    additionalDetails: "",
+  })
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    const subject = encodeURIComponent(`Camera Rental Inquiry from ${formData.name}`)
+    const body = encodeURIComponent(
+      `Name: ${formData.name}\nEmail: ${formData.email}\nPhone: ${formData.phone}\nEquipment Needed: ${formData.equipment}\nRental Dates: ${formData.rentalDates}\n\nAdditional Details:\n${formData.additionalDetails}`,
+    )
+    window.location.href = `mailto:paradeza@rawlensph.cam?subject=${subject}&body=${body}`
+  }
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target
+    setFormData((prev) => ({ ...prev, [name]: value }))
+  }
 
   if (loading) {
     return (
@@ -235,10 +276,12 @@ export default function Landing() {
                   <ArrowRight className="ml-3 h-4 w-4 lg:h-5 lg:w-5 group-hover:translate-x-1 transition-transform duration-300" />
                 </button>
 
-                <button className="group border border-gray-300 bg-white/60 backdrop-blur-sm text-black hover:bg-gray-50 hover:border-gray-400 font-semibold px-6 py-3 text-base tracking-wide transition-all duration-300 hover:scale-105 active:scale-95 flex items-center justify-center rounded-2xl lg:px-8 lg:py-4 lg:text-lg">
-                  <Play className="mr-3 h-4 w-4 lg:h-5 lg:w-5 group-hover:scale-110 transition-transform duration-300" />
-                  <span>WATCH DEMO</span>
-                </button>
+                  <button
+                    onClick={() => contactCtaRef.current?.scrollIntoView({ behavior: "smooth" })}
+                    className="group border border-gray-300 bg-white/60 backdrop-blur-sm text-black hover:bg-gray-50 hover:border-gray-400 font-semibold px-6 py-3 text-base tracking-wide transition-all duration-300 hover:scale-105 active:scale-95 flex items-center justify-center rounded-2xl lg:px-8 lg:py-4 lg:text-lg">
+                    <Play className="mr-3 h-4 w-4 lg:h-5 lg:w-5 group-hover:scale-110 transition-transform duration-300" />
+                    <span>GET STARTED?</span>
+                  </button>
               </div>
             </div>
 
@@ -391,62 +434,269 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section ref={ctaRef} className="py-24 lg:py-32 px-5 lg:px-8 bg-gradient-to-br from-blue-50 to-indigo-50 tech-grid">
-        <div className="max-w-7xl mx-auto text-center">
+      {/* Email Form Section */}
+      <section ref={emailFormRef} className="py-24 lg:py-32 px-5 lg:px-8 bg-background">
+        <div className="max-w-5xl mx-auto">
           <div
-            className={`transition-all duration-1000 ${ctaVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}
+            className={`text-center mb-16 transition-all duration-1000 ${emailFormVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}
           >
-            <div className="inline-flex items-center bg-blue-100 border border-blue-200 text-blue-600 px-4 py-2 font-semibold tracking-[0.15em] text-xs lg:text-sm mb-10 rounded-full backdrop-blur-sm">
-              <div className="w-2 h-2 bg-blue-500 rounded-full mr-3 animate-glow-pulse"></div>
-              READY TO START?
+            <div className="inline-flex items-center bg-accent/10 border border-accent/20 text-accent px-4 py-2 font-semibold tracking-[0.15em] text-xs lg:text-sm mb-8 rounded-full backdrop-blur-sm">
+              <Mail className="w-4 h-4 mr-3" />
+              GET IN TOUCH
             </div>
-            <h2 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-10 leading-tight">
-              <span className="block text-black">BEGIN YOUR</span>
-              <span className="block text-gray-500">CREATIVE JOURNEY</span>
+            <h2 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-8 leading-tight">
+              <span className="block text-foreground">SEND US</span>
+              <span className="block text-muted-foreground">AN EMAIL</span>
             </h2>
-            <p className="text-lg lg:text-2xl text-gray-600 font-light mb-12 max-w-4xl mx-auto leading-relaxed">
-              Join hundreds of creators in Manila. Premium equipment, flexible rates, professional service.
+            <p className="text-lg lg:text-2xl text-muted-foreground font-light max-w-3xl mx-auto leading-relaxed">
+              Fill out the form below and we'll get back to you with availability and pricing details.
+            </p>
+          </div>
+
+          <form
+            onSubmit={handleSubmit}
+            className={`bg-card border border-border p-8 lg:p-12 rounded-2xl backdrop-blur-sm shadow-elegant transition-all duration-1000 delay-300 ${emailFormVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}
+          >
+            <div className="grid md:grid-cols-2 gap-6 lg:gap-8 mb-6 lg:mb-8">
+              <div>
+                <label
+                  htmlFor="name"
+                  className="block text-sm lg:text-base font-semibold text-foreground mb-3 tracking-wide"
+                >
+                  NAME *
+                </label>
+                <input
+                  type="text"
+                  id="name"
+                  name="name"
+                  required
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  className="w-full px-4 lg:px-6 py-3 lg:py-4 bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300"
+                  placeholder="Your full name"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="email"
+                  className="block text-sm lg:text-base font-semibold text-foreground mb-3 tracking-wide"
+                >
+                  EMAIL *
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  required
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  className="w-full px-4 lg:px-6 py-3 lg:py-4 bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300"
+                  placeholder="your.email@example.com"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="phone"
+                  className="block text-sm lg:text-base font-semibold text-foreground mb-3 tracking-wide"
+                >
+                  PHONE NUMBER *
+                </label>
+                <input
+                  type="tel"
+                  id="phone"
+                  name="phone"
+                  required
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  className="w-full px-4 lg:px-6 py-3 lg:py-4 bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300"
+                  placeholder="+63 XXX XXX XXXX"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="equipment"
+                  className="block text-sm lg:text-base font-semibold text-foreground mb-3 tracking-wide"
+                >
+                  EQUIPMENT NEEDED *
+                </label>
+                <input
+                  type="text"
+                  id="equipment"
+                  name="equipment"
+                  required
+                  value={formData.equipment}
+                  onChange={handleInputChange}
+                  className="w-full px-4 lg:px-6 py-3 lg:py-4 bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300"
+                  placeholder="e.g., Canon G7X Mark III"
+                />
+              </div>
+            </div>
+
+            <div className="mb-6 lg:mb-8">
+              <label
+                htmlFor="rentalDates"
+                className="block text-sm lg:text-base font-semibold text-foreground mb-3 tracking-wide"
+              >
+                RENTAL DATES *
+              </label>
+              <input
+                type="text"
+                id="rentalDates"
+                name="rentalDates"
+                required
+                value={formData.rentalDates}
+                onChange={handleInputChange}
+                className="w-full px-4 lg:px-6 py-3 lg:py-4 bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300"
+                placeholder="e.g., March 15-18, 2025"
+              />
+            </div>
+
+            <div className="mb-8 lg:mb-10">
+              <label
+                htmlFor="additionalDetails"
+                className="block text-sm lg:text-base font-semibold text-foreground mb-3 tracking-wide"
+              >
+                ADDITIONAL DETAILS
+              </label>
+              <textarea
+                id="additionalDetails"
+                name="additionalDetails"
+                rows={6}
+                value={formData.additionalDetails}
+                onChange={handleInputChange}
+                className="w-full px-4 lg:px-6 py-3 lg:py-4 bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 resize-none"
+                placeholder="Tell us more about your project, special requirements, or any questions you have..."
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="w-full bg-primary text-primary-foreground font-semibold px-8 py-4 lg:py-5 text-base lg:text-lg tracking-[0.15em] transition-all duration-300 hover:shadow-glow hover:scale-105 active:scale-95 rounded-xl flex items-center justify-center gap-3"
+            >
+              <Send className="h-5 w-5" />
+              <span>SEND INQUIRY</span>
+            </button>
+          </form>
+        </div>
+      </section>
+
+      {/* CTA with Instagram Quick Message */}
+      <section ref={contactCtaRef} className="py-24 lg:py-32 px-5 lg:px-8 bg-gradient-surface">
+        <div className="max-w-7xl mx-auto">
+          <div
+            className={`grid lg:grid-cols-2 gap-12 lg:gap-20 items-center transition-all duration-1000 ${contactCtaVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}
+          >
+            {/* Left: Call to Action */}
+            <div className="space-y-8 text-center lg:text-left">
+              <div className="inline-flex items-center bg-success/10 border border-success/20 text-success px-4 py-2 font-medium tracking-[0.15em] text-xs rounded-full backdrop-blur-sm">
+                <div className="w-2 h-2 bg-success rounded-full mr-3 animate-glow-pulse"></div>
+                LET'S CONNECT
+              </div>
+              <h2 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-tight">
+                <span className="block text-foreground">READY TO</span>
+                <span className="block text-muted-foreground">CAPTURE MORE?</span>
+              </h2>
+              <p className="text-lg lg:text-2xl text-muted-foreground font-light leading-relaxed max-w-xl mx-auto lg:mx-0">
+                Whether you're planning a shoot, have questions about our equipment, or just want to chat about your
+                creative vision — we're here to help make it happen.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                <button
+                  onClick={() => (window.location.href = "/signup")}
+                  className="bg-primary text-primary-foreground font-semibold px-8 py-4 text-base tracking-[0.15em] transition-all duration-300 hover:shadow-glow hover:scale-105 active:scale-95 rounded-xl"
+                >
+                  LOGIN OR SIGN UP
+                </button>
+              </div>
+            </div>
+
+            {/* Right: Instagram Quick Message */}
+            <div className="bg-card border border-border p-8 lg:p-12 rounded-2xl backdrop-blur-sm shadow-elegant hover:shadow-glow transition-all duration-500 hover:scale-105 modern-card">
+              <div className="text-center space-y-8">
+                <div className="w-24 h-24 bg-gradient-accent flex items-center justify-center mx-auto rounded-2xl shadow-glow">
+                  <Instagram className="h-12 w-12 text-white" />
+                </div>
+                <h3 className="text-2xl lg:text-4xl font-bold tracking-[0.1em] text-foreground">QUICK MESSAGE</h3>
+                <p className="text-muted-foreground font-light leading-relaxed text-base lg:text-xl">
+                  Need a faster response? Send us a direct message on Instagram and we'll get back to you right away.
+                </p>
+                <a
+                  href="https://www.instagram.com/rawlensph/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-3 bg-primary text-primary-foreground font-semibold px-8 py-4 text-base tracking-[0.15em] transition-all duration-300 hover:shadow-glow hover:scale-105 active:scale-95 rounded-xl"
+                >
+                  <Instagram className="h-5 w-5" />
+                  <span>MESSAGE US</span>
+                  <ArrowRight className="h-5 w-5" />
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Follow Us Section */}
+      <section ref={socialRef} className="py-16 lg:py-20 px-5 lg:px-8 bg-background border-t border-border">
+        <div className="max-w-5xl mx-auto">
+          <div
+            className={`text-center transition-all duration-1000 ${socialVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}
+          >
+            <h3 className="text-2xl lg:text-4xl font-bold tracking-tight mb-8 text-foreground">FOLLOW US ON</h3>
+            <p className="text-base lg:text-xl text-muted-foreground font-light mb-10 leading-relaxed">
+              Stay updated with our latest gear, special offers, and creative inspiration.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 lg:gap-6 justify-center">
-              <button className="bg-black text-white font-semibold px-8 py-3 text-base tracking-[0.15em] transition-all duration-300 hover:shadow-glow hover:scale-105 active:scale-95 rounded-2xl lg:px-12 lg:py-4 lg:text-lg">
-                BOOK NOW
-              </button>
-              <button
-                onClick={() => (window.location.href = "/signup")}
-                className="border border-gray-300 bg-white/60 backdrop-blur-sm text-black hover:bg-gray-50 hover:border-gray-400 font-semibold px-8 py-3 text-base tracking-[0.15em] transition-all duration-300 hover:scale-105 active:scale-95 rounded-2xl lg:px-12 lg:py-4 lg:text-lg"
+              <a
+                href="https://www.instagram.com/rawlensph/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group inline-flex items-center justify-center gap-3 bg-gradient-accent text-white font-semibold px-8 py-4 text-base tracking-[0.15em] transition-all duration-300 hover:shadow-glow hover:scale-105 active:scale-95 rounded-xl"
               >
-                CREATE ACCOUNT
-              </button>
+                <Instagram className="h-5 w-5 group-hover:scale-110 transition-transform duration-300" />
+                <span>INSTAGRAM</span>
+              </a>
+              <a
+                href="https://www.facebook.com/profile.php?id=61568426289637"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group inline-flex items-center justify-center gap-3 bg-accent text-accent-foreground font-semibold px-8 py-4 text-base tracking-[0.15em] transition-all duration-300 hover:shadow-glow hover:scale-105 active:scale-95 rounded-xl"
+              >
+                <Facebook className="h-5 w-5 group-hover:scale-110 transition-transform duration-300" />
+                <span>FACEBOOK</span>
+              </a>
             </div>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-black text-white py-20 lg:py-24 px-5 lg:px-8">
+      <footer className="bg-primary text-primary-foreground py-20 lg:py-24 px-5 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-3 gap-12 lg:gap-16 mb-16">
             <div>
-              <div className="flex items-center space-x-4 mb-8">
-                <div className="w-12 h-12 bg-white text-black flex items-center justify-center rounded-2xl">
+              <div className="flex items-center gap-4 mb-8">
+                <div className="w-12 h-12 bg-primary-foreground text-primary flex items-center justify-center rounded-2xl">
                   <Camera className="h-6 w-6" />
                 </div>
                 <span className="text-2xl lg:text-4xl font-bold tracking-tight">RAWLENS</span>
               </div>
-              <p className="text-white/80 font-light leading-relaxed text-base lg:text-lg">
+              <p className="text-primary-foreground/80 font-light leading-relaxed text-base lg:text-lg">
                 Professional camera rentals in España, Manila. Making premium equipment accessible to all creators.
               </p>
             </div>
 
             <div>
               <h4 className="text-lg lg:text-xl font-bold tracking-[0.15em] mb-8">CONTACT</h4>
-              <div className="space-y-4 text-white/80 font-light text-base lg:text-lg">
-                <div className="flex items-center space-x-3">
+              <div className="space-y-4 text-primary-foreground/80 font-light text-base lg:text-lg">
+                <div className="flex items-center gap-3">
                   <MapPin className="h-5 w-5" />
                   <span>España, Manila</span>
                 </div>
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center gap-3">
                   <Clock className="h-5 w-5" />
                   <span>Available 24/7</span>
                 </div>
@@ -455,7 +705,7 @@ export default function Landing() {
 
             <div>
               <h4 className="text-lg lg:text-xl font-bold tracking-[0.15em] mb-8">RENTAL</h4>
-              <div className="space-y-4 text-white/80 font-light text-base lg:text-lg">
+              <div className="space-y-4 text-primary-foreground/80 font-light text-base lg:text-lg">
                 <div>Professional Grade Equipment</div>
                 <div>Flexible Rental Periods</div>
                 <div>Full Insurance Coverage</div>
@@ -463,8 +713,10 @@ export default function Landing() {
             </div>
           </div>
 
-          <div className="pt-8 border-t border-white/20 text-center">
-            <p className="text-white/60 font-light text-base lg:text-lg">© 2025 RAWLENS PH. All rights reserved.</p>
+          <div className="pt-8 border-t border-primary-foreground/20 text-center">
+            <p className="text-primary-foreground/60 font-light text-base lg:text-lg">
+              © 2025 RAWLENS PH. All rights reserved.
+            </p>
           </div>
         </div>
       </footer>
