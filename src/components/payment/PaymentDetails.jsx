@@ -44,7 +44,7 @@ const PaymentDetailsComponent = ({ rental, className = "" }) => {
     <div className={`space-y-4 ${className}`}>
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+        <div className="w-8 h-8 rounded-lg bg-[#052844] flex items-center justify-center">
           <CreditCard className="w-4 h-4 text-white" />
         </div>
         <div>
@@ -54,12 +54,12 @@ const PaymentDetailsComponent = ({ rental, className = "" }) => {
       </div>
 
       {/* Payment Amount */}
-      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-4 mb-4">
+      <div className="bg-gradient-to-r from-[#052844]/10 to-[#052844]/5 border border-[#052844]/20 rounded-lg p-4 mb-4">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-indigo-800">Total Amount to Pay:</span>
-          <span className="text-2xl font-bold text-indigo-900">₱{rental?.total_price?.toFixed(2) || '0.00'}</span>
+          <span className="text-sm font-medium text-[#052844]">Total Amount to Pay:</span>
+          <span className="text-2xl font-bold text-[#052844]">₱{rental?.total_price?.toFixed(2) || '0.00'}</span>
         </div>
-        <div className="text-xs text-indigo-600 mt-1">
+        <div className="text-xs text-[#052844]/70 mt-1">
           For {rental?.cameras?.name} rental ({rental?.start_date} to {rental?.end_date})
         </div>
       </div>
@@ -69,7 +69,7 @@ const PaymentDetailsComponent = ({ rental, className = "" }) => {
         {paymentMethods.map((method) => {
           const Icon = method.icon;
           return (
-            <div key={method.type} className={`bg-gradient-to-br ${method.bgColor} border border-gray-200 rounded-xl p-4`}>
+            <div key={method.type} className={`bg-gradient-to-br ${method.bgColor} border border-gray-200 rounded-lg p-4`}>
               <div className="flex items-center gap-3 mb-3">
                 <div className={`w-8 h-8 rounded-lg bg-gradient-to-r ${method.color} flex items-center justify-center`}>
                   <Icon className="w-4 h-4 text-white" />
@@ -106,7 +106,7 @@ const PaymentDetailsComponent = ({ rental, className = "" }) => {
       </div>
 
       {/* Instructions */}
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
         <div className="flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
           <div className="flex-1">

@@ -64,7 +64,7 @@ const StatusPill = ({ status }) => {
   const Icon = config.icon;
 
   return (
-    <div className={`inline-flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1 md:py-1.5 text-xs font-medium border rounded-full ${config.bg} ${config.text} ${config.border} shadow-sm ${config.glow}`}>
+    <div className={`inline-flex items-center gap-1 md:gap-1.5 px-2.5 md:px-3 py-1 md:py-1.5 text-xs font-medium border rounded-md ${config.bg} ${config.text} ${config.border} shadow-sm ${config.glow}`}>
       <Icon className="w-2.5 h-2.5 md:w-3 md:h-3" />
       <span className="capitalize text-xs md:text-xs">{status}</span>
     </div>
@@ -72,17 +72,17 @@ const StatusPill = ({ status }) => {
 };
 
 const Section = ({ title, count, children, icon: Icon }) => (
-  <div className="bg-gradient-to-br from-white to-gray-50/50 border border-gray-200/60 rounded-2xl overflow-hidden shadow-sm">
-    <div className="px-4 md:px-6 py-3 md:py-4 bg-gradient-to-r from-slate-50 to-gray-50/80 border-b border-gray-200/60">
+  <div className="bg-gradient-to-br from-white to-gray-50/50 border border-gray-200/60 rounded-lg overflow-hidden shadow-sm">
+    <div className="px-4 md:px-6 py-3 md:py-4 bg-gradient-to-r from-[#052844]/5 to-[#052844]/10 border-b border-gray-200/60">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 md:gap-3">
-          <div className="w-6 h-6 md:w-8 md:h-8 rounded-lg bg-gradient-to-br from-slate-100 to-gray-100 flex items-center justify-center">
-            <Icon className="w-3 h-3 md:w-4 md:h-4 text-slate-600" />
+          <div className="w-6 h-6 md:w-8 md:h-8 rounded-lg bg-[#052844] flex items-center justify-center">
+            <Icon className="w-3 h-3 md:w-4 md:h-4 text-white" />
           </div>
           <h3 className="text-sm md:text-lg font-medium md:font-semibold text-slate-800">{title}</h3>
         </div>
         <div className="flex items-center gap-1 md:gap-2">
-          <div className="px-2 md:px-3 py-0.5 md:py-1 bg-white/80 border border-slate-200 rounded-full">
+          <div className="px-2 md:px-3 py-0.5 md:py-1 bg-white/80 border border-slate-200 rounded-md">
             <span className="text-xs md:text-sm font-medium text-slate-600">{count}</span>
           </div>
           <span className="text-xs text-slate-500 hidden md:inline">item{count === 1 ? '' : 's'}</span>
@@ -196,7 +196,7 @@ const RequestRow = ({ rental, onUploadComplete, onCancelComplete }) => {
                   <button
                     onClick={handleCancelRequest}
                     disabled={isCancelling}
-                    className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-full hover:bg-red-100 hover:border-red-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 hover:border-red-300 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Cancel rental request"
                   >
                     {isCancelling ? (
@@ -211,7 +211,7 @@ const RequestRow = ({ rental, onUploadComplete, onCancelComplete }) => {
                 {canCancelConfirmed() && (
                   <button
                     onClick={() => setShowCancellationModal(true)}
-                    className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200 rounded-full hover:bg-amber-100 hover:border-amber-300 transition-colors"
+                    className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200 rounded-md hover:bg-amber-100 hover:border-amber-300 transition-colors duration-150"
                     title="Cancel confirmed rental"
                   >
                     <XCircle className="w-3 h-3" />
@@ -456,7 +456,7 @@ const Requests = () => {
         {/* Header */}
         <div className="mb-6 md:mb-8">
           <div className="flex items-center gap-2 md:gap-4 mb-2 md:mb-3">
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center">
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-[#052844] flex items-center justify-center">
               <Calendar className="w-4 h-4 md:w-5 md:h-5 text-white" />
             </div>
             <h1 className="text-xl md:text-3xl font-semibold md:font-bold text-slate-800">My Requests</h1>

@@ -3,20 +3,19 @@ import { Upload, Check, AlertCircle, Loader2 } from 'lucide-react';
 import { uploadPaymentReceipt, getPaymentReceiptUrl } from '../../services/paymentService';
 import { toast } from 'react-toastify';
 
-
 const PaymentUploadSection = ({ rental, onUploadComplete }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [file, setFile] = useState(null);
   const [receiptUrl, setReceiptUrl] = useState(null);
 
-  // Always use the initial payment record for payment status
+  // Get initial payment record for rental
   const initialPayment = rental.payments?.find(
     (p) => p.payment_type === 'rental' && p.extension_id == null
   );
   const paymentStatus = initialPayment?.payment_status;
   const paymentId = initialPayment?.id;
 
-  // Get fresh signed URL for receipt if it exists
+  // Fetch fresh signed URL for receipt if it exists
   useEffect(() => {
     if (initialPayment?.receipt_url && (paymentStatus === 'submitted' || paymentStatus === 'rejected')) {
       const fetchReceiptUrl = async () => {
@@ -128,13 +127,13 @@ const PaymentUploadSection = ({ rental, onUploadComplete }) => {
             type="file"
             accept="image/*"
             onChange={handleFileChange}
-            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 file:transition-colors"
+            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[#052844]/10 file:text-[#052844] hover:file:bg-[#052844]/20 file:transition-colors file:duration-150"
           />
           {file && (
             <button
               onClick={handleUpload}
               disabled={isUploading}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-[#052844] text-white text-sm rounded-lg hover:bg-[#063a5e] disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
             >
               {isUploading ? (
                 <>
@@ -175,7 +174,7 @@ const PaymentUploadSection = ({ rental, onUploadComplete }) => {
           <button
             onClick={handleUpload}
             disabled={isUploading}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-[#052844] text-white text-sm rounded-lg hover:bg-[#063a5e] disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
           >
             {isUploading ? (
               <>
