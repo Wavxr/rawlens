@@ -23,6 +23,7 @@ import {
   CreditCard,
   ExternalLink,
   XCircle,
+  Upload,
 } from "lucide-react"
 import FeedbackForm from "../../components/forms/FeedbackForm";
 import CancellationModal from "../../components/modals/CancellationModal";
@@ -155,11 +156,14 @@ export default function Rentals() {
       )
     }
     if (activeFilter === "payment_pending") {
-      // Show confirmed rentals that need payment
-      return rentals.filter(
-        (r) => r.rental_status === "confirmed" && 
-               (r.payment_status === "pending" || r.payment_status === "submitted" || r.payment_status === "rejected" || !r.payment_status)
-      )
+      // Show confirmed rentals that need payment (exclude verified)
+      return rentals.filter((r) => {
+        const initialPayment = r.payments?.find(p => p.payment_type === 'rental' && !p.extension_id);
+        const paymentStatus = initialPayment?.payment_status;
+        return r.rental_status === "confirmed" && 
+               paymentStatus !== "verified" &&
+               (paymentStatus === "pending" || paymentStatus === "submitted" || paymentStatus === "rejected" || !paymentStatus);
+      });
     }
     if (activeFilter === "active") {
       return rentals.filter(
@@ -675,98 +679,56 @@ export default function Rentals() {
               </div>
             </div>
 
-            {/* Payment Details - Show only if not yet submitted */}
-            {paymentStatus !== 'submitted' && paymentStatus !== 'verified' && (
+            {/* Payment Details - Show only if payment pending or rejected */}
+            {(paymentStatus === 'pending' || paymentStatus === 'rejected' || !paymentStatus) && (
               <div className="mb-4 sm:mb-6">
                 <PaymentDetails rental={rental} />
               </div>
             )}
 
-            {/* Rental Summary */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
-              <div className="bg-blue-50 rounded-lg p-3 sm:p-4">
-                <div className="flex items-center space-x-2 mb-2 sm:mb-3">
-                  <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
-                  <h4 className="font-medium text-gray-900 text-sm sm:text-base">Rental Period</h4>
+            {/* Rental Summary - Condensed */}
+            <div className="bg-gray-50 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+              <div className="flex items-center justify-between text-xs sm:text-sm">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-gray-600" />
+                  <span className="text-gray-600">{formatDate(rental.start_date)} — {formatDate(rental.end_date)}</span>
                 </div>
-                <div className="space-y-1 sm:space-y-2">
-                  <div className="flex justify-between text-xs sm:text-sm">
-                    <span className="text-gray-600">Start Date</span>
-                    <span className="font-medium text-gray-900">{formatDate(rental.start_date)}</span>
-                  </div>
-                  <div className="flex justify-between text-xs sm:text-sm">
-                    <span className="text-gray-600">End Date</span>
-                    <span className="font-medium text-gray-900">{formatDate(rental.end_date)}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-green-50 rounded-lg p-3 sm:p-4">
-                <div className="flex items-center space-x-2 mb-2 sm:mb-3">
-                  <PhilippinePeso className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
-                  <h4 className="font-medium text-gray-900 text-sm sm:text-base">Total Amount</h4>
-                </div>
-                <div className="text-xl sm:text-2xl font-bold text-green-700">
-                  ₱ {Number(rental.total_price).toFixed(2)}
+                <div className="font-semibold text-gray-900">
+                  ₱{Number(rental.total_price).toFixed(2)}
                 </div>
               </div>
             </div>
 
             {/* Call to Action */}
-            <div className="bg-gray-50 rounded-lg p-4 sm:p-6 text-center">
-              {paymentStatus === 'submitted' ? (
-                <>
-                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">Payment Under Review</h3>
-                  <p className="text-gray-600 mb-3 sm:mb-4 text-sm sm:text-base">
-                    Your payment receipt is being verified. You'll be notified once approved.
-                  </p>
-                  <div className="flex justify-center">
-                    <button
-                      onClick={() => navigate('/user/requests')}
-                      className="inline-flex items-center justify-center px-4 sm:px-6 py-2.5 sm:py-3 bg-[#052844] text-white font-semibold rounded-lg hover:bg-[#063a5e] transition-colors duration-150 text-sm sm:text-base"
-                    >
-                      <Clock className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                      View Status
-                      <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4 ml-2" />
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
-                    {paymentStatus === 'rejected' ? 'Upload New Receipt' : 'Complete Your Payment'}
-                  </h3>
-                  <p className="text-gray-600 mb-3 sm:mb-4 text-sm sm:text-base">
-                    {paymentStatus === 'rejected' 
-                      ? 'Go to the Cart page to upload a new payment receipt.'
-                      : 'Send your payment and upload the receipt in the Requests page to proceed.'
-                    }
-                  </p>
-                  <div className="flex justify-center">
-                    <button
-                      onClick={() => navigate('/user/cart')}
-                      className={`inline-flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 text-white font-semibold rounded-lg transition-colors text-sm sm:text-base ${
-                        paymentStatus === 'rejected' 
-                          ? 'bg-red-600 hover:bg-red-700'
-                          : 'bg-amber-600 hover:bg-amber-700'
-                      }`}
-                    >
-                      {paymentStatus === 'rejected' ? (
-                        <>
-                          <XCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                          Upload New Receipt
-                        </>
-                      ) : (
-                        <>
-                          <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                          Go to Cart
-                        </>
-                      )}
-                      <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4 ml-2" />
-                    </button>
-                  </div>
-                </>
-              )}
+            <div className="flex justify-center">
+              <button
+                onClick={() => navigate(paymentStatus === 'submitted' ? '/user/requests' : '/user/cart')}
+                className={`inline-flex items-center justify-center px-4 sm:px-6 py-2.5 sm:py-3 text-white font-medium rounded-lg transition-colors duration-150 text-sm sm:text-base ${
+                  paymentStatus === 'submitted'
+                    ? 'bg-[#052844] hover:bg-[#063a5e]'
+                    : paymentStatus === 'rejected' 
+                    ? 'bg-red-600 hover:bg-red-700'
+                    : 'bg-amber-600 hover:bg-amber-700'
+                }`}
+              >
+                {paymentStatus === 'submitted' ? (
+                  <>
+                    <Clock className="w-4 h-4 mr-2" />
+                    Check Status
+                  </>
+                ) : paymentStatus === 'rejected' ? (
+                  <>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload New Receipt
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="w-4 h-4 mr-2" />
+                    Upload Payment
+                  </>
+                )}
+                <ExternalLink className="w-3 h-3 ml-2" />
+              </button>
             </div>
             
             {/* Cancel Button - if applicable */}
@@ -860,9 +822,9 @@ export default function Rentals() {
 
         <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* Equipment Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-            <div className="lg:col-span-1">
-              <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
+          <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
+            <div className="flex-shrink-0">
+              <div className="w-full lg:w-64 h-48 lg:h-56 bg-gray-100 rounded-lg overflow-hidden">
                 {!imgBroken && cameraImage ? (
                   <img
                     src={cameraImage || "/placeholder.svg"}
@@ -895,9 +857,9 @@ export default function Rentals() {
                         <div key={idx} className="flex items-center space-x-2 text-xs sm:text-sm">
                           <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-blue-500 rounded-full"></div>
                           <span className="text-gray-700">
-                            {inc?.inclusion_items?.name || "Item"}
+                          {inc?.inclusion_items?.name || "Item"}
                             {inc?.quantity > 1 && <span className="text-gray-500 ml-1">×{inc.quantity}</span>}
-                          </span>
+                        </span>
                         </div>
                       ))}
                     </div>
@@ -923,16 +885,16 @@ export default function Rentals() {
                   <span className="text-gray-600">End Date</span>
                   <span className="font-medium text-gray-900">{formatDate(rental.end_date)}</span>
                 </div>
-                {days != null && (
+                  {days != null && (
                   <div className="flex justify-between text-xs sm:text-sm pt-1 sm:pt-2 border-t border-blue-200">
                     <span className="text-gray-600">Duration</span>
                     <span className="font-semibold text-blue-700">
                       {days} day{days === 1 ? "" : "s"}
                     </span>
                   </div>
-                )}
+                  )}
+                </div>
               </div>
-            </div>
 
             <div className="bg-green-50 rounded-lg p-3 sm:p-4">
               <div className="flex items-center space-x-2 mb-2 sm:mb-3">
@@ -940,12 +902,12 @@ export default function Rentals() {
                 <h4 className="font-medium text-gray-900 text-sm sm:text-base">Pricing Details</h4>
               </div>
               <div className="space-y-1 sm:space-y-2">
-                {days && (
+                  {days && (
                   <div className="flex justify-between text-xs sm:text-sm">
                     <span className="text-gray-600">Daily Rate</span>
                     <span className="font-medium text-gray-900">₱ {Number(rental.price_per_day).toFixed(2)}</span>
                   </div>
-                )}
+                  )}
                 <div className="flex justify-between text-xs sm:text-sm pt-1 sm:pt-2 border-t border-green-200">
                   <span className="text-gray-600">Total Amount</span>
                   <span className="font-semibold text-green-700">₱ {Number(rental.total_price).toFixed(2)}</span>

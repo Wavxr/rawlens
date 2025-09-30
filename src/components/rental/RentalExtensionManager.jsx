@@ -22,6 +22,7 @@ const RentalExtensionManager = ({ rental, userId, onRefresh }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [uploadingPayment, setUploadingPayment] = useState({});
+  const [showHistory, setShowHistory] = useState(false);
 
   // Load extension history on component mount
   useEffect(() => {
@@ -302,13 +303,32 @@ const RentalExtensionManager = ({ rental, userId, onRefresh }) => {
       {historyLoading ? (
         <div className="flex items-center justify-center py-8">
           <div className="flex items-center gap-2">
-            <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+            <Loader2 className="w-5 h-5 animate-spin text-[#052844]" />
             <span className="text-gray-600">Loading extension history...</span>
           </div>
         </div>
       ) : extensionHistory.length > 0 ? (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-900">Extension History</h3>
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            className="w-full flex items-center justify-between text-left group"
+          >
+            <div className="flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-[#052844]" />
+              <h3 className="text-base font-semibold text-gray-900">Extension History</h3>
+              <span className="px-2 py-0.5 bg-[#052844] text-white text-xs rounded-md">
+                {extensionHistory.length}
+              </span>
+            </div>
+            <div className={`transform transition-transform duration-200 ${showHistory ? 'rotate-180' : ''}`}>
+              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </button>
+          
+          {showHistory && (
+            <div className="mt-4 space-y-3">
           
           {extensionHistory.map((extension) => {
             const statusInfo = getExtensionStatusInfo(extension);
@@ -317,71 +337,64 @@ const RentalExtensionManager = ({ rental, userId, onRefresh }) => {
             const paymentInfo = getPaymentStatusInfo(extensionPayment);
             
             return (
-              <div key={extension.id} className="bg-white border border-gray-200 rounded-lg p-4 sm:p-6 space-y-4">
-                {/* Extension Status */}
-                <div className={`border rounded-lg p-4 ${statusInfo.color}`}>
-                  <div className="flex items-start gap-3">
-                    <StatusIcon className="w-5 h-5 flex-shrink-0 mt-0.5" />
+              <div key={extension.id} className="bg-white border border-gray-200 rounded-lg p-3 sm:p-4 space-y-3">
+                {/* Extension Status - Compact */}
+                <div className={`border rounded-lg p-3 ${statusInfo.color}`}>
+                  <div className="flex items-center gap-2">
+                    <StatusIcon className="w-4 h-4 flex-shrink-0" />
                     <div className="flex-1">
-                      <h4 className="font-semibold mb-1">{statusInfo.title}</h4>
-                      <p className="text-sm opacity-90">{statusInfo.description}</p>
+                      <h4 className="font-semibold text-sm">{statusInfo.title}</h4>
+                      <p className="text-xs opacity-90 mt-0.5">{statusInfo.description}</p>
                     </div>
                   </div>
                 </div>
 
-                {/* Extension Details */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">
-                      Original End Date
+                {/* Extension Details - Compact */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="bg-gray-50 rounded-md p-2">
+                    <div className="text-xs text-gray-500 font-medium mb-0.5">
+                      Original
                     </div>
-                    <div className="text-sm font-medium text-gray-900">
+                    <div className="text-xs font-medium text-gray-900">
                       {formatDate(extension.original_end_date)}
                     </div>
                   </div>
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">
-                      Requested End Date
+                  <div className="bg-gray-50 rounded-md p-2">
+                    <div className="text-xs text-gray-500 font-medium mb-0.5">
+                      Requested
                     </div>
-                    <div className="text-sm font-medium text-gray-900">
+                    <div className="text-xs font-medium text-gray-900">
                       {formatDate(extension.requested_end_date)}
                     </div>
                   </div>
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">
-                      Additional Cost
+                  <div className="bg-gray-50 rounded-md p-2">
+                    <div className="text-xs text-gray-500 font-medium mb-0.5">
+                      Cost
                     </div>
-                    <div className="text-sm font-medium text-gray-900 flex items-center gap-1">
-                      <PhilippinePeso className="w-3 h-3" />
-                      {Number(extension.additional_price).toFixed(2)}
+                    <div className="text-xs font-medium text-gray-900 flex items-center gap-0.5">
+                      ₱{Number(extension.additional_price).toFixed(2)}
                     </div>
                   </div>
                 </div>
 
                 {/* Payment Section - Only show if extension is approved */}
                 {extension.extension_status === 'approved' && paymentInfo && (
-                  <div className={`border rounded-lg p-4 ${paymentInfo.color}`}>
-                    <div className="flex items-start gap-3">
-                      <paymentInfo.icon className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                  <div className={`border rounded-lg p-3 ${paymentInfo.color}`}>
+                    <div className="flex items-start gap-2">
+                      <paymentInfo.icon className="w-4 h-4 flex-shrink-0 mt-0.5" />
                       <div className="flex-1">
-                        <h4 className="font-semibold mb-1">{paymentInfo.title}</h4>
-                        <p className="text-sm opacity-90 mb-3">{paymentInfo.description}</p>
+                        <h4 className="font-semibold text-sm mb-0.5">{paymentInfo.title}</h4>
+                        <p className="text-xs opacity-90 mb-2">{paymentInfo.description}</p>
                         
                         {paymentInfo.canUpload && (
-                          <div className="space-y-3">
-                            <div className="bg-white/50 rounded-lg p-3">
-                              <div className="text-xs text-gray-600 uppercase tracking-wide font-medium mb-2">
-                                Payment Amount
-                              </div>
-                              <div className="text-lg font-bold text-gray-900">
-                                ₱{Number(extension.additional_price).toFixed(2)}
+                          <div className="space-y-2">
+                            <div className="bg-white/50 rounded-md p-2">
+                              <div className="text-xs text-gray-600 font-medium mb-1">
+                                Amount: ₱{Number(extension.additional_price).toFixed(2)}
                               </div>
                             </div>
                             
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Upload Payment Receipt
-                              </label>
                               <input
                                 type="file"
                                 accept="image/*,.pdf"
@@ -392,12 +405,12 @@ const RentalExtensionManager = ({ rental, userId, onRefresh }) => {
                                   }
                                 }}
                                 disabled={uploadingPayment[extensionPayment?.id]}
-                                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50"
+                                className="block w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-[#052844]/10 file:text-[#052844] hover:file:bg-[#052844]/20 disabled:opacity-50 file:transition-colors file:duration-150"
                               />
                               {uploadingPayment[extensionPayment?.id] && (
-                                <div className="flex items-center gap-2 mt-2 text-sm text-blue-600">
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                  Uploading receipt...
+                                <div className="flex items-center gap-2 mt-1.5 text-xs text-[#052844]">
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                  Uploading...
                                 </div>
                               )}
                             </div>
@@ -408,20 +421,20 @@ const RentalExtensionManager = ({ rental, userId, onRefresh }) => {
                   </div>
                 )}
 
-                {/* Request Date */}
-                <div className="text-xs text-gray-500 flex items-center gap-1">
+                {/* Request Date - Compact */}
+                <div className="text-xs text-gray-500 flex items-center gap-1 pt-1 border-t border-gray-100">
                   <Clock className="w-3 h-3" />
-                  Requested on {new Date(extension.requested_at).toLocaleDateString('en-US', {
+                  {new Date(extension.requested_at).toLocaleDateString('en-US', {
                     month: 'short',
                     day: 'numeric',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
+                    year: 'numeric'
                   })}
                 </div>
               </div>
             );
           })}
+            </div>
+          )}
         </div>
       ) : !canRequestExtension() && extensionHistory.length === 0 ? (
         <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 text-center">
