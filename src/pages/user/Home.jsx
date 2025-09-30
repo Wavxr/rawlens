@@ -190,16 +190,16 @@ export default function Home() {
         </div>
         
         {/* === FEATURED BANNER SECTION === */}
-        <div className="bg-gradient-to-r from-blue-900 to-blue-800 rounded-xl p-4 mb-6">
+        <div className="bg-gradient-to-r from-[#052844] to-[#063a5e] rounded-lg p-5 mb-6 border border-[#052844]/10">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-white text-sm font-medium mb-2">Get high quality images with premium cameras</p>
-              <button className="bg-yellow-500 hover:bg-yellow-600 text-black px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
+              <p className="text-white text-sm font-medium mb-3">Get high quality images with premium cameras</p>
+              <button className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors">
                 Explore Now
               </button>
             </div>
             <div className="ml-4">
-              <Camera className="text-white opacity-20" size={32} />
+              <Camera className="text-white opacity-20" size={40} />
             </div>
           </div>
         </div>
@@ -247,7 +247,7 @@ export default function Home() {
               </div>
             </>
           ) : (
-            <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
+            <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
               <Camera className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-3 text-base font-medium text-gray-900">No camera models found</h3>
               <p className="mt-1 text-gray-500 text-sm">

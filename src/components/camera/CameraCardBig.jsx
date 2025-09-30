@@ -84,7 +84,7 @@ const CameraCardBig = ({ camera, onRentClick, onFavoriteClick, isFavorite, start
   return (
     <div 
       onClick={() => onRentClick(camera)}
-      className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer border border-gray-200 hover:border-gray-300 group"
+      className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all duration-200 cursor-pointer border border-gray-200 hover:border-gray-300 group"
     >
       {/* Image Container */}
       <div className="relative aspect-video overflow-hidden bg-gray-50">
@@ -93,7 +93,7 @@ const CameraCardBig = ({ camera, onRentClick, onFavoriteClick, isFavorite, start
             src={camera.image_url}
             alt={camera.name}
             onError={handleImageError}
-            className="w-full h-full object-contain transition-transform duration-700 ease-out group-hover:scale-105"
+            className="w-full h-full object-contain transition-transform duration-500 ease-out group-hover:scale-105"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
@@ -106,7 +106,7 @@ const CameraCardBig = ({ camera, onRentClick, onFavoriteClick, isFavorite, start
       {/* Content Section */}
       <div className="p-5">
         {/* Title */}
-        <h3 className="text-lg font-semibold text-gray-900 mb-3 line-clamp-2 leading-tight">
+        <h3 className="text-base font-semibold text-gray-900 mb-3 line-clamp-2 leading-snug">
           {camera.name}
         </h3>
         
@@ -179,7 +179,7 @@ const CameraCardBig = ({ camera, onRentClick, onFavoriteClick, isFavorite, start
                     {camera.camera_pricing_tiers && 
                      camera.camera_pricing_tiers.length > 1 && 
                      rentalDays > (camera.camera_pricing_tiers[0]?.max_days || camera.camera_pricing_tiers[0]?.min_days || 0) && (
-                      <p className="text-xs text-blue-600 font-medium">
+                      <p className="text-xs text-[#052844] font-medium">
                         Discounted rate applied
                       </p>
                     )}
@@ -208,7 +208,7 @@ const CameraCardBig = ({ camera, onRentClick, onFavoriteClick, isFavorite, start
           </div>
           
           <div className="ml-4 flex-shrink-0">
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">
+            <span className="inline-flex items-center px-3 py-1.5 rounded-md text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
               Available
             </span>
           </div>

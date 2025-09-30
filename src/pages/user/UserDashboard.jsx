@@ -59,13 +59,13 @@ export default function UserDashboard() {
     <div className="min-h-screen bg-gray-50">
       {/* Subtly Visible Floating Top Navigation Bar - Desktop Only */}
       <nav className="absolute top-4 left-1/2 transform -translate-x-1/2 w-[95%] max-w-6xl z-50 hidden lg:block">
-        <div className="bg-white/90 backdrop-blur-2xl border border-gray-200/60 rounded-xl shadow-lg shadow-gray-300/20">
+        <div className="bg-white/95 backdrop-blur-xl border border-gray-200/70 rounded-lg shadow-lg shadow-gray-200/30">
           <div className="px-6 lg:px-8">
-            <div className="flex justify-between items-center h-14">
+            <div className="flex justify-between items-center h-16">
               {/* Refined Logo */}
               <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-700 to-indigo-800 rounded-lg flex items-center justify-center shadow-md shadow-blue-700/20">
-                  <Camera className="h-4 w-4 text-white" />
+                <div className="w-9 h-9 bg-gradient-to-br from-[#052844] to-[#063a5e] rounded-lg flex items-center justify-center shadow-md shadow-[#052844]/20">
+                  <Camera className="h-5 w-5 text-white" />
                 </div>
                 <div>
                   <span className="text-lg font-bold text-gray-900">RAWLENS</span>
@@ -82,17 +82,17 @@ export default function UserDashboard() {
                     <button
                       key={item.path}
                       onClick={() => navigate(item.path)}
-                      className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
                         active
-                          ? "text-blue-800"
-                          : "text-gray-600 hover:text-gray-900"
+                          ? "text-[#052844] bg-[#052844]/5"
+                          : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                       }`}
                     >
                       <Icon className="h-4 w-4" />
                       <span className="relative">
                         {item.label}
                         {active && (
-                          <span className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-800 rounded-full"></span>
+                          <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-[#052844] rounded-full"></span>
                         )}
                       </span>
                     </button>
@@ -106,26 +106,26 @@ export default function UserDashboard() {
                 <div className="relative" ref={dropdownRef}>
                   <button
                     onClick={() => setIsAccountDropdownOpen(!isAccountDropdownOpen)}
-                    className="flex items-center space-x-2 p-1.5 text-gray-600 hover:text-gray-900 rounded-lg transition-all duration-200 hover:bg-gray-50/50"
+                    className="flex items-center space-x-2 px-2 py-2 text-gray-600 hover:text-gray-900 rounded-lg transition-all duration-150 hover:bg-gray-50"
                   >
-                    <div className="w-7 h-7 bg-gradient-to-br from-blue-700 to-indigo-800 rounded-lg flex items-center justify-center">
-                      <User className="h-3.5 w-3.5 text-white" />
+                    <div className="w-8 h-8 bg-gradient-to-br from-[#052844] to-[#063a5e] rounded-lg flex items-center justify-center">
+                      <User className="h-4 w-4 text-white" />
                     </div>
-                    <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${
+                    <ChevronDown className={`h-4 w-4 transition-transform duration-150 ${
                       isAccountDropdownOpen ? 'rotate-180' : ''
                     }`} />
                   </button>
 
                   {/* Dropdown Menu */}
-                  <div className={`absolute right-0 top-full mt-2 w-64 bg-white/95 backdrop-blur-xl border border-gray-200/60 rounded-xl shadow-lg shadow-gray-300/20 z-50 transition-all duration-200 transform origin-top-right ${
+                  <div className={`absolute right-0 top-full mt-2 w-64 bg-white/95 backdrop-blur-xl border border-gray-200/70 rounded-lg shadow-lg shadow-gray-200/30 z-50 transition-all duration-150 transform origin-top-right ${
                     isAccountDropdownOpen 
                       ? 'opacity-100 scale-100 translate-y-0' 
                       : 'opacity-0 scale-95 -translate-y-2 pointer-events-none'
                   }`}>
                     {/* User Info Section */}
-                    <div className="px-4 py-3 border-b border-gray-100/60">
+                    <div className="px-4 py-3 border-b border-gray-100/70">
                       <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-blue-700 to-indigo-800 rounded-lg flex items-center justify-center">
+                        <div className="w-10 h-10 bg-gradient-to-br from-[#052844] to-[#063a5e] rounded-lg flex items-center justify-center">
                           <User className="h-5 w-5 text-white" />
                         </div>
                         <div className="flex-1 min-w-0">
@@ -146,7 +146,7 @@ export default function UserDashboard() {
                           setIsAccountDropdownOpen(false)
                           handleLogout()
                         }}
-                        className="w-full flex items-center space-x-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50/60 hover:text-red-700 transition-colors duration-150"
+                        className="w-full flex items-center space-x-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50/70 hover:text-red-700 transition-colors duration-100"
                       >
                         <LogOut className="h-4 w-4" />
                         <span>Logout</span>
@@ -161,7 +161,7 @@ export default function UserDashboard() {
       </nav>
 
       {/* Modern Compact Bottom Navigation (Mobile) */}
-      <div className="lg:hidden fixed inset-x-0 bottom-1 mx-2 bg-white/95 backdrop-blur-xl border border-gray-200/70 rounded-2xl shadow-lg shadow-gray-400/10 z-40 pb-0">
+      <div className="lg:hidden fixed inset-x-0 bottom-2 mx-2 bg-white/95 backdrop-blur-xl border border-gray-200/70 rounded-xl shadow-lg shadow-gray-200/30 z-40 pb-0">
         <div className="flex justify-around items-center">
           {navItems.map((item) => {
             const Icon = item.icon
@@ -170,13 +170,13 @@ export default function UserDashboard() {
               <button
                 key={item.path}
                 onClick={() => navigate(item.path)}
-                className={`flex flex-col items-center justify-center space-y-1 p-2 rounded-xl transition-all duration-200 min-w-0 flex-1 ${
-                  active ? "text-blue-700" : "text-gray-500 hover:text-gray-700"
+                className={`flex flex-col items-center justify-center space-y-1 p-2.5 rounded-lg transition-all duration-150 min-w-0 flex-1 ${
+                  active ? "text-[#052844]" : "text-gray-500 hover:text-gray-700"
                 }`}
               >
-                <div className={`p-1.5 rounded-lg transition-all duration-200 ${
+                <div className={`p-2 rounded-lg transition-all duration-150 ${
                   active 
-                    ? "bg-blue-50 scale-105" 
+                    ? "bg-[#052844]/10 scale-105" 
                     : "hover:bg-gray-100"
                 }`}>
                   <Icon className="h-5 w-5" />
@@ -189,7 +189,7 @@ export default function UserDashboard() {
       </div>
 
       {/* Main Content - Adjusted padding for mobile navbar and gesture bar */}
-      <main className="pt-0 lg:pt-24 pb-18 lg:pb-6 tech-grid">
+      <main className="pt-0 lg:pt-24 pb-18 lg:pb-6">
         <Outlet />
       </main>
     </div>

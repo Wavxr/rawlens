@@ -48,7 +48,7 @@ const CameraCard = ({ camera, onRentClick, onFavoriteClick, isFavorite, startDat
   return (
     <div 
       onClick={() => onRentClick(camera)}
-      className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border border-gray-200 hover:border-gray-300 group"
+      className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer border border-gray-200 hover:border-gray-300 group"
     >
       {/* Image Container - Optimized for small cards */}
       <div className="relative aspect-square overflow-hidden bg-gray-50">
@@ -57,7 +57,7 @@ const CameraCard = ({ camera, onRentClick, onFavoriteClick, isFavorite, startDat
             src={camera.image_url}
             alt={camera.name}
             onError={handleImageError}
-            className="w-full h-full object-contain transition-transform duration-700 ease-out group-hover:scale-105"
+            className="w-full h-full object-contain transition-transform duration-500 ease-out group-hover:scale-105"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
@@ -67,8 +67,8 @@ const CameraCard = ({ camera, onRentClick, onFavoriteClick, isFavorite, startDat
       </div>
       
       {/* Content Section - Compact for mobile */}
-      <div className="p-3">
-        <h3 className="text-sm font-semibold text-gray-900 mb-2 line-clamp-2 leading-tight">
+      <div className="p-3.5">
+        <h3 className="text-sm font-semibold text-gray-900 mb-2.5 line-clamp-2 leading-snug">
           {camera.name}
         </h3>
         
@@ -97,7 +97,7 @@ const CameraCard = ({ camera, onRentClick, onFavoriteClick, isFavorite, startDat
                   {camera.camera_pricing_tiers && 
                    camera.camera_pricing_tiers.length > 1 && 
                    rentalDays > (camera.camera_pricing_tiers[0]?.max_days || camera.camera_pricing_tiers[0]?.min_days || 0) && (
-                    <p className="text-xs text-blue-600 font-medium">
+                    <p className="text-xs text-[#052844] font-medium">
                       Discounted
                     </p>
                   )}
@@ -124,8 +124,8 @@ const CameraCard = ({ camera, onRentClick, onFavoriteClick, isFavorite, startDat
           )}
           
           {/* Status badge */}
-          <div className="pt-1">
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">
+          <div className="pt-1.5">
+            <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
               Available
             </span>
           </div>
