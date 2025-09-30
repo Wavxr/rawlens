@@ -427,8 +427,8 @@ export default function Rentals() {
         <div
           className={`p-3 sm:p-4 rounded-lg border transition-all duration-150 ${
             isSelected
-              ? "bg-amber-50 border-amber-300 shadow-sm ring-2 ring-amber-200"
-              : "bg-amber-50/50 border-amber-200 hover:bg-amber-50 hover:border-amber-300"
+              ? "bg-gray-100 border-gray-400 shadow-sm ring-2 ring-gray-300"
+              : "bg-gray-50 border-gray-300 hover:bg-gray-100 hover:border-gray-400"
           }`}
         >
           <div className="flex items-start space-x-2 sm:space-x-3">
@@ -466,7 +466,7 @@ export default function Rentals() {
                       <XCircle className="w-3 h-3 sm:w-4 sm:h-4" />
                     </button>
                   )}
-                  <CreditCard className="h-3 w-3 sm:h-4 sm:w-4 text-amber-600 flex-shrink-0" />
+                  <CreditCard className="h-3 w-3 sm:h-4 sm:w-4 text-[#052844] flex-shrink-0" />
                 </div>
               </div>
               
@@ -476,17 +476,17 @@ export default function Rentals() {
               
               <div className="mt-1 sm:mt-2">
                 {paymentStatus === 'submitted' ? (
-                  <span className="inline-flex items-center px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  <span className="inline-flex items-center px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                     <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1" />
                     Under Review
                   </span>
                 ) : paymentStatus === 'rejected' ? (
-                  <span className="inline-flex items-center px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                  <span className="inline-flex items-center px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                     <XCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1" />
                     Receipt Rejected
                   </span>
                 ) : (
-                  <span className="inline-flex items-center px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                  <span className="inline-flex items-center px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium bg-[#052844] text-white">
                     <CreditCard className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1" />
                     Payment Required
                   </span>
@@ -498,7 +498,7 @@ export default function Rentals() {
               </div>
               
               {typeof rental.total_price === "number" && (
-                <div className="text-sm font-semibold text-amber-700 mt-0.5 sm:mt-1">₱ {Number(rental.total_price).toFixed(2)}</div>
+                <div className="text-sm font-semibold text-[#052844] mt-0.5 sm:mt-1">₱ {Number(rental.total_price).toFixed(2)}</div>
               )}
             </div>
           </div>
@@ -582,10 +582,10 @@ export default function Rentals() {
           {/* Dynamic Header based on payment status */}
           <div className={`px-4 sm:px-6 py-3 sm:py-4 text-white ${
             paymentStatus === 'submitted' 
-              ? 'bg-gradient-to-r from-blue-500 to-indigo-500'
+              ? 'bg-gradient-to-r from-[#052844] to-[#063a5e]'
               : paymentStatus === 'rejected'
-              ? 'bg-gradient-to-r from-red-500 to-rose-500'
-              : 'bg-gradient-to-r from-amber-500 to-orange-500'
+              ? 'bg-gradient-to-r from-gray-700 to-gray-800'
+              : 'bg-gradient-to-r from-[#052844] to-[#063a5e]'
           }`}>
             <div className="flex items-center justify-between">
               <div>
@@ -628,49 +628,49 @@ export default function Rentals() {
             {/* Payment Status Message */}
             <div className={`mb-4 sm:mb-6 p-3 sm:p-4 border rounded-lg ${
               paymentStatus === 'submitted'
-                ? 'bg-blue-50 border-blue-200'
+                ? 'bg-gray-50 border-gray-300'
                 : paymentStatus === 'rejected'
-                ? 'bg-red-50 border-red-200'
-                : 'bg-amber-50 border-amber-200'
+                ? 'bg-gray-50 border-gray-300'
+                : 'bg-gray-50 border-gray-300'
             }`}>
               <div className="flex items-start space-x-2 sm:space-x-3">
                 <AlertCircle className={`w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0 mt-0.5 ${
                   paymentStatus === 'submitted'
-                    ? 'text-blue-600'
+                    ? 'text-[#052844]'
                     : paymentStatus === 'rejected'
-                    ? 'text-red-600'
-                    : 'text-amber-600'
+                    ? 'text-gray-600'
+                    : 'text-[#052844]'
                 }`} />
                 <div>
                   {paymentStatus === 'submitted' ? (
                     <>
-                      <h3 className="font-semibold text-blue-800 mb-2 text-sm sm:text-base">Payment Under Review</h3>
-                      <p className="text-blue-700 text-xs sm:text-sm mb-3">
+                      <h3 className="font-semibold text-gray-800 mb-2 text-sm sm:text-base">Payment Under Review</h3>
+                      <p className="text-gray-700 text-xs sm:text-sm mb-3">
                         Great! Your payment receipt has been uploaded and is currently being reviewed by our admin team. 
                         You'll be notified once verification is complete (usually within 24 hours).
                       </p>
-                      <p className="text-blue-600 text-xs sm:text-sm font-medium">
+                      <p className="text-gray-600 text-xs sm:text-sm font-medium">
                         No further action required at this time. Please wait for verification.
                       </p>
                     </>
                   ) : paymentStatus === 'rejected' ? (
                     <>
-                      <h3 className="font-semibold text-red-800 mb-2 text-sm sm:text-base">Payment Receipt Rejected</h3>
-                      <p className="text-red-700 text-xs sm:text-sm mb-3">
+                      <h3 className="font-semibold text-gray-800 mb-2 text-sm sm:text-base">Payment Receipt Rejected</h3>
+                      <p className="text-gray-700 text-xs sm:text-sm mb-3">
                         Your previous payment receipt was not accepted. This could be due to unclear image, 
                         incorrect amount, or other issues. Please upload a new, clear payment confirmation.
                       </p>
-                      <p className="text-red-600 text-xs sm:text-sm font-medium">
-                        Please go to the Cart page to upload a new payment receipt.
+                      <p className="text-gray-600 text-xs sm:text-sm font-medium">
+                        Please go to your cart to upload a new payment receipt.
                       </p>
                     </>
                   ) : (
                     <>
-                      <h3 className="font-semibold text-amber-800 mb-2 text-sm sm:text-base">Payment Required to Proceed</h3>
-                      <p className="text-amber-700 text-xs sm:text-sm mb-3">
+                      <h3 className="font-semibold text-gray-800 mb-2 text-sm sm:text-base">Payment Required to Proceed</h3>
+                      <p className="text-gray-700 text-xs sm:text-sm mb-3">
                         Your rental has been confirmed by the admin, but payment is required before we can start preparing your order for delivery.
                       </p>
-                      <p className="text-amber-600 text-xs sm:text-sm font-medium">
+                      <p className="text-gray-600 text-xs sm:text-sm font-medium">
                         Please use any of the payment methods below and upload your receipt.
                       </p>
                     </>
@@ -702,29 +702,23 @@ export default function Rentals() {
             {/* Call to Action */}
             <div className="flex justify-center">
               <button
-                onClick={() => navigate(paymentStatus === 'submitted' ? '/user/requests' : '/user/cart')}
-                className={`inline-flex items-center justify-center px-4 sm:px-6 py-2.5 sm:py-3 text-white font-medium rounded-lg transition-colors duration-150 text-sm sm:text-base ${
-                  paymentStatus === 'submitted'
-                    ? 'bg-[#052844] hover:bg-[#063a5e]'
-                    : paymentStatus === 'rejected' 
-                    ? 'bg-red-600 hover:bg-red-700'
-                    : 'bg-amber-600 hover:bg-amber-700'
-                }`}
+                onClick={() => navigate('/user/cart')}
+                className="inline-flex items-center justify-center px-4 sm:px-6 py-2.5 sm:py-3 bg-[#052844] hover:bg-[#063a5e] text-white font-medium rounded-lg transition-colors duration-150 text-sm sm:text-base"
               >
                 {paymentStatus === 'submitted' ? (
                   <>
                     <Clock className="w-4 h-4 mr-2" />
-                    Check Status
+                    Go to Your Cart
                   </>
                 ) : paymentStatus === 'rejected' ? (
                   <>
                     <Upload className="w-4 h-4 mr-2" />
-                    Upload New Receipt
+                    Go to Your Cart
                   </>
                 ) : (
                   <>
                     <CreditCard className="w-4 h-4 mr-2" />
-                    Upload Payment
+                    Go to Your Cart
                   </>
                 )}
                 <ExternalLink className="w-3 h-3 ml-2" />
@@ -1171,9 +1165,7 @@ export default function Rentals() {
                 onClick={() => setActiveFilter(f.key)}
                 className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-md transition-all duration-150 whitespace-nowrap ${
                   activeFilter === f.key
-                    ? f.key === "payment_pending" 
-                      ? "bg-amber-600 text-white shadow-sm"
-                      : "bg-[#052844] text-white shadow-sm"
+                    ? "bg-[#052844] text-white shadow-sm"
                     : "text-gray-700 hover:bg-gray-50"
                 }`}
               >
