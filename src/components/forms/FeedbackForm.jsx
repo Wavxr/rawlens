@@ -33,9 +33,9 @@ export default function FeedbackForm({ rentalId, userId, onSuccess, onSkip }) {
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.2 }}
-      className="bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden w-full max-w-md"
+      className="bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden w-full max-w-md"
     >
-      <div className="bg-gradient-to-r from-blue-800 to-blue-900 p-5 flex justify-between items-center">
+      <div className="bg-[#052844] p-5 flex justify-between items-center">
         <h3 className="text-lg font-semibold text-white flex items-center gap-2">
           <MessageSquare size={20} />
           Share Your Experience
@@ -64,7 +64,7 @@ export default function FeedbackForm({ rentalId, userId, onSuccess, onSkip }) {
                   size={32}
                   className={`${
                     (hoverRating >= star || rating >= star)
-                      ? "text-blue-500 fill-blue-500"
+                      ? "text-[#052844] fill-[#052844]"
                       : "text-gray-300"
                   } transition-colors duration-200`}
                 />
@@ -86,7 +86,7 @@ export default function FeedbackForm({ rentalId, userId, onSuccess, onSkip }) {
             value={feedback}
             onChange={(e) => setFeedback(e.target.value)}
             placeholder="Tell us about your experience..."
-            className="w-full min-h-[100px] px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
+            className="w-full min-h-[100px] px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#052844] focus:border-transparent transition-all duration-150 resize-none"
           />
         </div>
 
@@ -107,7 +107,7 @@ export default function FeedbackForm({ rentalId, userId, onSuccess, onSkip }) {
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.98 }}
             disabled={loading || (rating === null && !feedback.trim())}
-            className="flex-1 py-3 px-4 bg-gradient-to-r from-blue-700 to-blue-800 rounded-lg text-white font-medium hover:from-blue-800 hover:to-blue-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+            className="flex-1 py-3 px-4 bg-[#052844] rounded-lg text-white font-medium hover:bg-[#063a5e] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-150 flex items-center justify-center gap-2"
           >
             {loading ? (
               <>

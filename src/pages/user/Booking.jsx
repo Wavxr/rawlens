@@ -421,7 +421,7 @@ export default function Rentals() {
     if (isPaymentPending) {
       return (
         <div
-          className={`p-3 sm:p-4 rounded-lg border transition-all ${
+          className={`p-3 sm:p-4 rounded-lg border transition-all duration-150 ${
             isSelected
               ? "bg-amber-50 border-amber-300 shadow-sm ring-2 ring-amber-200"
               : "bg-amber-50/50 border-amber-200 hover:bg-amber-50 hover:border-amber-300"
@@ -506,9 +506,9 @@ export default function Rentals() {
     return (
       <div
         onClick={onClick}
-        className={`p-3 sm:p-4 rounded-lg border cursor-pointer transition-all ${
+        className={`p-3 sm:p-4 rounded-lg border cursor-pointer transition-all duration-150 ${
           isSelected
-            ? "bg-blue-50 border-blue-200 shadow-sm"
+            ? "bg-[#052844]/5 border-[#052844]/30 shadow-sm"
             : "bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300"
         }`}
       >
@@ -531,7 +531,7 @@ export default function Rentals() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between">
               <h3 className="font-medium text-gray-900 truncate text-sm">{cameraName}</h3>
-              {isSelected && <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 text-blue-500 flex-shrink-0" />}
+              {isSelected && <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 text-[#052844] flex-shrink-0" />}
             </div>
             
             <div className="flex items-center space-x-2 mt-1">
@@ -540,7 +540,7 @@ export default function Rentals() {
             </div>
             
             <span
-              className={`inline-block px-2 py-0.5 rounded text-xs font-medium mt-2 ${getStatusBadgeClasses(rental.rental_status)}`}
+              className={`inline-block px-2.5 py-1 rounded-md text-xs font-medium mt-2 ${getStatusBadgeClasses(rental.rental_status)}`}
             >
               {rental.rental_status.charAt(0).toUpperCase() + rental.rental_status.slice(1)}
             </span>
@@ -657,7 +657,7 @@ export default function Rentals() {
                         incorrect amount, or other issues. Please upload a new, clear payment confirmation.
                       </p>
                       <p className="text-red-600 text-xs sm:text-sm font-medium">
-                        Please go to the Requests page to upload a new payment receipt.
+                        Please go to the Cart page to upload a new payment receipt.
                       </p>
                     </>
                   ) : (
@@ -723,7 +723,7 @@ export default function Rentals() {
                   <div className="flex justify-center">
                     <button
                       onClick={() => navigate('/user/requests')}
-                      className="inline-flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
+                      className="inline-flex items-center justify-center px-4 sm:px-6 py-2.5 sm:py-3 bg-[#052844] text-white font-semibold rounded-lg hover:bg-[#063a5e] transition-colors duration-150 text-sm sm:text-base"
                     >
                       <Clock className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                       View Status
@@ -738,13 +738,13 @@ export default function Rentals() {
                   </h3>
                   <p className="text-gray-600 mb-3 sm:mb-4 text-sm sm:text-base">
                     {paymentStatus === 'rejected' 
-                      ? 'Go to the Requests page to upload a new payment receipt.'
+                      ? 'Go to the Cart page to upload a new payment receipt.'
                       : 'Send your payment and upload the receipt in the Requests page to proceed.'
                     }
                   </p>
                   <div className="flex justify-center">
                     <button
-                      onClick={() => navigate('/user/requests')}
+                      onClick={() => navigate('/user/cart')}
                       className={`inline-flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 text-white font-semibold rounded-lg transition-colors text-sm sm:text-base ${
                         paymentStatus === 'rejected' 
                           ? 'bg-red-600 hover:bg-red-700'
@@ -759,7 +759,7 @@ export default function Rentals() {
                       ) : (
                         <>
                           <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                          Go to Requests
+                          Go to Cart
                         </>
                       )}
                       <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4 ml-2" />
@@ -774,7 +774,7 @@ export default function Rentals() {
               <div className="mt-4">
                 <button
                   onClick={() => handleOpenCancellation(rental)}
-                  className="w-full inline-flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors text-sm sm:text-base"
+                  className="w-full inline-flex items-center justify-center px-4 sm:px-6 py-2.5 sm:py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors duration-150 text-sm sm:text-base"
                 >
                   <XCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                   Cancel Rental
@@ -832,7 +832,7 @@ export default function Rentals() {
     return (
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         {/* Header Section */}
-        <div className="bg-gradient-to-r from-gray-900 to-gray-800 px-4 sm:px-6 py-3 sm:py-4 text-white">
+        <div className="bg-[#052844] px-4 sm:px-6 py-3 sm:py-4 text-white">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-lg sm:text-xl font-bold">{cameraName}</h1>
@@ -1065,13 +1065,13 @@ export default function Rentals() {
             />
           )}
 
-          {/* Action Buttons */}
-          <div className="flex flex-wrap gap-2 sm:gap-3">
+          {/* Action Buttons - Sticky on mobile for thumb-friendly access */}
+          <div className="flex flex-wrap gap-2 sm:gap-3 sticky bottom-0 sm:static bg-white sm:bg-transparent p-3 sm:p-0 -mx-4 sm:mx-0 -mb-4 sm:mb-0 border-t sm:border-0 border-gray-200 shadow-lg sm:shadow-none z-10">
             {rental.contract_pdf_url && (
               <button
                 onClick={() => viewContract(rental.id, rental.contract_pdf_url)}
                 disabled={!!contractViewLoading[rental.id]}
-                className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 text-xs sm:text-sm font-medium"
+                className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-[#052844] text-white rounded-lg hover:bg-[#063a5e] disabled:opacity-50 text-xs sm:text-sm font-medium transition-colors duration-150"
               >
                 {contractViewLoading[rental.id] ? (
                   <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
@@ -1085,7 +1085,7 @@ export default function Rentals() {
               <button
                 onClick={() => handleConfirmDelivered(rental.id)}
                 disabled={actionLoading[rental.id] === "confirmDelivered"}
-                className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 text-xs sm:text-sm font-medium"
+                className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 text-xs sm:text-sm font-medium transition-colors duration-150"
               >
                 {actionLoading[rental.id] === "confirmDelivered" ? (
                   <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
@@ -1099,7 +1099,7 @@ export default function Rentals() {
               <button
                 onClick={() => handleConfirmSentBack(rental.id)}
                 disabled={actionLoading[rental.id] === "confirmSentBack"}
-                className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 disabled:opacity-50 text-xs sm:text-sm font-medium"
+                className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 text-xs sm:text-sm font-medium transition-colors duration-150"
               >
                 {actionLoading[rental.id] === "confirmSentBack" ? (
                   <>
@@ -1119,14 +1119,14 @@ export default function Rentals() {
             {(rental.rental_status === "completed" || rental.rental_status === "active") && !feedbackSubmitted[rental.id] && (
               <button
                 onClick={() => setShowFeedbackForm(true)}
-                className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 text-xs sm:text-sm font-medium"
+                className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-[#052844] text-white rounded-lg hover:bg-[#063a5e] text-xs sm:text-sm font-medium transition-colors duration-150"
               >
                 <span>Give Feedback</span>
               </button>
             )}
 
             {feedbackSubmitted[rental.id] && (
-              <div className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-green-100 text-green-800 rounded-md text-xs sm:text-sm font-medium">
+              <div className="flex items-center space-x-2 px-2.5 sm:px-3 py-1.5 sm:py-2 bg-green-100 text-green-800 rounded-md text-xs sm:text-sm font-medium">
                 <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4" />
                 <span>Feedback Submitted</span>
               </div>
@@ -1197,7 +1197,7 @@ export default function Rentals() {
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
         {/* Filter Tabs */}
         <div className="mb-4 sm:mb-6">
-          <div className="flex rounded-lg border border-gray-200 bg-white p-0.5 sm:p-1 overflow-x-auto">
+          <div className="flex rounded-lg border border-gray-200 bg-white p-1 overflow-x-auto">
             {[
               { key: "payment_pending", label: "Payment Required", shortLabel: "Payment" },
               { key: "awaiting", label: "Awaiting Delivery", shortLabel: "Awaiting" },
@@ -1207,11 +1207,11 @@ export default function Rentals() {
               <button
                 key={f.key}
                 onClick={() => setActiveFilter(f.key)}
-                className={`px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md transition-all whitespace-nowrap ${
+                className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-md transition-all duration-150 whitespace-nowrap ${
                   activeFilter === f.key
                     ? f.key === "payment_pending" 
                       ? "bg-amber-600 text-white shadow-sm"
-                      : "bg-blue-600 text-white shadow-sm"
+                      : "bg-[#052844] text-white shadow-sm"
                     : "text-gray-700 hover:bg-gray-50"
                 }`}
               >

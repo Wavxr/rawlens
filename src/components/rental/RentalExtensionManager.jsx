@@ -203,9 +203,9 @@ const RentalExtensionManager = ({ rental, userId, onRefresh }) => {
     <div className="space-y-6">
       {/* Extension Request Form */}
       {canRequestExtension() && (
-        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6">
+        <div className="bg-gradient-to-br from-[#052844]/5 to-[#052844]/10 border border-[#052844]/20 rounded-lg p-4 sm:p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-[#052844] flex items-center justify-center">
               <Plus className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -217,7 +217,7 @@ const RentalExtensionManager = ({ rental, userId, onRefresh }) => {
           {!showExtensionForm ? (
             <button
               onClick={() => setShowExtensionForm(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-medium rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-all"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#052844] text-white font-medium text-sm rounded-lg hover:bg-[#063a5e] transition-all duration-150"
             >
               <Plus className="w-4 h-4" />
               Request Extension
@@ -243,18 +243,18 @@ const RentalExtensionManager = ({ rental, userId, onRefresh }) => {
                     value={newEndDate}
                     onChange={(e) => setNewEndDate(e.target.value)}
                     min={getMinExtensionDate()}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#052844] focus:border-[#052844] transition-all duration-150 text-sm"
                     required
                   />
                 </div>
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="bg-[#052844]/5 border border-[#052844]/20 rounded-lg p-3 sm:p-4">
                 <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-[#052844] flex-shrink-0 mt-0.5" />
                   <div>
-                    <h4 className="font-medium text-blue-900 mb-1">How Extension Works</h4>
-                    <ul className="text-sm text-blue-800 space-y-1">
+                    <h4 className="font-medium text-[#052844] mb-1 text-sm sm:text-base">How Extension Works</h4>
+                    <ul className="text-xs sm:text-sm text-gray-700 space-y-1">
                       <li>• Admin will review your request for camera availability</li>
                       <li>• Once approved, you'll need to pay for the additional days</li>
                       <li>• Your rental end date will be updated after payment verification</li>
@@ -268,7 +268,7 @@ const RentalExtensionManager = ({ rental, userId, onRefresh }) => {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-medium rounded-lg hover:from-blue-600 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#052844] text-white font-medium text-sm rounded-lg hover:bg-[#063a5e] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-150"
                 >
                   {isLoading ? (
                     <>
@@ -317,7 +317,7 @@ const RentalExtensionManager = ({ rental, userId, onRefresh }) => {
             const paymentInfo = getPaymentStatusInfo(extensionPayment);
             
             return (
-              <div key={extension.id} className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
+              <div key={extension.id} className="bg-white border border-gray-200 rounded-lg p-4 sm:p-6 space-y-4">
                 {/* Extension Status */}
                 <div className={`border rounded-lg p-4 ${statusInfo.color}`}>
                   <div className="flex items-start gap-3">

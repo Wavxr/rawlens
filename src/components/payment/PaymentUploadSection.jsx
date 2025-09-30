@@ -168,7 +168,7 @@ const PaymentUploadSection = ({ rental, onUploadComplete }) => {
           type="file"
           accept="image/*"
           onChange={handleFileChange}
-          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 file:transition-colors"
+          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[#052844]/10 file:text-[#052844] hover:file:bg-[#052844]/20 file:transition-colors file:duration-150"
         />
         {file && (
           <button
