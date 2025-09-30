@@ -445,7 +445,7 @@ export default function Rentals() {
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-gray-400">
-                  <CameraIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <CameraIcon className="h-3 w-3 sm:h-5 sm:w-5" />
                 </div>
               )}
             </div>
@@ -470,11 +470,11 @@ export default function Rentals() {
                 </div>
               </div>
               
-              <div className="flex items-center space-x-2 mt-1">
+              <div className="flex items-center space-x-1.5 sm:space-x-2 mt-0.5 sm:mt-1">
                 <span className="text-xs text-gray-500 font-mono">#{rental.id.slice(0, 8)}</span>
               </div>
               
-              <div className="mt-2">
+              <div className="mt-1 sm:mt-2">
                 {paymentStatus === 'submitted' ? (
                   <span className="inline-flex items-center px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                     <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1" />
@@ -493,12 +493,12 @@ export default function Rentals() {
                 )}
               </div>
               
-              <div className="text-xs text-gray-500 mt-1">
+              <div className="text-xs text-gray-500 mt-0.5 sm:mt-1">
                 {formatDate(rental.start_date)} — {formatDate(rental.end_date)}
               </div>
               
               {typeof rental.total_price === "number" && (
-                <div className="text-sm font-semibold text-amber-700 mt-1">₱ {Number(rental.total_price).toFixed(2)}</div>
+                <div className="text-sm font-semibold text-amber-700 mt-0.5 sm:mt-1">₱ {Number(rental.total_price).toFixed(2)}</div>
               )}
             </div>
           </div>
@@ -510,14 +510,14 @@ export default function Rentals() {
     return (
       <div
         onClick={onClick}
-        className={`p-3 sm:p-4 rounded-lg border cursor-pointer transition-all duration-150 ${
+        className={`p-2 sm:p-4 rounded-lg border cursor-pointer transition-all duration-150 ${
           isSelected
             ? "bg-[#052844]/5 border-[#052844]/30 shadow-sm"
             : "bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300"
         }`}
       >
         <div className="flex items-start space-x-2 sm:space-x-3">
-          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-100 rounded-md overflow-hidden flex-shrink-0">
+          <div className="w-8 h-8 sm:w-12 sm:h-12 bg-gray-100 rounded-md overflow-hidden flex-shrink-0">
             {!imgBroken && cameraImage ? (
               <img
                 src={cameraImage || "/placeholder.svg"}
@@ -527,7 +527,7 @@ export default function Rentals() {
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-gray-400">
-                <CameraIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+                <CameraIcon className="h-3 w-3 sm:h-5 sm:w-5" />
               </div>
             )}
           </div>
@@ -538,23 +538,23 @@ export default function Rentals() {
               {isSelected && <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 text-[#052844] flex-shrink-0" />}
             </div>
             
-            <div className="flex items-center space-x-2 mt-1">
+            <div className="flex items-center space-x-1.5 sm:space-x-2 mt-0.5 sm:mt-1">
               <span className="text-xs text-gray-500 font-mono">#{rental.id.slice(0, 8)}</span>
               {days && <span className="text-xs text-gray-600">{days} days</span>}
             </div>
             
             <span
-              className={`inline-block px-2.5 py-1 rounded-md text-xs font-medium mt-2 ${getStatusBadgeClasses(rental.rental_status)}`}
+              className={`inline-block px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md text-xs font-medium mt-1 sm:mt-2 ${getStatusBadgeClasses(rental.rental_status)}`}
             >
               {rental.rental_status.charAt(0).toUpperCase() + rental.rental_status.slice(1)}
             </span>
             
-            <div className="text-xs text-gray-500 mt-1">
+            <div className="text-xs text-gray-500 mt-0.5 sm:mt-1">
               {formatDate(rental.start_date)} — {formatDate(rental.end_date)}
             </div>
             
             {typeof rental.total_price === "number" && (
-              <div className="text-sm font-semibold text-gray-900 mt-1">₱ {Number(rental.total_price).toFixed(2)}</div>
+              <div className="text-sm font-semibold text-gray-900 mt-0.5 sm:mt-1">₱ {Number(rental.total_price).toFixed(2)}</div>
             )}
           </div>
         </div>
@@ -1239,7 +1239,7 @@ export default function Rentals() {
             {/* Sidebar */}
             <div className="xl:col-span-1">
               <h3 className="font-semibold text-gray-900 mb-3 sm:mb-4 text-sm sm:text-base">Your Rentals</h3>
-              <div className="space-y-2 sm:space-y-3 max-h-[calc(50vh)] xl:max-h-[calc(100vh-200px)] overflow-y-auto">
+              <div className="space-y-2 sm:space-y-3 max-h-[200px] sm:max-h-[400px] xl:max-h-[calc(100vh-200px)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
                 {displayedRentals.map((rental) => (
                   <RentalSidebarCard
                     key={rental.id}
