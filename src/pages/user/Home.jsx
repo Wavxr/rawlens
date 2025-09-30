@@ -94,13 +94,13 @@ export default function Home() {
   // === LOADING STATE ===
   if (loading) {
     return (
-      <div className="min-h-screen lg:max-w-6xl lg:mx-auto lg:px-8">
-        <div className="px-4 py-4">
+      <div className="min-h-screen lg:max-w-7xl lg:mx-auto lg:px-8">
+        <div className="px-4 py-4 lg:px-6 lg:py-6">
           {/* Header Skeleton */}
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex justify-between items-center mb-4 lg:mb-6">
             <div className="space-y-2">
-              <div className="h-6 bg-gray-200 rounded w-48 animate-pulse"></div>
-              <div className="h-4 bg-gray-200 rounded w-32 animate-pulse"></div>
+              <div className="h-6 lg:h-7 bg-gray-200 rounded w-48 lg:w-56 animate-pulse"></div>
+              <div className="h-4 lg:h-5 bg-gray-200 rounded w-32 lg:w-40 animate-pulse"></div>
             </div>
             <div className="w-10 h-10 bg-gray-200 rounded-lg animate-pulse"></div>
           </div>
@@ -108,12 +108,12 @@ export default function Home() {
           {/* Camera Grid Skeleton - Responsive */}
           <>
             {/* Desktop Skeleton */}
-            <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {[...Array(8)].map((_, i) => (
-                <div key={i} className="bg-white rounded-2xl shadow-sm p-5 border border-gray-200">
+            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="bg-white rounded-lg shadow-sm p-5 border border-gray-200">
                   <div className="w-full aspect-video bg-gray-200 rounded-lg animate-pulse mb-4"></div>
                   <div className="space-y-3">
-                    <div className="h-5 bg-gray-200 rounded w-3/4 animate-pulse"></div>
+                    <div className="h-5 lg:h-6 bg-gray-200 rounded w-3/4 animate-pulse"></div>
                     <div className="h-4 bg-gray-200 rounded w-full animate-pulse"></div>
                     <div className="h-4 bg-gray-200 rounded w-2/3 animate-pulse"></div>
                     <div className="flex flex-wrap gap-1 pt-2">
@@ -156,15 +156,15 @@ export default function Home() {
   // === ERROR STATE ===
   if (error && !loading) {
     return (
-      <div className="min-h-screen lg:max-w-6xl lg:mx-auto lg:px-8">
-        <div className="px-4 py-4">
+      <div className="min-h-screen lg:max-w-7xl lg:mx-auto lg:px-8">
+        <div className="px-4 py-4 lg:px-6 lg:py-6">
           <div className="text-center py-12">
             <Camera className="mx-auto h-12 w-12 text-gray-400 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">Failed to load cameras</h3>
             <p className="text-gray-500 mb-4">{error}</p>
             <button
               onClick={() => window.location.reload()}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+              className="bg-[#052844] hover:bg-[#063a5e] text-white px-4 py-2 rounded-lg transition-colors"
             >
               Try Again
             </button>
@@ -175,26 +175,26 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen lg:max-w-6xl lg:mx-auto lg:px-8">
+    <div className="min-h-screen lg:max-w-7xl lg:mx-auto lg:px-8">
       {/* === MAIN HEADER SECTION === */}
-      <div className="px-4 py-4">
-        <div className="flex justify-between items-center mb-4">
+      <div className="px-4 py-4 lg:px-6 lg:py-6">
+        <div className="flex justify-between items-center mb-4 lg:mb-6">
           <div>
-            <p className="text-lg font-semibold text-gray-900">
+            <p className="text-lg lg:text-xl font-semibold text-gray-900">
               Hello👋, {profile?.first_name || 'Camera Explorer'}
             </p>
-            <p className="text-sm text-gray-600 flex items-center">
+            <p className="text-sm lg:text-base text-gray-600 flex items-center">
               📍 Discover Amazing Cameras with Rawlens
             </p>
           </div>
         </div>
         
         {/* === FEATURED BANNER SECTION === */}
-        <div className="bg-gradient-to-r from-[#052844] to-[#063a5e] rounded-lg p-5 mb-6 border border-[#052844]/10">
+        <div className="bg-gradient-to-r from-[#052844] to-[#063a5e] rounded-lg p-5 lg:p-6 mb-6 border border-[#052844]/10">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-white text-sm font-medium mb-3">Get high quality images with premium cameras</p>
-              <button className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors">
+              <p className="text-white text-sm lg:text-base font-medium mb-3">Get high quality images with premium cameras</p>
+              <button className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-5 py-2.5 lg:px-6 lg:py-3 rounded-lg text-sm lg:text-base font-semibold transition-colors">
                 Explore Now
               </button>
             </div>
@@ -207,12 +207,12 @@ export default function Home() {
       </div>
     
       {/* === MAIN CONTENT SECTION === */}
-      <div className="px-4 pb-6">
+      <div className="px-4 pb-6 lg:px-6 lg:pb-8">
         {/* === CAMERA SHOWCASE SECTION === */}
         <div className="space-y-6">
           {/* Results header */}
           <div className="flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2 className="text-lg lg:text-xl font-semibold text-gray-900">
               Featured Camera Models ({cameras.length})
             </h2>
           </div>
@@ -221,7 +221,7 @@ export default function Home() {
           {cameras.length > 0 ? (
             <>
               {/* Desktop and Tablet: Use CameraCardBig */}
-              <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 gap-6">
+              <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6">
                 {cameras.map((camera) => (
                   <CameraCardBig
                     key={camera.id}

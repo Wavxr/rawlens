@@ -58,7 +58,7 @@ export default function UserDashboard() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Subtly Visible Floating Top Navigation Bar - Desktop Only */}
-      <nav className="absolute top-4 left-1/2 transform -translate-x-1/2 w-[95%] max-w-6xl z-50 hidden lg:block">
+      <nav className="absolute top-4 left-1/2 transform -translate-x-1/2 w-[95%] max-w-7xl z-50 hidden lg:block">
         <div className="bg-white/95 backdrop-blur-xl border border-gray-200/70 rounded-lg shadow-lg shadow-gray-200/30">
           <div className="px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
