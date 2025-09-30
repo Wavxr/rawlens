@@ -53,7 +53,7 @@ export default function Search() {
       setIsFilterActive(false);
       setError('');
     }
-  }, [startDate, endDate, isFilterActive]);
+  }, [startDate, endDate]);
 
   // Event handlers
   const handleDateChange = (e, type) => handleBrowseDateChange(e, type);
@@ -78,6 +78,7 @@ export default function Search() {
     
     try {
       const { data: availableCameras, error: fetchError } = await getAvailableCamerasForDates(startDate, endDate);
+      
       if (fetchError) {
         throw new Error(fetchError);
       }
@@ -271,9 +272,45 @@ export default function Search() {
 
                 {/* Loading state */}
                 {filterLoading ? (
-                  <div className="flex justify-center items-center h-64 bg-white rounded-lg border border-gray-200">
-                    <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-[#052844]"></div>
-                  </div>
+                  <>
+                    {/* Desktop and Tablet Skeleton */}
+                    <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-2 gap-5 lg:gap-6">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className="bg-white rounded-xl border border-gray-200 p-5 animate-pulse">
+                          {/* Image skeleton */}
+                          <div className="w-full h-48 bg-gray-200 rounded-lg mb-4"></div>
+                          {/* Title skeleton */}
+                          <div className="h-6 bg-gray-200 rounded w-3/4 mb-3"></div>
+                          {/* Description skeleton */}
+                          <div className="space-y-2 mb-4">
+                            <div className="h-4 bg-gray-200 rounded w-full"></div>
+                            <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+                          </div>
+                          {/* Price skeleton */}
+                          <div className="flex justify-between items-center">
+                            <div className="h-5 bg-gray-200 rounded w-24"></div>
+                            <div className="h-10 bg-gray-200 rounded w-28"></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Mobile Skeleton */}
+                    <div className="grid grid-cols-2 gap-4 md:hidden">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className="bg-white rounded-lg border border-gray-200 p-3 animate-pulse">
+                          {/* Image skeleton */}
+                          <div className="w-full h-32 bg-gray-200 rounded-lg mb-2"></div>
+                          {/* Title skeleton */}
+                          <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                          {/* Price skeleton */}
+                          <div className="h-3 bg-gray-200 rounded w-1/2 mb-2"></div>
+                          {/* Button skeleton */}
+                          <div className="h-8 bg-gray-200 rounded w-full"></div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
                 ) : searchResults.length > 0 ? (
                   /* Camera Grid - Responsive */
                   <>
