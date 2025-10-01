@@ -3,6 +3,7 @@ import useAuthStore from '../../stores/useAuthStore';
 import { useEffect, useState } from 'react';
 import { registerUserPushNotifications, registerAdminPushNotifications, isPushSupported } from '../../services/pushService';
 import PushMigrationPrompt from '../notifications/PushMigrationPrompt';
+import LoadingScreen from './LoadingScreen';
 
 const ProtectedRoute = ({ requiredRole }) => {
   const { session, role, loading, roleLoading, checkSessionValidity, forceCleanup } = useAuthStore();
@@ -49,7 +50,7 @@ const ProtectedRoute = ({ requiredRole }) => {
     }
   }, [session?.user?.id, loading, roleLoading, sessionValid, checkSessionValidity, forceCleanup]);
 
-  if (loading || roleLoading) return <div>Loading... protected</div>;
+  if (loading || roleLoading) return <LoadingScreen />;
   if (!session || !sessionValid) return <Navigate to="/login" replace />;
   if (requiredRole && role !== requiredRole) return <Navigate to="/" replace />;
   

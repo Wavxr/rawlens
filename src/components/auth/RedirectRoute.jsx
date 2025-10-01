@@ -2,6 +2,7 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useEffect } from 'react';
 import useAuthStore from '../../stores/useAuthStore';
+import LoadingScreen from './LoadingScreen';
 
 export default function RedirectRoute() {
   const { session, role, loading, roleLoading, initialize } = useAuthStore();
@@ -9,7 +10,7 @@ export default function RedirectRoute() {
   useEffect(() => { initialize(); }, []);
 
   // wait until BOTH the auth state and the role query have finished
-  if (loading || roleLoading) return <div>Loading...redirect</div>;
+  if (loading || roleLoading) return <LoadingScreen />;
 
   if (session) {
     if (role === 'admin') return <Navigate to="/admin" replace />;
