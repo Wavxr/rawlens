@@ -46,57 +46,56 @@ export default function RentalStepper({ rental }) {
   const nextLabel = getNextStepLabel(idx);
   
   return (
-    <div className="bg-gray-700 rounded-xl border border-gray-600 p-6 shadow-sm">
-      {/* Progress Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h3 className="text-lg font-semibold text-white">Rental Progress</h3>
-          <p className="text-sm text-gray-300 mt-1">Track your rental from start to finish</p>
+    <div className="bg-gray-700 rounded-lg border border-gray-600 p-3 md:p-4 shadow-sm">
+      {/* Progress Header - Compact for Mobile */}
+      <div className="flex items-start justify-between mb-3 md:mb-4 gap-2">
+        <div className="flex-1 min-w-0">
+          <h3 className="text-sm md:text-base font-semibold text-white truncate">Rental Progress</h3>
+          <p className="text-xs text-gray-400 hidden sm:block">Track rental journey</p>
         </div>
-        <div className="text-right">
-          <div className="text-sm font-medium text-white">{STEPS[idx]?.label}</div>
-          <div className="text-xs text-gray-400">Step {idx + 1} of {STEPS.length}</div>
+        <div className="text-right flex-shrink-0">
+          <div className="text-xs md:text-sm font-medium text-white">{STEPS[idx]?.label}</div>
+          <div className="text-xs text-gray-400">{idx + 1}/{STEPS.length}</div>
         </div>
       </div>
 
-      {/* Progress Steps */}
-      <div className="relative">
-        <div className="flex items-center justify-between mb-8 overflow-x-auto">
+      {/* Progress Steps - Horizontal Scroll on Mobile */}
+      <div className="relative mb-3 md:mb-4">
+        <div className="flex items-center gap-1 overflow-x-auto pb-2 scrollbar-hide">
           {STEPS.map((step, i) => {
             const Icon = step.Icon;
             const isDone = i < idx;
             const isCurrent = i === idx;
-            const isUpcoming = i > idx;
 
             return (
-              <div key={step.key} className="flex flex-col items-center relative flex-shrink-0">
-                {/* Step Circle */}
+              <div key={step.key} className="flex flex-col items-center relative flex-shrink-0 min-w-[50px] md:min-w-[60px]">
+                {/* Step Circle - Smaller on Mobile */}
                 <div
                   className={`
-                    flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-300 z-10
+                    flex items-center justify-center w-7 h-7 md:w-9 md:h-9 rounded-full border-2 transition-all z-10
                     ${isDone 
-                      ? 'bg-blue-600 border-blue-600 text-white shadow-lg' 
+                      ? 'bg-blue-600 border-blue-600 text-white' 
                       : isCurrent 
-                      ? 'bg-blue-900/50 border-blue-500 text-blue-400 shadow-md' 
+                      ? 'bg-blue-900/50 border-blue-500 text-blue-400 ring-2 ring-blue-500/30' 
                       : 'bg-gray-600 border-gray-500 text-gray-400'
                     }
                   `}
                 >
-                  <Icon className="h-5 w-5" />
+                  <Icon className="h-3 w-3 md:h-4 md:w-4" />
                 </div>
                 
-                {/* Step Label */}
-                <div className="mt-3 text-center">
-                  <div className={`text-xs font-medium ${isCurrent ? 'text-blue-400' : isDone ? 'text-white' : 'text-gray-400'}`}>
+                {/* Step Label - Smaller on Mobile */}
+                <div className="mt-1 text-center w-full">
+                  <div className={`text-[10px] md:text-xs font-medium truncate px-1 ${isCurrent ? 'text-blue-400' : isDone ? 'text-white' : 'text-gray-400'}`}>
                     {step.label}
                   </div>
                 </div>
                 
-                {/* Connector Line */}
+                {/* Connector Line - Thinner on Mobile */}
                 {i < STEPS.length - 1 && (
                   <div 
                     className={`
-                      absolute top-5 left-full w-8 h-0.5 -translate-y-0.5 transition-colors duration-300
+                      absolute top-3.5 md:top-4.5 left-[calc(50%+14px)] md:left-[calc(50%+18px)] w-[calc(100%-28px)] md:w-[calc(100%-36px)] h-0.5 transition-colors
                       ${isDone ? 'bg-blue-600' : 'bg-gray-500'}
                     `}
                   />
@@ -107,22 +106,21 @@ export default function RentalStepper({ rental }) {
         </div>
       </div>
 
-      {/* Current Status */}
-      <div className="bg-gray-600 rounded-lg p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-              <span className="text-sm font-medium text-white">Current:</span>
-              <span className="text-sm text-gray-200">{STEPS[idx]?.label}</span>
-            </div>
+      {/* Current Status - Compact for Mobile */}
+      <div className="bg-gray-600 rounded-lg p-2 md:p-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 bg-blue-400 rounded-full"></div>
+            <span className="text-xs md:text-sm font-medium text-white">
+              {STEPS[idx]?.label}
+            </span>
           </div>
           
           {nextLabel && (
-            <div className="flex items-center space-x-2 text-sm text-gray-300">
-              <span>Next:</span>
+            <div className="flex items-center gap-1.5 text-xs md:text-sm text-gray-300 ml-3.5 sm:ml-0">
+              <span className="text-gray-400">Next:</span>
               <span className="font-medium text-white">{nextLabel}</span>
-              <ArrowLeftRight className="h-4 w-4 text-gray-400" />
+              <ArrowLeftRight className="h-3 w-3 md:h-4 md:w-4 text-gray-400" />
             </div>
           )}
         </div>

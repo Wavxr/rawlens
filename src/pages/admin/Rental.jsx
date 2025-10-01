@@ -869,69 +869,70 @@ export default function Rentals() {
     return (
       <div
         ref={cardRef}
-        className={`bg-gray-800 rounded-xl border-2 transition-all duration-200 hover:shadow-lg
+        className={`bg-gray-800 rounded-lg border-2 transition-all duration-200 hover:shadow-lg
           ${
             String(highlightId) === String(rental.id)
-              ? "border-blue-500 shadow-lg ring-4 ring-blue-900/50"
+              ? "border-blue-500 shadow-lg ring-2 ring-blue-900/50"
               : "border-gray-700 hover:border-gray-600"
           }
-          ${isTemporaryBooking ? "ring-2 ring-orange-600/30" : ""}`}
+          ${isTemporaryBooking ? "ring-1 ring-orange-600/30" : ""}`}
       >
-        <div className="p-4 md:p-6">
+        <div className="p-3 sm:p-4">
           {isTemporaryBooking && (
-            <div className="mb-3 px-3 py-2 bg-orange-900/20 border border-orange-700 rounded-lg">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-orange-400 rounded-full"></div>
-                <span className="text-orange-200 text-sm font-medium">
-                  Admin Managed (Instagram Customer)
+            <div className="mb-2 px-2 py-1.5 bg-orange-900/20 border border-orange-700 rounded-md">
+              <div className="flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 bg-orange-400 rounded-full"></div>
+                <span className="text-orange-200 text-xs font-medium">
+                  Admin Managed (Instagram)
                 </span>
               </div>
             </div>
           )}
-          <div className="flex justify-between items-start mb-4">
-            <div className="flex-1">
-              <h3 className="text-xl font-semibold text-white mb-1">
+          
+          {/* Header - Compact */}
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-3">
+            <div className="flex-1 min-w-0">
+              <h3 className="text-base sm:text-lg font-semibold text-white mb-1 truncate">
                 {rental.cameras?.name || "Camera Equipment"}
                 {rental.cameras?.serial_number && (
-                  <span className="ml-2 text-sm font-normal text-gray-400">
+                  <span className="ml-2 text-xs font-normal text-gray-400">
                     #{rental.cameras.serial_number}
                   </span>
                 )}
               </h3>
-              <div className="flex items-center space-x-2 text-sm text-gray-300">
-                <User className="h-4 w-4" />
-                <span>{customerName}</span>
-                <span className="text-gray-500">•</span>
-                <span>{customerEmail}</span>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-xs sm:text-sm text-gray-300">
+                <div className="flex items-center gap-1.5">
+                  <User className="h-3 w-3 sm:h-3.5 sm:w-3.5 flex-shrink-0" />
+                  <span className="truncate">{customerName}</span>
+                </div>
+                <span className="hidden sm:inline text-gray-500">•</span>
+                <span className="truncate">{customerEmail}</span>
                 {rental.customer_contact && (
                   <>
-                    <span className="text-gray-500">•</span>
-                    <span>{rental.customer_contact}</span>
+                    <span className="hidden sm:inline text-gray-500">•</span>
+                    <span className="truncate">{rental.customer_contact}</span>
                   </>
                 )}
               </div>
             </div>
-            <div className="flex flex-col items-end gap-2">
+            
+            <div className="flex flex-row sm:flex-col items-start sm:items-end gap-1.5 flex-shrink-0">
               <span
-                className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(
+                className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-xs font-medium border ${getStatusColor(
                   rental.rental_status
                 )}`}
               >
                 {getStatusText(rental.rental_status)}
               </span>
               {rental.rental_status === "confirmed" && (() => {
-                // Find the initial rental payment
                 const initialPayment = rental.payments?.find(payment => 
                   payment.payment_type === 'rental' && !payment.extension_id
                 );
-                
-                // Create rental object with payment status for the badge
                 const rentalWithPaymentStatus = {
                   ...rental,
                   payment_status: initialPayment?.payment_status,
                   selectedPayment: initialPayment
                 };
-                
                 return (
                   <PaymentStatusBadge 
                     rental={rentalWithPaymentStatus} 
@@ -941,47 +942,49 @@ export default function Rentals() {
               })()}
             </div>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 mb-4 md:mb-6">
-            <div className="flex items-center space-x-2 md:space-x-3 p-2 md:p-3 bg-gray-700 rounded-lg">
-              <DollarSign className="h-4 w-4 md:h-5 md:w-5 text-green-400" />
-              <div className="min-w-0">
-                <p className="text-sm md:text-lg font-semibold text-white truncate">
+          
+          {/* Stats Grid - More Compact */}
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <div className="flex items-center gap-2 p-2 bg-gray-700 rounded-md">
+              <DollarSign className="h-4 w-4 text-green-400 flex-shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-white truncate">
                   ₱{rental.total_price?.toFixed(2) || "0.00"}
                 </p>
-                <p className="text-xs text-gray-300">Total Price</p>
+                <p className="text-[10px] text-gray-400">Total</p>
               </div>
             </div>
-            <div className="flex items-center space-x-2 md:space-x-3 p-2 md:p-3 bg-gray-700 rounded-lg">
-              <Calendar className="h-4 w-4 md:h-5 md:w-5 text-blue-400" />
-              <div className="min-w-0">
-                <p className="text-xs md:text-sm font-medium text-white truncate">
+            <div className="flex items-center gap-2 p-2 bg-gray-700 rounded-md">
+              <Clock className="h-4 w-4 text-orange-400 flex-shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-white truncate">
+                  {inclusiveDays(rental.start_date, rental.end_date)} days
+                </p>
+                <p className="text-[10px] text-gray-400">Duration</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 p-2 bg-gray-700 rounded-md">
+              <Calendar className="h-4 w-4 text-blue-400 flex-shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium text-white truncate">
                   {formatDate(rental.start_date)}
                 </p>
-                <p className="text-xs text-gray-300">Start Date</p>
+                <p className="text-[10px] text-gray-400">Start</p>
               </div>
             </div>
-            <div className="flex items-center space-x-2 md:space-x-3 p-2 md:p-3 bg-gray-700 rounded-lg">
-              <Calendar className="h-4 w-4 md:h-5 md:w-5 text-purple-400" />
-              <div className="min-w-0">
-                <p className="text-xs md:text-sm font-medium text-white truncate">
+            <div className="flex items-center gap-2 p-2 bg-gray-700 rounded-md">
+              <Calendar className="h-4 w-4 text-purple-400 flex-shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium text-white truncate">
                   {formatDate(rental.end_date)}
                 </p>
-                <p className="text-xs text-gray-300">End Date</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2 md:space-x-3 p-2 md:p-3 bg-gray-700 rounded-lg">
-              <Clock className="h-4 w-4 md:h-5 md:w-5 text-orange-400" />
-              <div className="min-w-0">
-                <p className="text-xs md:text-sm font-medium text-white truncate">
-                  {inclusiveDays(rental.start_date, rental.end_date)}{" "}
-                  days
-                </p>
-                <p className="text-xs text-gray-300">Duration</p>
+                <p className="text-[10px] text-gray-400">End</p>
               </div>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2 md:gap-3 items-center">
-            {rental.rental_status === "pending" && (
+          
+          {/* Actions - Compact Grid */}
+          <div className="flex flex-wrap gap-1.5 sm:gap-2">{rental.rental_status === "pending" && (
               <>
                 <button
                   onClick={(e) => {
@@ -989,12 +992,12 @@ export default function Rentals() {
                     handleApprove(rental.id);
                   }}
                   disabled={actionLoading[rental.id] === "approve"}
-                  className="inline-flex items-center space-x-1 md:space-x-2 bg-green-600 hover:bg-green-700 text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center gap-1 sm:gap-1.5 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs font-medium transition-colors disabled:opacity-50"
                 >
                   {actionLoading[rental.id] === "approve" ? (
-                    <Loader2 className="h-3 w-3 md:h-4 md:w-4 animate-spin" />
+                    <Loader2 className="h-3 w-3 animate-spin" />
                   ) : (
-                    <Check className="h-3 w-3 md:h-4 md:w-4" />
+                    <Check className="h-3 w-3" />
                   )}
                   <span>Approve</span>
                 </button>
@@ -1004,12 +1007,12 @@ export default function Rentals() {
                     handleReject(rental.id);
                   }}
                   disabled={actionLoading[rental.id] === "reject"}
-                  className="inline-flex items-center space-x-1 md:space-x-2 bg-red-600 hover:bg-red-700 text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center gap-1 sm:gap-1.5 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs font-medium transition-colors disabled:opacity-50"
                 >
                   {actionLoading[rental.id] === "reject" ? (
-                    <Loader2 className="h-3 w-3 md:h-4 md:w-4 animate-spin" />
+                    <Loader2 className="h-3 w-3 animate-spin" />
                   ) : (
-                    <X className="h-3 w-3 md:h-4 md:w-4" />
+                    <X className="h-3 w-3" />
                   )}
                   <span>Reject</span>
                 </button>
@@ -1023,10 +1026,11 @@ export default function Rentals() {
                     e.stopPropagation();
                     navigate(`/admin/delivery?rentalId=${rental.id}`);
                   }}
-                  className="inline-flex items-center space-x-1 md:space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors"
+                  className="inline-flex items-center gap-1 sm:gap-1.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs font-medium transition-colors"
                 >
-                  <Truck className="h-3 w-3 md:h-4 md:w-4" />
-                  <span>Manage Logistics</span>
+                  <Truck className="h-3 w-3" />
+                  <span className="hidden xs:inline">Manage </span>
+                  <span>Logistics</span>
                 </button>
                 {rental.rental_status !== "active" &&
                   rental.shipping_status === "delivered" && (
@@ -1036,18 +1040,19 @@ export default function Rentals() {
                         handleStartRental(rental.id);
                       }}
                       disabled={actionLoading[rental.id] === "start"}
-                      className="inline-flex items-center space-x-1 md:space-x-2 bg-green-600 hover:bg-green-700 text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="inline-flex items-center gap-1 sm:gap-1.5 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs font-medium transition-colors disabled:opacity-50"
                     >
                       {actionLoading[rental.id] === "start" ? (
-                        <Loader2 className="h-3 w-3 md:h-4 md:w-4 animate-spin" />
+                        <Loader2 className="h-3 w-3 animate-spin" />
                       ) : (
-                        <Check className="h-3 w-3 md:h-4 md:w-4" />
+                        <Check className="h-3 w-3" />
                       )}
-                      <span>Activate Rental</span>
+                      <span>Activate</span>
                     </button>
                   )}
               </>
             )}
+            
             {/* Admin Proxy Actions for Temporary Bookings */}
             {isTemporaryBooking && (
               <>
@@ -1079,14 +1084,15 @@ export default function Rentals() {
                       }
                     }}
                     disabled={actionLoading[rental.id] === "received"}
-                    className="inline-flex items-center space-x-1 md:space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex items-center gap-1 sm:gap-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs font-medium transition-colors disabled:opacity-50"
                   >
                     {actionLoading[rental.id] === "received" ? (
-                      <Loader2 className="h-3 w-3 md:h-4 md:w-4 animate-spin" />
+                      <Loader2 className="h-3 w-3 animate-spin" />
                     ) : (
-                      <Check className="h-3 w-3 md:h-4 md:w-4" />
+                      <Check className="h-3 w-3" />
                     )}
-                    <span>Customer Received</span>
+                    <span className="hidden xs:inline">Customer </span>
+                    <span>Received</span>
                   </button>
                 )}
                 {rental.rental_status === "active" && (
@@ -1117,14 +1123,15 @@ export default function Rentals() {
                       }
                     }}
                     disabled={actionLoading[rental.id] === "returned"}
-                    className="inline-flex items-center space-x-1 md:space-x-2 bg-purple-600 hover:bg-purple-700 text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex items-center gap-1 sm:gap-1.5 bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs font-medium transition-colors disabled:opacity-50"
                   >
                     {actionLoading[rental.id] === "returned" ? (
-                      <Loader2 className="h-3 w-3 md:h-4 md:w-4 animate-spin" />
+                      <Loader2 className="h-3 w-3 animate-spin" />
                     ) : (
-                      <Truck className="h-3 w-3 md:h-4 md:w-4" />
+                      <Truck className="h-3 w-3" />
                     )}
-                    <span>Customer Returned</span>
+                    <span className="hidden xs:inline">Customer </span>
+                    <span>Returned</span>
                   </button>
                 )}
                 {(rental.rental_status === "confirmed" ||
@@ -1156,18 +1163,19 @@ export default function Rentals() {
                       }
                     }}
                     disabled={actionLoading[rental.id] === "delivered"}
-                    className="inline-flex items-center space-x-1 md:space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex items-center gap-1 sm:gap-1.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs font-medium transition-colors disabled:opacity-50"
                   >
                     {actionLoading[rental.id] === "delivered" ? (
-                      <Loader2 className="h-3 w-3 md:h-4 md:w-4 animate-spin" />
+                      <Loader2 className="h-3 w-3 animate-spin" />
                     ) : (
-                      <Truck className="h-3 w-3 md:h-4 md:w-4" />
+                      <Truck className="h-3 w-3" />
                     )}
                     <span>Mark Delivered</span>
                   </button>
                 )}
               </>
             )}
+            
             {rental.contract_pdf_url && (
               <button
                 onClick={(e) => {
@@ -1175,17 +1183,19 @@ export default function Rentals() {
                   viewContract(rental.id, rental.contract_pdf_url);
                 }}
                 disabled={contractViewLoading[rental.id]}
-                className="inline-flex items-center space-x-1 md:space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1 sm:gap-1.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs font-medium transition-colors disabled:opacity-50"
               >
                 {contractViewLoading[rental.id] ? (
-                  <Loader2 className="h-3 w-3 md:h-4 md:w-4 animate-spin" />
+                  <Loader2 className="h-3 w-3 animate-spin" />
                 ) : (
-                  <FileText className="h-3 w-3 md:h-4 md:w-4" />
+                  <FileText className="h-3 w-3" />
                 )}
-                <span>View Contract</span>
+                <span className="hidden sm:inline">View </span>
+                <span>Contract</span>
               </button>
             )}
-            {/* View Receipt button - show for confirmed rentals with payments */}
+            
+            {/* View Receipt button */}
             {rental.rental_status === "confirmed" && (() => {
               const initialPayment = rental.payments?.find(payment => 
                 payment.payment_type === 'rental' && !payment.extension_id
@@ -1196,26 +1206,27 @@ export default function Rentals() {
                     e.stopPropagation();
                     viewPaymentReceipt(initialPayment.id);
                   }}
-                  className="inline-flex items-center space-x-1 md:space-x-2 bg-green-600 hover:bg-green-700 text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors"
+                  className="inline-flex items-center gap-1 sm:gap-1.5 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs font-medium transition-colors"
                 >
-                  <Receipt className="h-3 w-3 md:h-4 md:w-4" />
-                  <span>View Receipt</span>
+                  <Receipt className="h-3 w-3" />
+                  <span className="hidden sm:inline">View </span>
+                  <span>Receipt</span>
                 </button>
               ) : null;
             })()}
-            {/* Transfer button for pending rentals only */}
+            
+            {/* Transfer button */}
             {rental.rental_status === "pending" && (
               <button
                 onClick={async (e) => {
                   e.stopPropagation();
                   setConflictLoading(true);
                   try {
-                    // Get available units for this camera model
                     const { data: availableUnits } = await getAvailableUnitsOfModel(
                       rental.cameras?.name,
                       rental.start_date,
                       rental.end_date,
-                      rental.id // Exclude current rental
+                      rental.id
                     );
 
                     if (!availableUnits || availableUnits.length === 0) {
@@ -1223,7 +1234,6 @@ export default function Rentals() {
                       return;
                     }
 
-                    // Set up conflict modal for transfer
                     setConflictData({
                       rental: rental,
                       conflicts: [],
@@ -1238,16 +1248,17 @@ export default function Rentals() {
                   }
                 }}
                 disabled={conflictLoading}
-                className="inline-flex items-center space-x-1 md:space-x-2 bg-yellow-600 hover:bg-yellow-700 text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1 sm:gap-1.5 bg-yellow-600 hover:bg-yellow-700 active:bg-yellow-800 text-white px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs font-medium transition-colors disabled:opacity-50"
               >
                 {conflictLoading ? (
-                  <Loader2 className="h-3 w-3 md:h-4 md:w-4 animate-spin" />
+                  <Loader2 className="h-3 w-3 animate-spin" />
                 ) : (
-                  <Truck className="h-3 w-3 md:h-4 md:w-4" />
+                  <Truck className="h-3 w-3" />
                 )}
-                <span>Transfer Unit</span>
+                <span>Transfer</span>
               </button>
             )}
+            
             {/* Remove button for cancelled rentals */}
             {rental.rental_status === "cancelled" && (
               <button
@@ -1258,61 +1269,68 @@ export default function Rentals() {
                   }
                 }}
                 disabled={actionLoading[rental.id] === "remove"}
-                className="inline-flex items-center space-x-1 md:space-x-2 bg-orange-600 hover:bg-orange-700 text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1 sm:gap-1.5 bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs font-medium transition-colors disabled:opacity-50"
               >
                 {actionLoading[rental.id] === "remove" ? (
-                  <Loader2 className="h-3 w-3 md:h-4 md:w-4 animate-spin" />
+                  <Loader2 className="h-3 w-3 animate-spin" />
                 ) : (
-                  <Trash2 className="h-3 w-3 md:h-4 md:w-4" />
+                  <Trash2 className="h-3 w-3" />
                 )}
-                <span>Remove & Free Dates</span>
+                <span className="hidden xs:inline">Remove & </span>
+                <span>Free Dates</span>
               </button>
             )}
+            
             <button
               onClick={() => handleViewDetails(rental)}
-              className="inline-flex items-center space-x-1 md:space-x-2 text-gray-300 hover:text-white text-xs md:text-sm font-medium"
+              className="inline-flex items-center gap-1 sm:gap-1.5 text-gray-300 hover:text-white active:text-gray-100 text-xs font-medium transition-colors"
             >
-              <Eye className="h-3 w-3 md:h-4 md:w-4" />
-              <span>View Details</span>
+              <Eye className="h-3 w-3" />
+              <span className="hidden xs:inline">View </span>
+              <span>Details</span>
             </button>
+            
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 setShowDeleteConfirm(rental.id);
               }}
               disabled={actionLoading[rental.id] === "delete"}
-              className="inline-flex items-center space-x-1 md:space-x-2 text-red-400 hover:text-red-300 text-xs md:text-sm font-medium ml-auto"
+              className="inline-flex items-center gap-1 sm:gap-1.5 text-red-400 hover:text-red-300 active:text-red-200 text-xs font-medium ml-auto transition-colors"
             >
               {actionLoading[rental.id] === "delete" ? (
-                <Loader2 className="h-3 w-3 md:h-4 md:w-4 animate-spin" />
+                <Loader2 className="h-3 w-3 animate-spin" />
               ) : (
-                <Trash2 className="h-3 w-3 md:h-4 md:w-4" />
+                <Trash2 className="h-3 w-3" />
               )}
               <span>Delete</span>
             </button>
           </div>
+          
+          {/* Error Messages - Compact */}
           {contractViewError[rental.id] && (
-            <div className="mt-3 p-2 md:p-3 bg-red-900/50 border border-red-700 rounded-lg">
-              <p className="text-red-300 text-xs md:text-sm">
+            <div className="mt-2 p-2 bg-red-900/50 border border-red-700 rounded-md">
+              <p className="text-red-300 text-xs">
                 {contractViewError[rental.id]}
               </p>
             </div>
           )}
-          {/* Cancellation reason display */}
+          
+          {/* Cancellation Reason - Compact */}
           {rental.rental_status === "cancelled" && rental.cancellation_reason && (
-            <div className="mt-3 p-2 md:p-3 bg-orange-900/20 border border-orange-700 rounded-lg">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="h-4 w-4 text-orange-400 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-orange-200 text-xs md:text-sm font-medium mb-1">
+            <div className="mt-2 p-2 bg-orange-900/20 border border-orange-700 rounded-md">
+              <div className="flex items-start gap-1.5">
+                <AlertCircle className="h-3.5 w-3.5 text-orange-400 flex-shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-orange-200 text-xs font-medium mb-0.5">
                     Cancellation Reason
                   </p>
-                  <p className="text-orange-300 text-xs md:text-sm leading-relaxed">
+                  <p className="text-orange-300 text-xs leading-relaxed">
                     {rental.cancellation_reason}
                   </p>
                   {rental.cancelled_by && (
-                    <p className="text-orange-400 text-xs mt-1">
-                      Cancelled by: {rental.cancelled_by === 'user' ? 'Customer' : 'Admin'}
+                    <p className="text-orange-400 text-[10px] mt-1">
+                      By: {rental.cancelled_by === 'user' ? 'Customer' : 'Admin'}
                       {rental.cancelled_at && ` on ${formatDate(rental.cancelled_at)}`}
                     </p>
                   )}
@@ -1716,25 +1734,24 @@ export default function Rentals() {
         pauseOnHover
         theme="light"
       />
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 md:py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-3 md:py-6">
+        <div className="mb-4 md:mb-6">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-1 md:mb-2">
             Rental Management
           </h1>
-          <p className="text-gray-300">
-            Manage rental applications, agreements, and customer relationships
-            efficiently.
+          <p className="text-xs sm:text-sm text-gray-300">
+            Manage rentals & customer relationships
           </p>
         </div>
-        <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 mb-6">
-          <div className="flex flex-col lg:flex-row gap-4 mb-4">
+        <div className="bg-gray-800 rounded-lg border border-gray-700 p-3 md:p-4 mb-4 md:mb-6">
+          <div className="flex flex-col lg:flex-row gap-2 md:gap-3 mb-3 md:mb-4">
             <div className="flex-1">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <input
                   type="text"
-                  placeholder="Search by customer name, email, or equipment..."
-                  className="w-full pl-10 pr-4 py-3 border border-gray-600 rounded-lg bg-gray-700 text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  placeholder="Search customer, email, equipment..."
+                  className="w-full pl-9 pr-3 py-2 md:py-2.5 text-sm border border-gray-600 rounded-lg bg-gray-700 text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
