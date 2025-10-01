@@ -379,57 +379,57 @@ export default function Landing() {
       </section>
 
       {/* Camera Collection */}
-      <section id="cameras" ref={camerasRef} className="py-16 lg:py-32 px-5 lg:px-8 bg-gradient-to-b from-white to-gray-50">
+      <section id="cameras" ref={camerasRef} className="py-12 sm:py-16 lg:py-32 px-5 lg:px-8 bg-gradient-to-b from-white to-gray-50">
         <div className="max-w-7xl mx-auto">
-          <div className={`text-center mb-16 lg:mb-24 transition-all duration-1000 ${camerasVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}>
-            <h2 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-8 leading-tight">
+          <div className={`text-center mb-12 sm:mb-16 lg:mb-24 transition-all duration-1000 ${camerasVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}>
+            <h2 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6 sm:mb-8 leading-tight px-4">
               <span className="block text-black">OUR</span>
               <span className="block text-gray-500">COLLECTION</span>
             </h2>
           </div>
 
-          <div className="space-y-16 lg:space-y-40">
+          <div className="space-y-12 sm:space-y-16 lg:space-y-40">
             {cameras.map((camera, index) => (
               <div 
                 key={camera.id} 
-                className={`grid lg:grid-cols-2 gap-10 lg:gap-20 items-center transition-all duration-1000 ${camerasVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
+                className={`grid lg:grid-cols-2 gap-6 sm:gap-10 lg:gap-20 items-center transition-all duration-1000 ${camerasVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
                 style={{ transitionDelay: `${index * 200}ms` }}
               >
                 <div className={`${index % 2 === 1 ? 'lg:order-2' : ''} relative group`}>
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-[3rem] transform rotate-1 scale-105 opacity-5 group-hover:opacity-10 transition-opacity duration-500"></div>
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-2xl sm:rounded-[3rem] transform rotate-1 scale-105 opacity-5 group-hover:opacity-10 transition-opacity duration-500"></div>
                   <img 
                     src={camera.image || "/placeholder.svg"} 
                     alt={camera.name}
-                    className="relative w-full max-w-sm lg:max-w-xl mx-auto object-contain group-hover:scale-105 transition-transform duration-700 rounded-3xl"
+                    className="relative w-full max-w-xs sm:max-w-sm lg:max-w-xl mx-auto object-contain group-hover:scale-105 transition-transform duration-700 rounded-2xl sm:rounded-3xl"
                   />
                 </div>
                 
-                <div className={`space-y-6 lg:space-y-8 ${index % 2 === 1 ? 'lg:order-1' : ''}`}>
+                <div className={`space-y-4 sm:space-y-6 lg:space-y-8 ${index % 2 === 1 ? 'lg:order-1' : ''} px-4 sm:px-0`}>
                   <div>
-                    <div className="text-xs lg:text-sm text-blue-500 font-medium mb-3 lg:mb-4 tracking-[0.15em] uppercase">
+                    <div className="text-[10px] sm:text-xs lg:text-sm text-blue-500 font-medium mb-2 sm:mb-3 lg:mb-4 tracking-[0.15em] uppercase">
                       {camera.category}
                     </div>
-                    <h3 className="text-2xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-4 lg:mb-6 leading-tight text-black">{camera.name}</h3>
-                    <p className="text-base lg:text-2xl text-gray-600 font-light mb-6 lg:mb-8 leading-relaxed">{camera.description}</p>
+                    <h3 className="text-xl sm:text-2xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-3 sm:mb-4 lg:mb-6 leading-tight text-black">{camera.name}</h3>
+                    <p className="text-sm sm:text-base lg:text-2xl text-gray-600 font-light mb-4 sm:mb-6 lg:mb-8 leading-relaxed">{camera.description}</p>
                   </div>
 
-                  <div className="bg-gray-50 border border-gray-200 p-5 lg:p-8 rounded-3xl backdrop-blur-sm">
-                    <div className="grid grid-cols-2 gap-6 lg:gap-8 mb-6 lg:mb-8">
+                  <div className="bg-gray-50 border border-gray-200 p-4 sm:p-5 lg:p-8 rounded-xl sm:rounded-2xl lg:rounded-3xl backdrop-blur-sm">
+                    <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:gap-8 mb-4 sm:mb-6 lg:mb-8">
                       <div>
-                        <div className="text-xs lg:text-sm text-gray-600 mb-2 lg:mb-3 tracking-[0.15em] font-medium">1-3 DAYS</div>
-                        <div className="text-xl lg:text-3xl font-bold text-black">₱{camera.price1to3}</div>
+                        <div className="text-[10px] sm:text-xs lg:text-sm text-gray-600 mb-1.5 sm:mb-2 lg:mb-3 tracking-[0.15em] font-medium">1-3 DAYS</div>
+                        <div className="text-lg sm:text-xl lg:text-3xl font-bold text-black">₱{camera.price1to3}</div>
                       </div>
                       <div>
-                        <div className="text-xs lg:text-sm text-gray-600 mb-2 lg:mb-3 tracking-[0.15em] font-medium">4+ DAYS</div>
-                        <div className="text-xl lg:text-3xl font-bold text-blue-500">₱{camera.price4plus}</div>
+                        <div className="text-[10px] sm:text-xs lg:text-sm text-gray-600 mb-1.5 sm:mb-2 lg:mb-3 tracking-[0.15em] font-medium">4+ DAYS</div>
+                        <div className="text-lg sm:text-xl lg:text-3xl font-bold text-blue-500">₱{camera.price4plus}</div>
                       </div>
                     </div>
 
-                    <div className="space-y-3 lg:space-y-4">
+                    <div className="space-y-2 sm:space-y-3 lg:space-y-4">
                       {camera.features.map((feature, i) => (
                         <div key={i} className="flex items-center text-black">
-                          <div className="w-2 h-2 bg-blue-500 rounded-full mr-3 lg:mr-4"></div>
-                          <span className="font-medium text-sm lg:text-base">{feature}</span>
+                          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full mr-2 sm:mr-3 lg:mr-4"></div>
+                          <span className="font-medium text-xs sm:text-sm lg:text-base">{feature}</span>
                         </div>
                       ))}
                     </div>
@@ -442,36 +442,36 @@ export default function Landing() {
       </section>
 
       {/* Process Section */}
-      <section ref={processRef} className="py-24 lg:py-32 px-5 lg:px-8 bg-white">
+      <section ref={processRef} className="py-16 sm:py-24 lg:py-32 px-5 lg:px-8 bg-white">
         <div className="max-w-7xl mx-auto">
           <div
-            className={`text-center mb-20 transition-all duration-1000 ${processVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}
+            className={`text-center mb-12 sm:mb-16 lg:mb-20 transition-all duration-1000 ${processVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}
           >
-            <h2 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-8 leading-tight">
+            <h2 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6 sm:mb-8 leading-tight px-4">
               <span className="block text-black">SIMPLE</span>
               <span className="block text-gray-500">PROCESS</span>
             </h2>
           </div>
 
           <div
-            className={`grid md:grid-cols-2 gap-12 lg:gap-16 transition-all duration-1000 delay-300 ${processVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}
+            className={`grid md:grid-cols-2 gap-6 sm:gap-8 lg:gap-12 xl:gap-16 transition-all duration-1000 delay-300 ${processVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}
           >
-            <div className="bg-gray-50 border border-gray-200 p-8 lg:p-12 rounded-3xl text-center space-y-8 hover:bg-gray-100 transition-all duration-500 hover:scale-105 hover:shadow-elegant group backdrop-blur-sm">
-              <div className="w-24 h-24 bg-black text-white flex items-center justify-center mx-auto rounded-3xl group-hover:shadow-glow transition-all duration-300">
-                <RotateCcw className="h-12 w-12" />
+            <div className="bg-gray-50 border border-gray-200 p-6 sm:p-8 lg:p-12 rounded-xl sm:rounded-2xl lg:rounded-3xl text-center space-y-5 sm:space-y-6 lg:space-y-8 hover:bg-gray-100 transition-all duration-500 hover:scale-105 hover:shadow-elegant group backdrop-blur-sm">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 bg-black text-white flex items-center justify-center mx-auto rounded-xl sm:rounded-2xl lg:rounded-3xl group-hover:shadow-glow transition-all duration-300">
+                <RotateCcw className="h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12" />
               </div>
-              <h3 className="text-2xl lg:text-4xl font-bold tracking-[0.1em] text-black">EASY RETURNS</h3>
-              <p className="text-gray-600 font-light leading-relaxed text-base lg:text-xl">
+              <h3 className="text-xl sm:text-2xl lg:text-4xl font-bold tracking-[0.1em] text-black px-4">EASY RETURNS</h3>
+              <p className="text-gray-600 font-light leading-relaxed text-sm sm:text-base lg:text-xl px-4 sm:px-0">
                 Hassle-free return process at our España, Manila location. Quick inspection and immediate confirmation.
               </p>
             </div>
 
-            <div className="bg-gray-50 border border-gray-200 p-8 lg:p-12 rounded-3xl text-center space-y-8 hover:bg-gray-100 transition-all duration-500 hover:scale-105 hover:shadow-elegant group backdrop-blur-sm">
-              <div className="w-24 h-24 bg-black text-white flex items-center justify-center mx-auto rounded-3xl group-hover:shadow-glow transition-all duration-300">
-                <CreditCard className="h-12 w-12" />
+            <div className="bg-gray-50 border border-gray-200 p-6 sm:p-8 lg:p-12 rounded-xl sm:rounded-2xl lg:rounded-3xl text-center space-y-5 sm:space-y-6 lg:space-y-8 hover:bg-gray-100 transition-all duration-500 hover:scale-105 hover:shadow-elegant group backdrop-blur-sm">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 bg-black text-white flex items-center justify-center mx-auto rounded-xl sm:rounded-2xl lg:rounded-3xl group-hover:shadow-glow transition-all duration-300">
+                <CreditCard className="h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12" />
               </div>
-              <h3 className="text-2xl lg:text-4xl font-bold tracking-[0.1em] text-black">SECURE PAYMENTS</h3>
-              <p className="text-gray-600 font-light leading-relaxed text-base lg:text-xl">
+              <h3 className="text-xl sm:text-2xl lg:text-4xl font-bold tracking-[0.1em] text-black px-4">SECURE PAYMENTS</h3>
+              <p className="text-gray-600 font-light leading-relaxed text-sm sm:text-base lg:text-xl px-4 sm:px-0">
                 Multiple payment options with bank-level security. GCash, card payments, and online banking accepted.
               </p>
             </div>
@@ -765,7 +765,6 @@ export default function Landing() {
               <div className="space-y-4 text-primary-foreground/80 font-light text-base lg:text-lg">
                 <div>Professional Grade Equipment</div>
                 <div>Flexible Rental Periods</div>
-                <div>Full Insurance Coverage</div>
               </div>
             </div>
           </div>
