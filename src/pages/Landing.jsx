@@ -15,6 +15,9 @@ import {
   Instagram,
   Facebook,
 } from "lucide-react"
+import DateFilterInput from "../components/forms/DateFilterInput"
+import { supabase } from "../lib/supabaseClient"
+import { toast } from "react-toastify"
 
 /* -------------------------------------------------------------------------- */
 /*  Mock auth hook                                                            */
@@ -157,17 +160,59 @@ export default function Landing() {
     email: "",
     phone: "",
     equipment: "",
-    rentalDates: "",
+    startDate: "",
+    endDate: "",
     additionalDetails: "",
   })
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    const subject = encodeURIComponent(`Camera Rental Inquiry from ${formData.name}`)
-    const body = encodeURIComponent(
-      `Name: ${formData.name}\nEmail: ${formData.email}\nPhone: ${formData.phone}\nEquipment Needed: ${formData.equipment}\nRental Dates: ${formData.rentalDates}\n\nAdditional Details:\n${formData.additionalDetails}`,
-    )
-    window.location.href = `mailto:paradeza@rawlensph.cam?subject=${subject}&body=${body}`
+    setIsSubmitting(true)
+
+    try {
+      // Calculate rental duration if dates are provided
+      let rentalDuration = null
+      if (formData.startDate && formData.endDate) {
+        const start = new Date(formData.startDate)
+        const end = new Date(formData.endDate)
+        rentalDuration = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1
+      }
+
+      // Call Supabase Edge Function to send email
+      const { data, error } = await supabase.functions.invoke('send-email-inquiry', {
+        body: {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          equipment: formData.equipment,
+          startDate: formData.startDate,
+          endDate: formData.endDate,
+          rentalDuration,
+          additionalDetails: formData.additionalDetails,
+        },
+      })
+
+      if (error) throw error
+
+      toast.success('Inquiry sent successfully! We\'ll get back to you soon.')
+      
+      // Reset form
+      setFormData({
+        name: "",
+        email: "",
+        phone: "",
+        equipment: "",
+        startDate: "",
+        endDate: "",
+        additionalDetails: "",
+      })
+    } catch (error) {
+      console.error('Error sending inquiry:', error)
+      toast.error('Failed to send inquiry. Please try again or contact us directly.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleInputChange = (e) => {
@@ -522,36 +567,38 @@ export default function Landing() {
                 >
                   EQUIPMENT NEEDED *
                 </label>
-                <input
-                  type="text"
+                <select
                   id="equipment"
                   name="equipment"
                   required
                   value={formData.equipment}
                   onChange={handleInputChange}
-                  className="w-full px-4 lg:px-6 py-3 lg:py-4 bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300"
-                  placeholder="e.g., Canon G7X Mark III"
-                />
+                  className="w-full px-4 lg:px-6 py-3 lg:py-4 bg-background border border-border rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300"
+                >
+                  <option value="">Select a camera</option>
+                  {cameras.map((camera) => (
+                    <option key={camera.id} value={camera.name}>
+                      {camera.name}
+                    </option>
+                  ))}
+                  <option value="Other">Other (please specify in details)</option>
+                </select>
               </div>
             </div>
 
             <div className="mb-6 lg:mb-8">
-              <label
-                htmlFor="rentalDates"
-                className="block text-sm lg:text-base font-semibold text-foreground mb-3 tracking-wide"
-              >
+              <label className="block text-sm lg:text-base font-semibold text-foreground mb-3 tracking-wide">
                 RENTAL DATES *
               </label>
-              <input
-                type="text"
-                id="rentalDates"
-                name="rentalDates"
-                required
-                value={formData.rentalDates}
-                onChange={handleInputChange}
-                className="w-full px-4 lg:px-6 py-3 lg:py-4 bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300"
-                placeholder="e.g., March 15-18, 2025"
-              />
+              <div className="[&>div]:space-y-0 [&>div]:grid [&>div]:grid-cols-1 [&>div]:sm:grid-cols-2 [&>div]:gap-6 [&>div]:lg:gap-8">
+                <DateFilterInput
+                  startDate={formData.startDate}
+                  endDate={formData.endDate}
+                  onStartDateChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
+                  onEndDateChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
+                  idPrefix="inquiry"
+                />
+              </div>
             </div>
 
             <div className="mb-8 lg:mb-10">
@@ -574,10 +621,20 @@ export default function Landing() {
 
             <button
               type="submit"
-              className="w-full bg-primary text-primary-foreground font-semibold px-8 py-4 lg:py-5 text-base lg:text-lg tracking-[0.15em] transition-all duration-300 hover:shadow-glow hover:scale-105 active:scale-95 rounded-xl flex items-center justify-center gap-3"
+              disabled={isSubmitting}
+              className="w-full bg-primary text-primary-foreground font-semibold px-8 py-4 lg:py-5 text-base lg:text-lg tracking-[0.15em] transition-all duration-300 hover:shadow-glow hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100 rounded-xl flex items-center justify-center gap-3"
             >
-              <Send className="h-5 w-5" />
-              <span>SEND INQUIRY</span>
+              {isSubmitting ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent animate-spin rounded-full"></div>
+                  <span>SENDING...</span>
+                </>
+              ) : (
+                <>
+                  <Send className="h-5 w-5" />
+                  <span>SEND INQUIRY</span>
+                </>
+              )}
             </button>
           </form>
         </div>
