@@ -483,30 +483,30 @@ export default function Landing() {
       <section ref={emailFormRef} className="py-24 lg:py-32 px-5 lg:px-8 bg-background">
         <div className="max-w-5xl mx-auto">
           <div
-            className={`text-center mb-16 transition-all duration-1000 ${emailFormVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}
+            className={`text-center mb-12 lg:mb-16 transition-all duration-1000 ${emailFormVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}
           >
-            <div className="inline-flex items-center bg-accent/10 border border-accent/20 text-accent px-4 py-2 font-semibold tracking-[0.15em] text-xs lg:text-sm mb-8 rounded-full backdrop-blur-sm">
-              <Mail className="w-4 h-4 mr-3" />
+            <div className="inline-flex items-center bg-accent/10 border border-accent/20 text-accent px-3 py-1.5 lg:px-4 lg:py-2 font-semibold tracking-[0.15em] text-[10px] sm:text-xs lg:text-sm mb-6 lg:mb-8 rounded-full backdrop-blur-sm">
+              <Mail className="w-3 h-3 lg:w-4 lg:h-4 mr-2 lg:mr-3" />
               GET IN TOUCH
             </div>
-            <h2 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-8 leading-tight">
+            <h2 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6 lg:mb-8 leading-tight px-4">
               <span className="block text-foreground">SEND US</span>
               <span className="block text-muted-foreground">AN EMAIL</span>
             </h2>
-            <p className="text-lg lg:text-2xl text-muted-foreground font-light max-w-3xl mx-auto leading-relaxed">
+            <p className="text-base sm:text-lg lg:text-2xl text-muted-foreground font-light max-w-3xl mx-auto leading-relaxed px-4">
               Fill out the form below and we'll get back to you with availability and pricing details.
             </p>
           </div>
 
           <form
             onSubmit={handleSubmit}
-            className={`bg-card border border-border p-8 lg:p-12 rounded-2xl backdrop-blur-sm shadow-elegant transition-all duration-1000 delay-300 ${emailFormVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}
+            className={`bg-card border border-border p-4 sm:p-6 lg:p-12 rounded-xl lg:rounded-2xl backdrop-blur-sm shadow-elegant transition-all duration-1000 delay-300 ${emailFormVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}
           >
-            <div className="grid md:grid-cols-2 gap-6 lg:gap-8 mb-6 lg:mb-8">
+            <div className="grid md:grid-cols-2 gap-4 sm:gap-6 lg:gap-8 mb-4 sm:mb-6 lg:mb-8">
               <div>
                 <label
                   htmlFor="name"
-                  className="block text-sm lg:text-base font-semibold text-foreground mb-3 tracking-wide"
+                  className="block text-xs sm:text-sm lg:text-base font-semibold text-foreground mb-2 lg:mb-3 tracking-wide"
                 >
                   NAME *
                 </label>
@@ -517,7 +517,7 @@ export default function Landing() {
                   required
                   value={formData.name}
                   onChange={handleInputChange}
-                  className="w-full px-4 lg:px-6 py-3 lg:py-4 bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300"
+                  className="w-full px-3 sm:px-4 lg:px-6 py-2.5 sm:py-3 lg:py-4 text-sm lg:text-base bg-background border border-border rounded-lg lg:rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300"
                   placeholder="Your full name"
                 />
               </div>
@@ -525,7 +525,7 @@ export default function Landing() {
               <div>
                 <label
                   htmlFor="email"
-                  className="block text-sm lg:text-base font-semibold text-foreground mb-3 tracking-wide"
+                  className="block text-xs sm:text-sm lg:text-base font-semibold text-foreground mb-2 lg:mb-3 tracking-wide"
                 >
                   EMAIL *
                 </label>
@@ -536,7 +536,7 @@ export default function Landing() {
                   required
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="w-full px-4 lg:px-6 py-3 lg:py-4 bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300"
+                  className="w-full px-3 sm:px-4 lg:px-6 py-2.5 sm:py-3 lg:py-4 text-sm lg:text-base bg-background border border-border rounded-lg lg:rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300"
                   placeholder="your.email@example.com"
                 />
               </div>
@@ -544,7 +544,7 @@ export default function Landing() {
               <div>
                 <label
                   htmlFor="phone"
-                  className="block text-sm lg:text-base font-semibold text-foreground mb-3 tracking-wide"
+                  className="block text-xs sm:text-sm lg:text-base font-semibold text-foreground mb-2 lg:mb-3 tracking-wide"
                 >
                   PHONE NUMBER *
                 </label>
@@ -555,7 +555,7 @@ export default function Landing() {
                   required
                   value={formData.phone}
                   onChange={handleInputChange}
-                  className="w-full px-4 lg:px-6 py-3 lg:py-4 bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300"
+                  className="w-full px-3 sm:px-4 lg:px-6 py-2.5 sm:py-3 lg:py-4 text-sm lg:text-base bg-background border border-border rounded-lg lg:rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300"
                   placeholder="+63 XXX XXX XXXX"
                 />
               </div>
@@ -563,7 +563,7 @@ export default function Landing() {
               <div>
                 <label
                   htmlFor="equipment"
-                  className="block text-sm lg:text-base font-semibold text-foreground mb-3 tracking-wide"
+                  className="block text-xs sm:text-sm lg:text-base font-semibold text-foreground mb-2 lg:mb-3 tracking-wide"
                 >
                   EQUIPMENT NEEDED *
                 </label>
@@ -573,7 +573,7 @@ export default function Landing() {
                   required
                   value={formData.equipment}
                   onChange={handleInputChange}
-                  className="w-full px-4 lg:px-6 py-3 lg:py-4 bg-background border border-border rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300"
+                  className="w-full px-3 sm:px-4 lg:px-6 py-2.5 sm:py-3 lg:py-4 text-sm lg:text-base bg-background border border-border rounded-lg lg:rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300"
                 >
                   <option value="">Select a camera</option>
                   {cameras.map((camera) => (
@@ -586,11 +586,11 @@ export default function Landing() {
               </div>
             </div>
 
-            <div className="mb-6 lg:mb-8">
-              <label className="block text-sm lg:text-base font-semibold text-foreground mb-3 tracking-wide">
+            <div className="mb-4 sm:mb-6 lg:mb-8">
+              <label className="block text-xs sm:text-sm lg:text-base font-semibold text-foreground mb-2 lg:mb-3 tracking-wide">
                 RENTAL DATES *
               </label>
-              <div className="[&>div]:space-y-0 [&>div]:grid [&>div]:grid-cols-1 [&>div]:sm:grid-cols-2 [&>div]:gap-6 [&>div]:lg:gap-8">
+              <div className="[&>div]:space-y-0 [&>div]:grid [&>div]:grid-cols-1 [&>div]:sm:grid-cols-2 [&>div]:gap-4 [&>div]:sm:gap-6 [&>div]:lg:gap-8">
                 <DateFilterInput
                   startDate={formData.startDate}
                   endDate={formData.endDate}
@@ -601,20 +601,20 @@ export default function Landing() {
               </div>
             </div>
 
-            <div className="mb-8 lg:mb-10">
+            <div className="mb-6 sm:mb-8 lg:mb-10">
               <label
                 htmlFor="additionalDetails"
-                className="block text-sm lg:text-base font-semibold text-foreground mb-3 tracking-wide"
+                className="block text-xs sm:text-sm lg:text-base font-semibold text-foreground mb-2 lg:mb-3 tracking-wide"
               >
                 ADDITIONAL DETAILS
               </label>
               <textarea
                 id="additionalDetails"
                 name="additionalDetails"
-                rows={6}
+                rows={4}
                 value={formData.additionalDetails}
                 onChange={handleInputChange}
-                className="w-full px-4 lg:px-6 py-3 lg:py-4 bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 resize-none"
+                className="w-full px-3 sm:px-4 lg:px-6 py-2.5 sm:py-3 lg:py-4 text-sm lg:text-base bg-background border border-border rounded-lg lg:rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 resize-none"
                 placeholder="Tell us more about your project, special requirements, or any questions you have..."
               />
             </div>
@@ -622,16 +622,16 @@ export default function Landing() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-primary text-primary-foreground font-semibold px-8 py-4 lg:py-5 text-base lg:text-lg tracking-[0.15em] transition-all duration-300 hover:shadow-glow hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100 rounded-xl flex items-center justify-center gap-3"
+              className="w-full bg-primary text-primary-foreground font-semibold px-6 sm:px-8 py-3 sm:py-4 lg:py-5 text-sm sm:text-base lg:text-lg tracking-[0.15em] transition-all duration-300 hover:shadow-glow hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100 rounded-lg lg:rounded-xl flex items-center justify-center gap-2 sm:gap-3"
             >
               {isSubmitting ? (
                 <>
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent animate-spin rounded-full"></div>
+                  <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white border-t-transparent animate-spin rounded-full"></div>
                   <span>SENDING...</span>
                 </>
               ) : (
                 <>
-                  <Send className="h-5 w-5" />
+                  <Send className="h-4 w-4 sm:h-5 sm:w-5" />
                   <span>SEND INQUIRY</span>
                 </>
               )}
@@ -641,29 +641,29 @@ export default function Landing() {
       </section>
 
       {/* CTA with Instagram Quick Message */}
-      <section ref={contactCtaRef} className="py-24 lg:py-32 px-5 lg:px-8 bg-gradient-surface">
+      <section ref={contactCtaRef} className="py-16 sm:py-24 lg:py-32 px-5 lg:px-8 bg-gradient-surface">
         <div className="max-w-7xl mx-auto">
           <div
-            className={`grid lg:grid-cols-2 gap-12 lg:gap-20 items-center transition-all duration-1000 ${contactCtaVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}
+            className={`grid lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-20 items-center transition-all duration-1000 ${contactCtaVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}
           >
             {/* Left: Call to Action */}
-            <div className="space-y-8 text-center lg:text-left">
-              <div className="inline-flex items-center bg-success/10 border border-success/20 text-success px-4 py-2 font-medium tracking-[0.15em] text-xs rounded-full backdrop-blur-sm">
-                <div className="w-2 h-2 bg-success rounded-full mr-3 animate-glow-pulse"></div>
+            <div className="space-y-6 sm:space-y-8 text-center lg:text-left">
+              <div className="inline-flex items-center bg-success/10 border border-success/20 text-success px-3 py-1.5 sm:px-4 sm:py-2 font-medium tracking-[0.15em] text-[10px] sm:text-xs rounded-full backdrop-blur-sm">
+                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-success rounded-full mr-2 sm:mr-3 animate-glow-pulse"></div>
                 LET'S CONNECT
               </div>
-              <h2 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-tight">
+              <h2 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-tight">
                 <span className="block text-foreground">READY TO</span>
                 <span className="block text-muted-foreground">CAPTURE MORE?</span>
               </h2>
-              <p className="text-lg lg:text-2xl text-muted-foreground font-light leading-relaxed max-w-xl mx-auto lg:mx-0">
+              <p className="text-base sm:text-lg lg:text-2xl text-muted-foreground font-light leading-relaxed max-w-xl mx-auto lg:mx-0 px-4 sm:px-0">
                 Whether you're planning a shoot, have questions about our equipment, or just want to chat about your
                 creative vision — we're here to help make it happen.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center lg:justify-start px-4 sm:px-0">
                 <button
                   onClick={() => (window.location.href = "/signup")}
-                  className="bg-primary text-primary-foreground font-semibold px-8 py-4 text-base tracking-[0.15em] transition-all duration-300 hover:shadow-glow hover:scale-105 active:scale-95 rounded-xl"
+                  className="bg-primary text-primary-foreground font-semibold px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base tracking-[0.15em] transition-all duration-300 hover:shadow-glow hover:scale-105 active:scale-95 rounded-lg sm:rounded-xl"
                 >
                   LOGIN OR SIGN UP
                 </button>
@@ -671,24 +671,24 @@ export default function Landing() {
             </div>
 
             {/* Right: Instagram Quick Message */}
-            <div className="bg-card border border-border p-8 lg:p-12 rounded-2xl backdrop-blur-sm shadow-elegant hover:shadow-glow transition-all duration-500 hover:scale-105 modern-card">
-              <div className="text-center space-y-8">
-                <div className="w-24 h-24 bg-gradient-accent flex items-center justify-center mx-auto rounded-2xl shadow-glow">
-                  <Instagram className="h-12 w-12 text-white" />
+            <div className="bg-card border border-border p-6 sm:p-8 lg:p-12 rounded-xl lg:rounded-2xl backdrop-blur-sm shadow-elegant hover:shadow-glow transition-all duration-500 hover:scale-105 modern-card">
+              <div className="text-center space-y-6 sm:space-y-8">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 bg-gradient-accent flex items-center justify-center mx-auto rounded-xl lg:rounded-2xl shadow-glow">
+                  <Instagram className="h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 text-white" />
                 </div>
-                <h3 className="text-2xl lg:text-4xl font-bold tracking-[0.1em] text-foreground">QUICK MESSAGE</h3>
-                <p className="text-muted-foreground font-light leading-relaxed text-base lg:text-xl">
+                <h3 className="text-xl sm:text-2xl lg:text-4xl font-bold tracking-[0.1em] text-foreground">QUICK MESSAGE</h3>
+                <p className="text-muted-foreground font-light leading-relaxed text-sm sm:text-base lg:text-xl px-4 sm:px-0">
                   Need a faster response? Send us a direct message on Instagram and we'll get back to you right away.
                 </p>
                 <a
                   href="https://www.instagram.com/rawlensph/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-3 bg-primary text-primary-foreground font-semibold px-8 py-4 text-base tracking-[0.15em] transition-all duration-300 hover:shadow-glow hover:scale-105 active:scale-95 rounded-xl"
+                  className="inline-flex items-center gap-2 sm:gap-3 bg-primary text-primary-foreground font-semibold px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base tracking-[0.15em] transition-all duration-300 hover:shadow-glow hover:scale-105 active:scale-95 rounded-lg sm:rounded-xl"
                 >
-                  <Instagram className="h-5 w-5" />
+                  <Instagram className="h-4 w-4 sm:h-5 sm:w-5" />
                   <span>MESSAGE US</span>
-                  <ArrowRight className="h-5 w-5" />
+                  <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5" />
                 </a>
               </div>
             </div>
@@ -697,32 +697,32 @@ export default function Landing() {
       </section>
 
       {/* Follow Us Section */}
-      <section ref={socialRef} className="py-16 lg:py-20 px-5 lg:px-8 bg-background border-t border-border">
+      <section ref={socialRef} className="py-12 sm:py-16 lg:py-20 px-5 lg:px-8 bg-background border-t border-border">
         <div className="max-w-5xl mx-auto">
           <div
             className={`text-center transition-all duration-1000 ${socialVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}
           >
-            <h3 className="text-2xl lg:text-4xl font-bold tracking-tight mb-8 text-foreground">FOLLOW US ON</h3>
-            <p className="text-base lg:text-xl text-muted-foreground font-light mb-10 leading-relaxed">
+            <h3 className="text-xl sm:text-2xl lg:text-4xl font-bold tracking-tight mb-6 sm:mb-8 text-foreground">FOLLOW US ON</h3>
+            <p className="text-sm sm:text-base lg:text-xl text-muted-foreground font-light mb-8 sm:mb-10 leading-relaxed px-4 sm:px-0">
               Stay updated with our latest gear, special offers, and creative inspiration.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 lg:gap-6 justify-center">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 lg:gap-6 justify-center px-4 sm:px-0">
               <a
                 href="https://www.instagram.com/rawlensph/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group inline-flex items-center justify-center gap-3 bg-gradient-accent text-white font-semibold px-8 py-4 text-base tracking-[0.15em] transition-all duration-300 hover:shadow-glow hover:scale-105 active:scale-95 rounded-xl"
+                className="group inline-flex items-center justify-center gap-2 sm:gap-3 bg-gradient-accent text-white font-semibold px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base tracking-[0.15em] transition-all duration-300 hover:shadow-glow hover:scale-105 active:scale-95 rounded-lg sm:rounded-xl"
               >
-                <Instagram className="h-5 w-5 group-hover:scale-110 transition-transform duration-300" />
+                <Instagram className="h-4 w-4 sm:h-5 sm:w-5 group-hover:scale-110 transition-transform duration-300" />
                 <span>INSTAGRAM</span>
               </a>
               <a
                 href="https://www.facebook.com/profile.php?id=61568426289637"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group inline-flex items-center justify-center gap-3 bg-accent text-accent-foreground font-semibold px-8 py-4 text-base tracking-[0.15em] transition-all duration-300 hover:shadow-glow hover:scale-105 active:scale-95 rounded-xl"
+                className="group inline-flex items-center justify-center gap-2 sm:gap-3 bg-accent text-accent-foreground font-semibold px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base tracking-[0.15em] transition-all duration-300 hover:shadow-glow hover:scale-105 active:scale-95 rounded-lg sm:rounded-xl"
               >
-                <Facebook className="h-5 w-5 group-hover:scale-110 transition-transform duration-300" />
+                <Facebook className="h-4 w-4 sm:h-5 sm:w-5 group-hover:scale-110 transition-transform duration-300" />
                 <span>FACEBOOK</span>
               </a>
             </div>
