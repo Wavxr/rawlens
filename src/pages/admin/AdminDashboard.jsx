@@ -126,7 +126,7 @@ export default function AdminDashboard() {
     return currentItem?.name || "Dashboard"
   }
 
-  const { theme, toggleTheme } = useThemeStore()
+  const { darkMode, toggleTheme } = useThemeStore()
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100">
@@ -213,6 +213,28 @@ export default function AdminDashboard() {
                 </div>
               ))}
             </nav>
+
+            {/* Theme Toggle Section */}
+            <div className={`border-t border-gray-800 ${sidebarCollapsed ? "px-2 py-3" : "px-3 py-3"}`}>
+              <button
+                onClick={toggleTheme}
+                className={`w-full flex items-center text-left rounded-lg hover:bg-gray-800/50 transition-colors ${
+                  sidebarCollapsed ? "px-2 py-2.5 justify-center" : "px-3 py-2"
+                }`}
+                title={sidebarCollapsed ? (darkMode ? "Switch to Light Mode" : "Switch to Dark Mode") : ""}
+              >
+                {darkMode ? (
+                  <Sun className="h-4 w-4 text-yellow-400" />
+                ) : (
+                  <Moon className="h-4 w-4 text-blue-400" />
+                )}
+                {!sidebarCollapsed && (
+                  <span className="ml-3 text-sm font-medium text-gray-400">
+                    {darkMode ? "Light Mode" : "Dark Mode"}
+                  </span>
+                )}
+              </button>
+            </div>
 
             {/* User Profile */}
             <div className={`border-t border-gray-800 ${sidebarCollapsed ? "px-2 py-3" : "px-3 py-3"}`}>

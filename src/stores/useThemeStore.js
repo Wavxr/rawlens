@@ -4,7 +4,7 @@ import { persist } from 'zustand/middleware';
 const useThemeStore = create(
   persist(
     (set) => ({
-      darkMode: false, // Default theme
+      darkMode: false, // Default to light mode
       toggleTheme: () => set((state) => {
         const newDarkMode = !state.darkMode;
         document.documentElement.classList.toggle('dark', newDarkMode);

@@ -37,12 +37,12 @@ import UserEducational from './pages/user/Educational';
 import UserProfile from './pages/user/Profile';
 
 function App() {
-  const { theme } = useThemeStore();
+  const { darkMode } = useThemeStore();
 
   // Apply theme class to the root element
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', theme === 'dark');
-  }, [theme]);
+    document.documentElement.classList.toggle('dark', darkMode);
+  }, [darkMode]);
 
   return (
     <div className="App">
