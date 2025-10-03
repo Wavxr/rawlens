@@ -1,4 +1,10 @@
 import { supabase } from "../lib/supabaseClient";
+import { uploadFile, objectPath, getSignedUrl, deleteFile } from "./storageService";
+import { createAdminBookingPayment } from "./paymentService";
+
+const CONTRACTS_BUCKET = 'contracts';
+const RECEIPTS_BUCKET = 'payment-receipts';
+const ADMIN_BOOKING_FOLDER = 'admin-bookings';
 
 // --- Constants ---
 const BOOKING_SELECT_QUERY = `
@@ -34,6 +40,243 @@ const BOOKING_SELECT_QUERY = `
 `;
 
 // --- Helper Functions ---
+
+function buildAdminStoragePath(rentalId, type, ext, options = {}) {
+  const composedType = `${ADMIN_BOOKING_FOLDER}/${type}`;
+  return objectPath(rentalId, composedType, ext, options);
+}
+
+async function getActingAdminId() {
+  const { data, error } = await supabase.auth.getUser();
+  if (error) throw error;
+  const userId = data?.user?.id;
+  if (!userId) {
+    throw new Error('Unable to determine current admin user. Please sign in again.');
+  }
+  return userId;
+}
+
+function isStoragePath(path) {
+  return typeof path === 'string' && !path.startsWith('http');
+}
+
+export async function uploadAdminContract(rentalId, file) {
+  if (!rentalId) throw new Error('Rental ID is required.');
+  if (!file) throw new Error('No file provided for upload.');
+  if (file.type && file.type !== 'application/pdf') {
+    throw new Error('Contract must be a PDF file.');
+  }
+
+  const storageKey = buildAdminStoragePath(rentalId, 'contract', 'pdf', { versioned: false });
+
+  await uploadFile(CONTRACTS_BUCKET, storageKey, file);
+
+  const { error: updateError } = await supabase
+    .from('rentals')
+    .update({ contract_pdf_url: storageKey })
+    .eq('id', rentalId);
+
+  if (updateError) throw updateError;
+
+  const signedUrl = await getSignedUrl(CONTRACTS_BUCKET, storageKey, { expiresIn: 3600 });
+
+  return {
+    storagePath: storageKey,
+    signedUrl
+  };
+}
+
+export async function uploadAdminPaymentReceipt(rentalId, file) {
+  if (!rentalId) throw new Error('Rental ID is required.');
+  if (!file) throw new Error('No file provided for upload.');
+  if (!file.type?.startsWith('image/')) {
+    throw new Error('Payment receipt must be an image file.');
+  }
+
+  const ext = file.name?.split('.').pop()?.toLowerCase() || 'jpg';
+  const storageKey = buildAdminStoragePath(rentalId, 'receipt', ext);
+
+  await uploadFile(RECEIPTS_BUCKET, storageKey, file);
+
+  const signedUrl = await getSignedUrl(RECEIPTS_BUCKET, storageKey, { expiresIn: 3600 });
+
+  const adminId = await getActingAdminId();
+
+  const { data: rental, error: rentalError } = await supabase
+    .from('rentals')
+    .select('total_price')
+    .eq('id', rentalId)
+    .single();
+
+  if (rentalError) throw rentalError;
+
+  const amount = Number(rental?.total_price) || 0;
+
+  const { data: existingPayment } = await supabase
+    .from('payments')
+    .select('id')
+    .eq('rental_id', rentalId)
+    .eq('payment_type', 'rental')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existingPayment?.id) {
+    const { error: updatePaymentError } = await supabase
+      .from('payments')
+      .update({
+        payment_receipt_url: signedUrl,
+        payment_reference: storageKey,
+        user_id: adminId,
+        amount,
+        payment_status: 'submitted'
+      })
+      .eq('id', existingPayment.id);
+
+    if (updatePaymentError) throw updatePaymentError;
+
+    return {
+      storagePath: storageKey,
+      signedUrl,
+      paymentId: existingPayment.id
+    };
+  }
+
+  const payment = await createAdminBookingPayment({
+    rentalId,
+    amount,
+    receiptUrl: signedUrl,
+    receiptPath: storageKey,
+    createdBy: adminId
+  });
+
+  return {
+    storagePath: storageKey,
+    signedUrl,
+    paymentId: payment.id
+  };
+}
+
+export async function deleteAdminDocument(rentalId, documentType, paymentId = null) {
+  if (!rentalId) throw new Error('Rental ID is required.');
+
+  if (documentType === 'contract') {
+    const { data: rental, error: rentalError } = await supabase
+      .from('rentals')
+      .select('contract_pdf_url')
+      .eq('id', rentalId)
+      .single();
+
+    if (rentalError) throw rentalError;
+    if (!rental?.contract_pdf_url) {
+      throw new Error('No contract found for this booking.');
+    }
+
+    await deleteFile(CONTRACTS_BUCKET, rental.contract_pdf_url);
+
+    const { error: updateError } = await supabase
+      .from('rentals')
+      .update({ contract_pdf_url: null })
+      .eq('id', rentalId);
+
+    if (updateError) throw updateError;
+    return true;
+  }
+
+  if (documentType === 'receipt') {
+    let paymentRecord = null;
+
+    if (paymentId) {
+      const { data } = await supabase
+        .from('payments')
+        .select('id, payment_reference')
+        .eq('id', paymentId)
+        .maybeSingle();
+      paymentRecord = data;
+    }
+
+    if (!paymentRecord) {
+      const { data } = await supabase
+        .from('payments')
+        .select('id, payment_reference')
+        .eq('rental_id', rentalId)
+        .eq('payment_type', 'rental')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      paymentRecord = data;
+    }
+
+    if (!paymentRecord?.payment_reference) {
+      throw new Error('No payment receipt found for this booking.');
+    }
+
+    await deleteFile(RECEIPTS_BUCKET, paymentRecord.payment_reference);
+
+    const { error: updatePaymentError } = await supabase
+      .from('payments')
+      .update({
+        payment_receipt_url: null,
+        payment_reference: null,
+        payment_status: 'pending'
+      })
+      .eq('id', paymentRecord.id);
+
+    if (updatePaymentError) throw updatePaymentError;
+
+    return true;
+  }
+
+  throw new Error('Unsupported document type.');
+}
+
+export async function getAdminDocumentUrls(rentalId) {
+  if (!rentalId) throw new Error('Rental ID is required.');
+
+  const result = { contract: null, receipt: null };
+
+  const { data: rental, error: rentalError } = await supabase
+    .from('rentals')
+    .select('contract_pdf_url')
+    .eq('id', rentalId)
+    .single();
+
+  if (rentalError) throw rentalError;
+
+  if (rental?.contract_pdf_url) {
+    const signedUrl = await getSignedUrl(CONTRACTS_BUCKET, rental.contract_pdf_url, { expiresIn: 3600 });
+    result.contract = {
+      signedUrl,
+      storagePath: rental.contract_pdf_url
+    };
+  }
+
+  const { data: payment } = await supabase
+    .from('payments')
+    .select('id, payment_receipt_url, payment_reference')
+    .eq('rental_id', rentalId)
+    .eq('payment_type', 'rental')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (payment) {
+    const storagePath = payment.payment_reference || (isStoragePath(payment.payment_receipt_url) ? payment.payment_receipt_url : null);
+    let signedUrl = payment.payment_receipt_url;
+
+    if (storagePath) {
+      signedUrl = await getSignedUrl(RECEIPTS_BUCKET, storagePath, { expiresIn: 3600 });
+    }
+
+    result.receipt = {
+      signedUrl: signedUrl || null,
+      storagePath,
+      paymentId: payment.id
+    };
+  }
+
+  return result;
+}
 
 /**
  * Calculate rental duration in days (inclusive)
@@ -105,7 +348,7 @@ export async function calculateQuickBookingPrice(cameraId, startDate, endDate) {
 /**
  * Create a new booking (confirmed or potential)
  */
-export async function createQuickBooking(bookingData) {
+export async function createQuickBooking(bookingData, files = {}) {
   try {
     const {
       cameraId,
@@ -114,9 +357,9 @@ export async function createQuickBooking(bookingData) {
       customerName,
       customerContact,
       customerEmail,
-      bookingType, // 'confirmed' or 'potential'
-      contractPdfUrl
+      bookingType
     } = bookingData;
+    const { contractFile = null, receiptFile = null } = files;
 
     // Validate required fields
     if (!cameraId || !startDate || !endDate || !customerName || !customerContact) {
@@ -135,7 +378,12 @@ export async function createQuickBooking(bookingData) {
     const pricingInfo = await calculateQuickBookingPrice(cameraId, startDate, endDate);
 
     // Determine booking status based on type
-    const rentalStatus = bookingType === 'confirmed' ? 'confirmed' : 'pending';
+    let rentalStatus = 'pending';
+    if (bookingType === 'confirmed') {
+      rentalStatus = 'confirmed';
+    } else if (bookingType === 'completed') {
+      rentalStatus = 'completed';
+    }
     const bookingTypeValue = 'temporary'; // All admin-created bookings are temporary
 
     // Create booking record
@@ -153,7 +401,7 @@ export async function createQuickBooking(bookingData) {
         customer_contact: customerContact.trim(),
         customer_email: customerEmail?.trim() || null,
         booking_type: bookingTypeValue,
-        contract_pdf_url: contractPdfUrl || null
+        contract_pdf_url: null
       })
       .select(BOOKING_SELECT_QUERY)
       .single();
@@ -162,7 +410,35 @@ export async function createQuickBooking(bookingData) {
       throw new Error(`Failed to create booking: ${error.message}`);
     }
 
-    return { success: true, data };
+    const warnings = [];
+
+    if (contractFile) {
+      try {
+        await uploadAdminContract(data.id, contractFile);
+      } catch (contractError) {
+        console.error('Contract upload error:', contractError);
+        warnings.push(contractError.message || 'Contract upload failed.');
+      }
+    }
+
+    if (receiptFile) {
+      try {
+        await uploadAdminPaymentReceipt(data.id, receiptFile);
+      } catch (receiptError) {
+        console.error('Receipt upload error:', receiptError);
+        warnings.push(receiptError.message || 'Payment receipt upload failed.');
+      }
+    }
+
+    const { data: refreshedBooking, error: refreshError } = await supabase
+      .from('rentals')
+      .select(BOOKING_SELECT_QUERY)
+      .eq('id', data.id)
+      .single();
+
+    const bookingResult = refreshError ? data : refreshedBooking;
+
+    return { success: true, data: bookingResult, warnings };
   } catch (error) {
     console.error('Error creating quick booking:', error);
     return { success: false, error: error.message };

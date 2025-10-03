@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Camera, Calendar, User, Phone, Mail, DollarSign, Upload } from 'lucide-react';
+import { X, Camera, Calendar, User, Phone, Mail, DollarSign, AlertTriangle } from 'lucide-react';
 import { createQuickBooking, calculateQuickBookingPrice } from '../../services/bookingService';
+import FileUploadZone from './FileUploadZone';
 
 const CreateBookingModal = ({
   open,
@@ -18,13 +19,19 @@ const CreateBookingModal = ({
     customerName: '',
     customerContact: '',
     customerEmail: '',
-    bookingType: 'confirmed', // 'confirmed' or 'potential'
-    contractFile: null
+    bookingType: 'confirmed'
   });
 
   const [pricing, setPricing] = useState(null);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [contractFile, setContractFile] = useState(null);
+  const [receiptFile, setReceiptFile] = useState(null);
+  const [receiptPreview, setReceiptPreview] = useState(null);
+  const [uploadErrors, setUploadErrors] = useState({ contract: '', receipt: '' });
+  const [submissionWarnings, setSubmissionWarnings] = useState([]);
+  const [submitted, setSubmitted] = useState(false);
+  const [bookingTypeTouched, setBookingTypeTouched] = useState(false);
 
   // Initialize form with preselected values
   useEffect(() => {
@@ -36,11 +43,17 @@ const CreateBookingModal = ({
         customerName: '',
         customerContact: '',
         customerEmail: '',
-        bookingType: 'confirmed',
-        contractFile: null
+        bookingType: 'confirmed'
       });
       setPricing(null);
       setErrors({});
+      setContractFile(null);
+      setReceiptFile(null);
+      setReceiptPreview(null);
+      setUploadErrors({ contract: '', receipt: '' });
+      setSubmissionWarnings([]);
+      setSubmitted(false);
+      setBookingTypeTouched(false);
     }
   }, [open, preselectedCamera, preselectedDateRange]);
 
@@ -52,6 +65,53 @@ const CreateBookingModal = ({
       setPricing(null);
     }
   }, [formData.cameraId, formData.startDate, formData.endDate]);
+
+  // Auto-select completed status when both dates are in the past (unless manually overridden)
+  useEffect(() => {
+    if (!open || bookingTypeTouched) return;
+    if (!formData.startDate || !formData.endDate) return;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const start = new Date(formData.startDate);
+    const end = new Date(formData.endDate);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
+
+    if (start < today && end < today) {
+      setFormData(prev => {
+        if (prev.bookingType === 'completed') {
+          return prev;
+        }
+        return { ...prev, bookingType: 'completed' };
+      });
+    }
+  }, [formData.startDate, formData.endDate, open, bookingTypeTouched]);
+
+  useEffect(() => {
+    if (!receiptFile) {
+      setReceiptPreview(prev => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+      return;
+    }
+
+    if (receiptFile.type?.startsWith('image/')) {
+      const previewUrl = URL.createObjectURL(receiptFile);
+      setReceiptPreview(prev => {
+        if (prev) URL.revokeObjectURL(prev);
+        return previewUrl;
+      });
+      return () => URL.revokeObjectURL(previewUrl);
+    }
+
+    setReceiptPreview(prev => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+  }, [receiptFile]);
 
   const calculatePricing = async () => {
     try {
@@ -92,8 +152,13 @@ const CreateBookingModal = ({
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    if (submitted) {
+      return;
+    }
+
     if (!validateForm()) return;
 
+    setSubmissionWarnings([]);
     setLoading(true);
     try {
       const result = await createQuickBooking({
@@ -103,13 +168,21 @@ const CreateBookingModal = ({
         customerName: formData.customerName,
         customerContact: formData.customerContact,
         customerEmail: formData.customerEmail || null,
-        bookingType: formData.bookingType,
-        contractPdfUrl: null // TODO: Implement file upload
+        bookingType: formData.bookingType
+      }, {
+        contractFile,
+        receiptFile
       });
 
       if (result.success) {
-        onSuccess();
-        onClose();
+        setSubmitted(true);
+        if (result.warnings?.length) {
+          setSubmissionWarnings(result.warnings);
+          onSuccess();
+        } else {
+          onSuccess();
+          onClose();
+        }
       } else {
         setErrors({ submit: result.error });
       }
@@ -130,6 +203,63 @@ const CreateBookingModal = ({
     }
   };
 
+  const handleBookingTypeSelect = (value) => {
+    setBookingTypeTouched(true);
+    handleInputChange('bookingType', value);
+  };
+
+  const handleContractSelect = (file, validationError) => {
+    if (validationError) {
+      setUploadErrors(prev => ({ ...prev, contract: validationError.message }));
+      setContractFile(null);
+      return;
+    }
+
+    if (file && file.type !== 'application/pdf') {
+      setUploadErrors(prev => ({ ...prev, contract: 'Contract must be a PDF file.' }));
+      setContractFile(null);
+      return;
+    }
+
+    setUploadErrors(prev => ({ ...prev, contract: '' }));
+    setContractFile(file || null);
+  };
+
+  const handleReceiptSelect = (file, validationError) => {
+    if (validationError) {
+      setUploadErrors(prev => ({ ...prev, receipt: validationError.message }));
+      setReceiptFile(null);
+      return;
+    }
+
+    if (file && !file.type?.startsWith('image/')) {
+      setUploadErrors(prev => ({ ...prev, receipt: 'Receipt must be an image file.' }));
+      setReceiptFile(null);
+      return;
+    }
+
+    setUploadErrors(prev => ({ ...prev, receipt: '' }));
+    setReceiptFile(file || null);
+  };
+
+  const clearReceipt = () => {
+    setReceiptFile(null);
+    setUploadErrors(prev => ({ ...prev, receipt: '' }));
+  };
+
+  const clearContract = () => {
+    setContractFile(null);
+    setUploadErrors(prev => ({ ...prev, contract: '' }));
+  };
+
+  const submitLabelMap = {
+    confirmed: 'Create Confirmed Booking',
+    potential: 'Create Potential Booking',
+    completed: 'Save Completed Booking'
+  };
+
+  const submitLabel = submitLabelMap[formData.bookingType] || 'Create Booking';
+
   if (!open) return null;
 
   // Theme classes
@@ -142,6 +272,8 @@ const CreateBookingModal = ({
   const inputText = isDarkMode ? 'text-gray-100' : 'text-slate-900';
   const labelColor = isDarkMode ? 'text-gray-300' : 'text-slate-700';
   const errorColor = isDarkMode ? 'text-red-400' : 'text-red-600';
+  const sectionBg = isDarkMode ? 'bg-gray-800' : 'bg-slate-50';
+  const sectionBorder = isDarkMode ? 'border-gray-600' : 'border-slate-200';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -300,7 +432,7 @@ const CreateBookingModal = ({
                     type="radio"
                     value="confirmed"
                     checked={formData.bookingType === 'confirmed'}
-                    onChange={(e) => handleInputChange('bookingType', e.target.value)}
+                    onChange={(e) => handleBookingTypeSelect(e.target.value)}
                     className="mr-2"
                   />
                   <span className={textColor}>Confirmed</span>
@@ -310,25 +442,59 @@ const CreateBookingModal = ({
                     type="radio"
                     value="potential"
                     checked={formData.bookingType === 'potential'}
-                    onChange={(e) => handleInputChange('bookingType', e.target.value)}
+                    onChange={(e) => handleBookingTypeSelect(e.target.value)}
                     className="mr-2"
                   />
                   <span className={textColor}>Potential</span>
                 </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    value="completed"
+                    checked={formData.bookingType === 'completed'}
+                    onChange={(e) => handleBookingTypeSelect(e.target.value)}
+                    className="mr-2"
+                  />
+                  <span className={textColor}>Completed</span>
+                </label>
               </div>
             </div>
 
-            {/* Contract Upload (TODO) */}
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${labelColor}`}>
-                <Upload className="w-4 h-4 inline mr-2" />
-                Contract (Optional)
-              </label>
-              <div className={`border-2 border-dashed rounded-lg p-6 text-center ${
-                isDarkMode ? 'border-gray-600 bg-gray-800' : 'border-slate-300 bg-slate-50'
-              }`}>
-                <Upload className={`w-8 h-8 mx-auto mb-2 ${secondaryTextColor}`} />
-                <p className={secondaryTextColor}>Contract upload coming soon</p>
+            {/* Document Uploads */}
+            <div className={`p-4 rounded-lg border ${sectionBg} ${sectionBorder}`}>
+              <h4 className={`text-lg font-medium mb-4 ${textColor}`}>Documents (Optional)</h4>
+              <div className="space-y-4">
+                <FileUploadZone
+                  label="Contract (PDF)"
+                  accept="application/pdf"
+                  maxSize={5}
+                  file={contractFile}
+                  preview={null}
+                  onFileSelect={handleContractSelect}
+                  onFileRemove={clearContract}
+                  error={uploadErrors.contract}
+                  disabled={loading || submitted}
+                  isDarkMode={isDarkMode}
+                  helperText="Upload a signed contract in PDF format."
+                />
+
+                <FileUploadZone
+                  label="Payment Receipt (Image)"
+                  accept="image/*"
+                  maxSize={3}
+                  file={receiptFile}
+                  preview={receiptPreview}
+                  onFileSelect={handleReceiptSelect}
+                  onFileRemove={clearReceipt}
+                  error={uploadErrors.receipt}
+                  disabled={loading || submitted}
+                  isDarkMode={isDarkMode}
+                  helperText="Upload a receipt image (JPG or PNG)."
+                />
+
+                <p className={`text-xs ${secondaryTextColor}`}>
+                  Contracts and payment receipts are optional. You can add or replace them later from the booking details.
+                </p>
               </div>
             </div>
 
@@ -336,6 +502,18 @@ const CreateBookingModal = ({
             {errors.submit && (
               <div className={`p-3 rounded border ${isDarkMode ? 'bg-red-900/30 border-red-800 text-red-300' : 'bg-red-50 border-red-200 text-red-700'}`}>
                 {errors.submit}
+              </div>
+            )}
+
+            {submissionWarnings.length > 0 && (
+              <div className={`p-3 rounded border flex gap-3 items-start ${isDarkMode ? 'bg-amber-900/30 border-amber-700 text-amber-200' : 'bg-amber-50 border-amber-200 text-amber-700'}`}>
+                <AlertTriangle className="w-5 h-5 mt-0.5 shrink-0" />
+                <div className="space-y-1 text-sm">
+                  {submissionWarnings.map((warning, index) => (
+                    <p key={`warning-${index}`}>{warning}</p>
+                  ))}
+                  <p className="text-xs opacity-80">The booking was created successfully. You can retry uploads from the booking details panel.</p>
+                </div>
               </div>
             )}
           </div>
@@ -353,10 +531,10 @@ const CreateBookingModal = ({
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || submitted}
               className={`flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition`}
             >
-              {loading ? 'Creating...' : `Create ${formData.bookingType === 'confirmed' ? 'Confirmed' : 'Potential'} Booking`}
+              {loading ? 'Creating...' : submitLabel}
             </button>
           </div>
         </form>

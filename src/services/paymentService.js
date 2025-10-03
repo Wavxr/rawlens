@@ -24,6 +24,30 @@ export async function createPayment({ rentalId, extensionId = null, userId, amou
   return data;
 }
 
+export async function createAdminBookingPayment({ rentalId, amount = 0, receiptUrl = null, receiptPath = null, createdBy, paymentMethod = 'admin-record' }) {
+  if (!rentalId) throw new Error('Rental ID is required.');
+  if (!createdBy) throw new Error('Admin user ID is required.');
+
+  const { data, error } = await supabase
+    .from('payments')
+    .insert({
+      rental_id: rentalId,
+      extension_id: null,
+      user_id: createdBy,
+      amount,
+      payment_type: 'rental',
+      payment_method: paymentMethod,
+      payment_status: receiptUrl ? 'submitted' : 'pending',
+      payment_receipt_url: receiptUrl,
+      payment_reference: receiptPath || null
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
 
 // Get payment details by ID
 export async function getPaymentById(paymentId) {

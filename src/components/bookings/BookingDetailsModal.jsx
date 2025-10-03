@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { X, ExternalLink, CheckCircle, Package, Calendar, User, Phone, Mail, DollarSign, FileText, Clock } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { X, ExternalLink, CheckCircle, Package, Calendar, User, Phone, Mail, DollarSign, FileText, Clock, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { adminConfirmReceived, adminConfirmReturned, adminMarkDelivered } from '../../services/bookingService';
+import { adminConfirmReceived, adminConfirmReturned, adminMarkDelivered, getAdminDocumentUrls } from '../../services/bookingService';
 import { checkExtensionEligibility } from '../../services/extensionService';
 import useExtensionStore from '../../stores/extensionStore';
+import DocumentUploadModal from './DocumentUploadModal';
 
 const StatusBadge = ({ status, isDarkMode }) => {
   const getStatusStyles = () => {
@@ -50,6 +51,10 @@ const BookingDetailsModal = ({
   const [loading, setLoading] = useState(false);
   const [canExtend, setCanExtend] = useState(false);
   const [extensionCheckLoading, setExtensionCheckLoading] = useState(false);
+  const [documents, setDocuments] = useState({ contract: null, receipt: null });
+  const [documentsLoading, setDocumentsLoading] = useState(false);
+  const [documentsError, setDocumentsError] = useState('');
+  const [documentModal, setDocumentModal] = useState({ open: false, type: 'contract' });
   
   const { getExtensionsByRentalId } = useExtensionStore();
 
@@ -71,6 +76,28 @@ const BookingDetailsModal = ({
       setExtensionCheckLoading(false);
     }
   };
+
+  const loadDocuments = useCallback(async () => {
+    if (!booking?.id) return;
+    setDocumentsLoading(true);
+    setDocumentsError('');
+    try {
+      const result = await getAdminDocumentUrls(booking.id);
+      setDocuments(result || { contract: null, receipt: null });
+    } catch (error) {
+      console.error('Failed to load booking documents:', error);
+      setDocuments({ contract: null, receipt: null });
+      setDocumentsError(error.message || 'Failed to load documents.');
+    } finally {
+      setDocumentsLoading(false);
+    }
+  }, [booking?.id]);
+
+  useEffect(() => {
+    if (open) {
+      loadDocuments();
+    }
+  }, [open, loadDocuments]);
 
   if (!open || !booking) return null;
 
@@ -147,6 +174,25 @@ const BookingDetailsModal = ({
       navigate("/admin/delivery");
     }
     onClose();
+  };
+
+  const openDocumentModal = (type) => {
+    setDocumentModal({ open: true, type });
+  };
+
+  const closeDocumentModal = () => {
+    setDocumentModal({ open: false, type: 'contract' });
+  };
+
+  const handleDocumentSuccess = () => {
+    loadDocuments();
+  };
+
+  const handleViewDocument = (type) => {
+    const doc = type === 'contract' ? documents.contract : documents.receipt;
+    if (doc?.signedUrl) {
+      window.open(doc.signedUrl, '_blank', 'noopener,noreferrer');
+    }
   };
 
   // Format dates
@@ -303,25 +349,85 @@ const BookingDetailsModal = ({
           )}
 
           {/* Contract Information */}
-          {booking.contract_pdf_url && (
-            <div className={`p-4 rounded-lg ${sectionBg}`}>
-              <h4 className={`font-medium mb-4 ${textColor}`}>
-                <FileText className="w-4 h-4 inline mr-2" />
-                Contract
-              </h4>
-              
-              <a
-                href={booking.contract_pdf_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700"
-              >
-                <FileText className="w-4 h-4" />
-                View Contract PDF
-                <ExternalLink className="w-3 h-3" />
-              </a>
-            </div>
-          )}
+          <div className={`p-4 rounded-lg ${sectionBg}`}>
+            <h4 className={`font-medium mb-4 ${textColor}`}>
+              <FileText className="w-4 h-4 inline mr-2" />
+              Documents
+            </h4>
+
+            {documentsError && (
+              <p className={`text-sm mb-3 ${isDarkMode ? 'text-red-300' : 'text-red-600'}`}>{documentsError}</p>
+            )}
+
+            {documentsLoading ? (
+              <div className="flex items-center gap-2 text-sm text-gray-400">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Loading documents...
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className={`flex items-center justify-between p-3 rounded ${isDarkMode ? 'bg-gray-800/80' : 'bg-slate-100'}`}>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-9 h-9 flex items-center justify-center rounded ${isDarkMode ? 'bg-gray-700' : 'bg-white'}`}>
+                      <FileText className={`w-4 h-4 ${secondaryTextColor}`} />
+                    </div>
+                    <div>
+                      <p className={`text-sm font-medium ${textColor}`}>Contract</p>
+                      <p className={`text-xs ${secondaryTextColor}`}>
+                        {documents.contract?.storagePath ? 'Contract uploaded' : 'No contract uploaded yet'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {documents.contract?.signedUrl && (
+                      <button
+                        onClick={() => handleViewDocument('contract')}
+                        className="px-3 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700"
+                      >
+                        View
+                      </button>
+                    )}
+                    <button
+                      onClick={() => openDocumentModal('contract')}
+                      className={`px-3 py-1.5 text-xs rounded ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600 text-gray-100' : 'bg-white border border-slate-200 hover:bg-slate-100 text-slate-700'}`}
+                    >
+                      {documents.contract?.storagePath ? 'Replace' : 'Upload'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className={`flex items-center justify-between p-3 rounded ${isDarkMode ? 'bg-gray-800/80' : 'bg-slate-100'}`}>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-9 h-9 flex items-center justify-center rounded ${isDarkMode ? 'bg-gray-700' : 'bg-white'}`}>
+                      <ImageIcon className={`w-4 h-4 ${secondaryTextColor}`} />
+                    </div>
+                    <div>
+                      <p className={`text-sm font-medium ${textColor}`}>Payment Receipt</p>
+                      <p className={`text-xs ${secondaryTextColor}`}>
+                        {documents.receipt?.storagePath ? 'Receipt uploaded' : 'No receipt uploaded yet'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {documents.receipt?.signedUrl && (
+                      <button
+                        onClick={() => handleViewDocument('receipt')}
+                        className="px-3 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700"
+                      >
+                        View
+                      </button>
+                    )}
+                    <button
+                      onClick={() => openDocumentModal('receipt')}
+                      className={`px-3 py-1.5 text-xs rounded ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600 text-gray-100' : 'bg-white border border-slate-200 hover:bg-slate-100 text-slate-700'}`}
+                    >
+                      {documents.receipt?.storagePath ? 'Replace' : 'Upload'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Extension History */}
           {rentalExtensions.length > 0 && (
@@ -455,6 +561,15 @@ const BookingDetailsModal = ({
           </div>
         </div>
       </div>
+
+      <DocumentUploadModal
+        isOpen={documentModal.open}
+        onClose={closeDocumentModal}
+        rentalId={booking.id}
+        documentType={documentModal.type}
+        onSuccess={handleDocumentSuccess}
+        isDarkMode={isDarkMode}
+      />
     </div>
   );
 };
