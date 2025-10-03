@@ -1,4 +1,5 @@
-import { supabase } from "../lib/supabaseClient";
+import { supabase } from '../lib/supabaseClient';
+import { deleteAdminDocument } from './bookingService';
 import { adminCreateInitialRentalPayment } from "./paymentService";
 
 // Reusable query for fetching detailed rental information
@@ -61,7 +62,7 @@ export async function calculateTotalPrice(cameraId, startDate, endDate) {
 
 // Check if a specific camera is available for a given date range.
 export async function checkCameraAvailability(cameraId, startDate, endDate) {
-  try {
+try {
     const { data: isAvailable, error } = await supabase.rpc('check_camera_availability', {
       p_camera_id: cameraId,
       p_start_date: startDate,
@@ -697,12 +698,29 @@ export async function adminCancelRental(rentalId) {
   });
 }
 
-// Admin force deletes a rental and all related records (payments, extensions)
+// Admin force deletes a rental and all related records (payments, extensions, and documents)
 export async function adminForceDeleteRental(rentalId) {
   try {
-    await supabase.from("payments").delete().eq("rental_id", rentalId);
-    await supabase.from("rental_extensions").delete().eq("rental_id", rentalId);
+    try {
+      await deleteAdminDocument(rentalId, 'contract');
+    } catch (error) {
+      if (!error.message.includes('No contract found')) {
+        console.warn(`Could not delete contract for rental ${rentalId}:`, error.message);
+      }
+    }
+    
+    try {
+      await deleteAdminDocument(rentalId, 'receipt');
+    } catch (error) {
+      if (!error.message.includes('No payment receipt found')) {
+        console.warn(`Could not delete receipt for rental ${rentalId}:`, error.message);
+      }
+    }
 
+    // Delete database records
+    await supabase.from('payments').delete().eq('rental_id', rentalId);
+    await supabase.from('rental_extensions').delete().eq('rental_id', rentalId);
+    
     const { error } = await supabase.from("rentals").delete().eq("id", rentalId);
     if (error) throw error;
 
