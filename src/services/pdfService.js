@@ -1,6 +1,7 @@
 // services/pdfService.js
 import { PDFDocument, rgb } from 'pdf-lib';
 import { supabase } from '../lib/supabaseClient';
+import { objectPath, uploadFile } from './storageService';
 
 // Fetches the base PDF contract template from the public directory
 async function fetchContractTemplate() {
@@ -104,27 +105,26 @@ function dataURLtoUint8Array(dataUrl) {
 }
 
 // Uploads a generated PDF byte array to Supabase Storage under the user's directory
-export async function uploadContractPdf(pdfBytes, fileName) {
+export async function uploadContractPdf(pdfBytes, rentalId) {
   try {
+    if (!rentalId) throw new Error("rentalId is required to upload contract");
+
+    // Ensure user is authenticated (for security / RLS context)
     const { data: authData, error: authError } = await supabase.auth.getUser();
-    const user = authData?.user;
-    if (authError || !user) {
+    if (authError || !authData?.user) {
       throw new Error("Authentication error. Please log in.");
     }
 
-    const filePath = `users/${user.id}/${fileName}`;
+  // Build a standardized, versioned path: users/<rentalId>/<userId>/contract-<ts>.pdf
+  const userId = authData.user.id;
+  const path = objectPath(`users/${rentalId}/${userId}`, 'contract', 'pdf');
 
-    const { data: uploadData, error } = await supabase.storage
-      .from('contracts')
-      .upload(filePath, pdfBytes, {
-        contentType: 'application/pdf',
-        upsert: false
-      });
+    // Convert raw pdf bytes (Uint8Array) to a Blob so storage helper can infer contentType
+    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
 
-    if (error) {
-      throw new Error(`Failed to upload contract: ${error.message}`);
-    }
-    return { success: true, filePath: filePath };
+    await uploadFile('contracts', path, blob);
+
+    return { success: true, filePath: path };
   } catch (error) {
     throw new Error(`Contract upload failed: ${error.message}`);
   }

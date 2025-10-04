@@ -78,8 +78,7 @@ const useRentalSubmission = (user) => {
           };
 
           const pdfBytes = await generateSignedContractPdf(signatureDataUrl, rentalDetails);
-          const fileName = `contract_${selectedCameraUnitId}_${Date.now()}.pdf`;
-          const { success, filePath } = await uploadContractPdf(pdfBytes, fileName);
+          const { success, filePath } = await uploadContractPdf(pdfBytes, rentalData.id);
 
           if (success && filePath) {
             const updateResult = await updateRentalContractUrl(rentalData.id, filePath);
