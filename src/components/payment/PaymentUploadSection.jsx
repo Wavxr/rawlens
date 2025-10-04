@@ -54,7 +54,7 @@ const PaymentUploadSection = ({ rental, onUploadComplete }) => {
         return;
       }
 
-      const { success, error } = await uploadPaymentReceipt(paymentId, rental.id, file);
+    const { success, error } = await uploadPaymentReceipt({ paymentId, rentalId: rental.id, file, scope: 'user' });
 
       if (success) {
         toast.success("Payment receipt uploaded successfully!");

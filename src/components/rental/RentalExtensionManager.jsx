@@ -6,13 +6,11 @@ import {
   AlertCircle, 
   CheckCircle2, 
   CreditCard, 
-  Upload, 
   XCircle,
   Loader2,
-  PhilippinePeso
 } from 'lucide-react';
 import { userRequestRentalExtension, userGetExtensionHistory } from '../../services/extensionService';
-import { uploadPaymentReceipt, getPaymentReceiptUrl } from '../../services/paymentService';
+import { uploadPaymentReceipt } from '../../services/paymentService';
 import { toast } from 'react-toastify';
 
 const RentalExtensionManager = ({ rental, userId, onRefresh }) => {
@@ -83,7 +81,14 @@ const RentalExtensionManager = ({ rental, userId, onRefresh }) => {
   const handleUploadPaymentReceipt = async (extensionPaymentId, file) => {
     setUploadingPayment(prev => ({ ...prev, [extensionPaymentId]: true }));
     try {
-      const result = await uploadPaymentReceipt(extensionPaymentId, rental.id, file);
+
+      const result = await uploadPaymentReceipt({ 
+        paymentId: extensionPaymentId, 
+        rentalId: rental.id, 
+        file, 
+        scope: 'user', 
+        extensionId: null 
+      });
       
       if (result.success) {
         toast.success('Payment receipt uploaded successfully! 💸');
