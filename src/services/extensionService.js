@@ -3,32 +3,44 @@ import { supabase } from "../lib/supabaseClient";
 import { createPayment, uploadPaymentReceipt } from "./paymentService";
 
 // ------------------------------------------
-//   --  Generic Functions --
+//   --  Helper Functions --
 // ------------------------------------------
 
-// Create a new rental extension record.
-async function createRentalExtension(rentalId, userId, newEndDate, originalEndDate, extensionDays, additionalPrice, adminId = null, notes = null) {
-  const { data, error } = await supabase
-    .from("rental_extensions")
-    .insert({
-      rental_id: rentalId,
-      requested_by: adminId || userId,
-      requested_by_role: adminId ? 'admin' : 'user',
-      original_end_date: originalEndDate,
-      requested_end_date: newEndDate,
-      extension_days: extensionDays,
-      additional_price: additionalPrice,
-      extension_status: "pending",
-      admin_notes: notes,
-    })
-    .select()
-    .single();
+// Create a new rental extension record
+export async function createRentalExtension(
+  rentalId,
+  userId,
+  newEndDate,
+  originalEndDate,
+  extensionDays,
+  additionalPrice,
+  adminId = null,
+  notes = null
+) {
+  try {
+    const { data, error } = await supabase
+      .from('rental_extensions')
+      .insert({
+        rental_id: rentalId,
+        requested_by: adminId || userId,
+        requested_by_role: adminId ? 'admin' : 'user',
+        original_end_date: originalEndDate,
+        requested_end_date: newEndDate,
+        extension_days: extensionDays,
+        additional_price: additionalPrice,
+        extension_status: 'pending',
+        admin_notes: notes,
+      })
+      .select()
+      .single();
 
-  if (error) {
-    throw new Error("Failed to create extension request.");
+    if (error) throw new Error(error.message);
+
+    return { success: true, data };
+  } catch (err) {
+    console.error('Error creating rental extension:', err);
+    return { success: false, error: err.message };
   }
-
-  return data;
 }
 
 // Get rental extension details by ID
@@ -54,8 +66,7 @@ export async function getExtensionById(extensionId) {
   }
 }
 
-// Checks if the camera associated with a rental is available for an extension period.
-// Checks availability from the day *after* the current rental end date.
+// Checks if the camera associated with a rental is available for an extension period. Checks availability from the day *after* the current rental end date.
 export async function checkCameraAvailabilityForExtension(rentalId, newEndDate) {
   try {
     const { data: rental, error: rentalError } = await supabase
@@ -278,7 +289,7 @@ export async function createAdminExtension(rentalId, extensionData, paymentFile)
 
     // If file provided, use generic uploader
     if (paymentFile) {
-      await uploadPaymentReceipt(payment.id, rentalId, paymentFile);
+    await uploadPaymentReceipt({ paymentId: payment.id, rentalId, file: paymentFile, scope: 'admin', extensionId: extensionRecord.id });
     }
 
     return { success: true, data: { extension: extensionRecord, payment }, error: null };
