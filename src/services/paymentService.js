@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabaseClient';
 import { uploadFile, objectPath, getSignedUrl } from './storageService';
+import { deleteFile } from './storageService';
 
 // ------------------------------------------
 //   --  Generic Functions -- 
@@ -38,7 +39,8 @@ export async function createAdminBookingPayment({ rentalId, amount = 0, receiptU
       payment_type: 'rental',
       payment_method: paymentMethod,
       payment_status: receiptUrl ? 'submitted' : 'pending',
-      payment_receipt_url: receiptUrl,
+      // We now only persist the storage path (receiptPath) and generate signed URLs on demand.
+      payment_receipt_url: receiptPath || null,
       payment_reference: receiptPath || null
     })
     .select()
@@ -47,7 +49,6 @@ export async function createAdminBookingPayment({ rentalId, amount = 0, receiptU
   if (error) throw error;
   return data;
 }
-
 
 // Get payment details by ID
 export async function getPaymentById(paymentId) {
@@ -86,76 +87,171 @@ export async function getPaymentById(paymentId) {
   }
 }
 
-// Upload payment receipt for a payment record
-export async function uploadPaymentReceipt(paymentId, rentalId, file) {
+// Build standardized base path for payment receipt storage
+function buildPaymentBasePath({
+  scope,
+  rentalId,
+  userId,
+  extensionId = null,
+  customerName = null,
+}) {
+  // Sanitize customer name for path usage
+  const safeCustomer = customerName
+    ? customerName.replace(/[^a-z0-9_-]/gi, '-').toLowerCase()
+    : 'unknown';
+
+  // User scope paths include userId for RLS security
+  if (scope === 'user') {
+    return extensionId
+      ? `user/extension/${rentalId}/${userId}`
+      : `user/rental/${rentalId}/${userId}`;
+  }
+
+  // Admin scope paths do not include userId
+  if (scope === 'admin') {
+    return extensionId
+      ? `admin/extension/${rentalId}/${safeCustomer}`
+      : `admin/rental/${rentalId}/${safeCustomer}`;
+  }
+
+  throw new Error(`Unsupported scope "${scope}" for payment receipt path`);
+}
+
+// Upload payment receipt (user or admin). Stores only the storage path in DB.
+export async function uploadPaymentReceipt({ paymentId, rentalId, file, scope = 'user', extensionId = null }) {
   try {
-    // Validate payment
+    if (!file) throw new Error('File is required');
+    if (!paymentId || !rentalId) throw new Error('paymentId and rentalId are required');
+
+    // Fetch payment to validate and gather context
     const { data: payment, error: payErr } = await supabase
-      .from("payments")
-      .select("id, rental_id")
-      .eq("id", paymentId)
+      .from('payments')
+      .select('id, rental_id, payment_type, extension_id, user_id')
+      .eq('id', paymentId)
       .maybeSingle();
-    if (payErr || !payment) throw new Error("Payment not found.");
+    if (payErr || !payment) throw new Error('Payment not found.');
 
-    // Validate rental
+    // Fetch rental for user & customer name
     const { data: rental, error: rentErr } = await supabase
-      .from("rentals")
-      .select("id, user_id")
-      .eq("id", rentalId)
+      .from('rentals')
+      .select('id, user_id, customer_name')
+      .eq('id', rentalId)
       .maybeSingle();
-    if (rentErr || !rental) throw new Error("Rental not found.");
+    if (rentErr || !rental) throw new Error('Rental not found.');
 
-    // Generate file path & upload
-    const ext = file.name.split(".").pop();
-    const filePath = objectPath(rentalId, "payment-receipt", ext);
-    console.log("Uploading to path:", filePath);
-    const uploadedPath = await uploadFile("payment-receipts", filePath, file);
+    // Determine acting user (for user uploads we require auth user match; for admin we just need auth)
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData?.user) throw new Error('Authentication required');
+    const actingUserId = authData.user.id;
 
-    // Signed URL (7 days)
-    const signedUrl = await getSignedUrl("payment-receipts", uploadedPath, {
-      expiresIn: 3600 * 24 * 7,
+    if (scope === 'user' && rental.user_id !== actingUserId) {
+      throw new Error('You do not have permission to upload a receipt for this rental.');
+    }
+
+    const isExtension = (payment.payment_type === 'extension') || !!extensionId;
+    const ext = file.name.split('.').pop().toLowerCase();
+    const basePath = buildPaymentBasePath({
+      scope,
+      rentalId,
+      userId: actingUserId,
+      extensionId: isExtension ? (extensionId || payment.extension_id) : null,
+      customerName: rental.customer_name
     });
+    const storagePath = objectPath(basePath, 'receipt', ext);
 
-    // Update payment record
-    const { data, error } = await supabase
-      .from("payments")
+    await uploadFile('payment-receipts', storagePath, file);
+
+    // Persist only the path; signed URL will be generated on demand
+    const { data: updated, error: updateErr } = await supabase
+      .from('payments')
       .update({
-        payment_receipt_url: signedUrl,
-        payment_status: "submitted",
+        payment_receipt_url: storagePath,
+        payment_reference: storagePath,
+        payment_status: 'submitted'
       })
-      .eq("id", paymentId)
+      .eq('id', paymentId)
       .select()
       .single();
-    if (error) throw error;
+    if (updateErr) throw updateErr;
 
-    return { success: true, data };
+    return { success: true, data: updated, path: storagePath };
   } catch (err) {
-    console.error("uploadPaymentReceipt error:", err);
-    if (err.status === 403) return { success: false, error: "Access denied." };
-    return {
-      success: false,
-      error: err.message || "Failed to upload receipt.",
-    };
+    console.error('uploadPaymentReceipt error:', err);
+    return { success: false, error: err.message || 'Failed to upload receipt.' };
+  }
+}
+
+// Delete payment receipt (user or admin). Resets payment status to pending.
+export async function deletePaymentReceipt({ paymentId, scope = 'user' }) {
+  try {
+    if (!paymentId) throw new Error('paymentId is required');
+
+    // Auth user
+    const { data: authData, error: authErr } = await supabase.auth.getUser();
+    if (authErr || !authData?.user) throw new Error('Authentication required');
+    const actingUserId = authData.user.id;
+
+    // Fetch payment to verify and obtain path
+    const { data: payment, error: payErr } = await supabase
+      .from('payments')
+      .select('id, user_id, payment_receipt_url, payment_reference, payment_status')
+      .eq('id', paymentId)
+      .single();
+    if (payErr) throw payErr;
+    if (!payment) throw new Error('Payment not found');
+
+    if (scope === 'user' && payment.user_id !== actingUserId) {
+      throw new Error('You do not have permission to delete this receipt.');
+    }
+
+    const path = payment.payment_receipt_url || payment.payment_reference;
+
+    // Delete file if path present
+    if (path) {
+      try {
+        await deleteFile('payment-receipts', path);
+      } catch (fileErr) {
+        // Log but continue to attempt DB cleanup
+        console.warn('deletePaymentReceipt: storage delete failed:', fileErr.message);
+      }
+    }
+
+    // Reset payment record
+    const { data: updated, error: updateErr } = await supabase
+      .from('payments')
+      .update({
+        payment_receipt_url: null,
+        payment_reference: null,
+        payment_status: 'pending'
+      })
+      .eq('id', paymentId)
+      .select()
+      .single();
+    if (updateErr) throw updateErr;
+
+    return { success: true, data: updated };
+  } catch (error) {
+    console.error('deletePaymentReceipt error:', error);
+    return { success: false, error: error.message || 'Failed to delete payment receipt.' };
   }
 }
 
 // Get a fresh signed URL for payment receipt (for displaying images)
-export async function getPaymentReceiptUrl(paymentId) {
+export async function getPaymentReceiptUrl(paymentId, { expiresIn = 3600 } = {}) {
   try {
-    // Get the payment record to find the receipt URL
     const { data: payment, error: paymentError } = await supabase
       .from('payments')
       .select('payment_receipt_url')
       .eq('id', paymentId)
       .single();
-    
     if (paymentError) throw paymentError;
-    
-    if (!payment.payment_receipt_url) {
+    if (!payment?.payment_receipt_url) {
       return { success: false, error: 'No payment receipt found' };
     }
-    
-    return { success: true, url: payment.payment_receipt_url };
+    // payment_receipt_url now holds the path, not a signed URL
+    const path = payment.payment_receipt_url;
+    const signedUrl = await getSignedUrl('payment-receipts', path, { expiresIn });
+    return { success: true, url: signedUrl };
   } catch (error) {
     console.error('Error getting payment receipt URL:', error);
     return { success: false, error: error.message };
