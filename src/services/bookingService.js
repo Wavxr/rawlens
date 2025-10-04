@@ -1,10 +1,6 @@
 import { supabase } from "../lib/supabaseClient";
-import { uploadFile, objectPath, getSignedUrl, deleteFile } from "./storageService";
-import { createAdminBookingPayment } from "./paymentService";
-
-const CONTRACTS_BUCKET = 'contracts';
-const RECEIPTS_BUCKET = 'payment-receipts';
-const ADMIN_BOOKING_FOLDER = 'admin-bookings';
+import { uploadContractPdf } from './pdfService';
+import { createAdminBookingPayment, uploadPaymentReceipt } from './paymentService';
 
 // --- Constants ---
 const BOOKING_SELECT_QUERY = `
@@ -39,248 +35,11 @@ const BOOKING_SELECT_QUERY = `
   )
 `;
 
-// --- Helper Functions ---
+// ------------------------------------------
+//   --  Helper Functions -- 
+// ------------------------------------------
 
-function buildAdminStoragePath(rentalId, type, ext, options = {}) {
-  const composedType = `${ADMIN_BOOKING_FOLDER}/${type}`;
-  return objectPath(rentalId, composedType, ext, options);
-}
-
-async function getActingAdminId() {
-  const { data, error } = await supabase.auth.getUser();
-  if (error) throw error;
-  const userId = data?.user?.id;
-  if (!userId) {
-    throw new Error('Unable to determine current admin user. Please sign in again.');
-  }
-  return userId;
-}
-
-function isStoragePath(path) {
-  return typeof path === 'string' && !path.startsWith('http');
-}
-
-export async function uploadAdminContract(rentalId, file) {
-  if (!rentalId) throw new Error('Rental ID is required.');
-  if (!file) throw new Error('No file provided for upload.');
-  if (file.type && file.type !== 'application/pdf') {
-    throw new Error('Contract must be a PDF file.');
-  }
-
-  const storageKey = buildAdminStoragePath(rentalId, 'contract', 'pdf', { versioned: false });
-
-  await uploadFile(CONTRACTS_BUCKET, storageKey, file);
-
-  const { error: updateError } = await supabase
-    .from('rentals')
-    .update({ contract_pdf_url: storageKey })
-    .eq('id', rentalId);
-
-  if (updateError) throw updateError;
-
-  const signedUrl = await getSignedUrl(CONTRACTS_BUCKET, storageKey, { expiresIn: 3600 });
-
-  return {
-    storagePath: storageKey,
-    signedUrl
-  };
-}
-
-export async function uploadAdminPaymentReceipt(rentalId, file) {
-  if (!rentalId) throw new Error('Rental ID is required.');
-  if (!file) throw new Error('No file provided for upload.');
-  if (!file.type?.startsWith('image/')) {
-    throw new Error('Payment receipt must be an image file.');
-  }
-
-  const ext = file.name?.split('.').pop()?.toLowerCase() || 'jpg';
-  const storageKey = buildAdminStoragePath(rentalId, 'receipt', ext);
-
-  await uploadFile(RECEIPTS_BUCKET, storageKey, file);
-
-  const signedUrl = await getSignedUrl(RECEIPTS_BUCKET, storageKey, { expiresIn: 3600 });
-
-  const adminId = await getActingAdminId();
-
-  const { data: rental, error: rentalError } = await supabase
-    .from('rentals')
-    .select('total_price')
-    .eq('id', rentalId)
-    .single();
-
-  if (rentalError) throw rentalError;
-
-  const amount = Number(rental?.total_price) || 0;
-
-  const { data: existingPayment } = await supabase
-    .from('payments')
-    .select('id')
-    .eq('rental_id', rentalId)
-    .eq('payment_type', 'rental')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (existingPayment?.id) {
-    const { error: updatePaymentError } = await supabase
-      .from('payments')
-      .update({
-        payment_receipt_url: signedUrl,
-        payment_reference: storageKey,
-        user_id: adminId,
-        amount,
-        payment_status: 'submitted'
-      })
-      .eq('id', existingPayment.id);
-
-    if (updatePaymentError) throw updatePaymentError;
-
-    return {
-      storagePath: storageKey,
-      signedUrl,
-      paymentId: existingPayment.id
-    };
-  }
-
-  const payment = await createAdminBookingPayment({
-    rentalId,
-    amount,
-    receiptUrl: signedUrl,
-    receiptPath: storageKey,
-    createdBy: adminId
-  });
-
-  return {
-    storagePath: storageKey,
-    signedUrl,
-    paymentId: payment.id
-  };
-}
-
-export async function deleteAdminDocument(rentalId, documentType, paymentId = null) {
-  if (!rentalId) throw new Error('Rental ID is required.');
-
-  if (documentType === 'contract') {
-    const { data: rental, error: rentalError } = await supabase
-      .from('rentals')
-      .select('contract_pdf_url')
-      .eq('id', rentalId)
-      .single();
-
-    if (rentalError) throw rentalError;
-    if (!rental?.contract_pdf_url) {
-      throw new Error('No contract found for this booking.');
-    }
-
-    await deleteFile(CONTRACTS_BUCKET, rental.contract_pdf_url);
-
-    const { error: updateError } = await supabase
-      .from('rentals')
-      .update({ contract_pdf_url: null })
-      .eq('id', rentalId);
-
-    if (updateError) throw updateError;
-    return true;
-  }
-
-  if (documentType === 'receipt') {
-    let paymentRecord = null;
-
-    if (paymentId) {
-      const { data } = await supabase
-        .from('payments')
-        .select('id, payment_reference')
-        .eq('id', paymentId)
-        .maybeSingle();
-      paymentRecord = data;
-    }
-
-    if (!paymentRecord) {
-      const { data } = await supabase
-        .from('payments')
-        .select('id, payment_reference')
-        .eq('rental_id', rentalId)
-        .eq('payment_type', 'rental')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      paymentRecord = data;
-    }
-
-    if (!paymentRecord?.payment_reference) {
-      throw new Error('No payment receipt found for this booking.');
-    }
-
-    await deleteFile(RECEIPTS_BUCKET, paymentRecord.payment_reference);
-
-    const { error: updatePaymentError } = await supabase
-      .from('payments')
-      .update({
-        payment_receipt_url: null,
-        payment_reference: null,
-        payment_status: 'pending'
-      })
-      .eq('id', paymentRecord.id);
-
-    if (updatePaymentError) throw updatePaymentError;
-
-    return true;
-  }
-
-  throw new Error('Unsupported document type.');
-}
-
-export async function getAdminDocumentUrls(rentalId) {
-  if (!rentalId) throw new Error('Rental ID is required.');
-
-  const result = { contract: null, receipt: null };
-
-  const { data: rental, error: rentalError } = await supabase
-    .from('rentals')
-    .select('contract_pdf_url')
-    .eq('id', rentalId)
-    .single();
-
-  if (rentalError) throw rentalError;
-
-  if (rental?.contract_pdf_url) {
-    const signedUrl = await getSignedUrl(CONTRACTS_BUCKET, rental.contract_pdf_url, { expiresIn: 3600 });
-    result.contract = {
-      signedUrl,
-      storagePath: rental.contract_pdf_url
-    };
-  }
-
-  const { data: payment } = await supabase
-    .from('payments')
-    .select('id, payment_receipt_url, payment_reference')
-    .eq('rental_id', rentalId)
-    .eq('payment_type', 'rental')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (payment) {
-    const storagePath = payment.payment_reference || (isStoragePath(payment.payment_receipt_url) ? payment.payment_receipt_url : null);
-    let signedUrl = payment.payment_receipt_url;
-
-    if (storagePath) {
-      signedUrl = await getSignedUrl(RECEIPTS_BUCKET, storagePath, { expiresIn: 3600 });
-    }
-
-    result.receipt = {
-      signedUrl: signedUrl || null,
-      storagePath,
-      paymentId: payment.id
-    };
-  }
-
-  return result;
-}
-
-/**
- * Calculate rental duration in days (inclusive)
- */
+// Calculate rental duration in days (inclusive)
 export function calculateBookingDuration(startDate, endDate) {
   const start = new Date(startDate);
   const end = new Date(endDate);
@@ -297,9 +56,7 @@ export function calculateBookingDuration(startDate, endDate) {
   return Math.floor(timeDiff / (1000 * 3600 * 24)) + 1;
 }
 
-/**
- * Calculate pricing based on camera_pricing_tiers table
- */
+// Calculate pricing based on camera_pricing_tiers table
 export async function calculateQuickBookingPrice(cameraId, startDate, endDate) {
   try {
     const rentalDays = calculateBookingDuration(startDate, endDate);
@@ -343,11 +100,30 @@ export async function calculateQuickBookingPrice(cameraId, startDate, endDate) {
   }
 }
 
-// --- Core Booking Functions ---
+// Generic function to update booking status with validation
+async function updateBookingStatus(bookingId, updates, actionDescription) {
+  try {
+    const { data, error } = await supabase
+      .from('rentals')
+      .update(updates)
+      .eq('id', bookingId)
+      .eq('booking_type', 'temporary')
+      .select(BOOKING_SELECT_QUERY)
+      .single();
 
-/**
- * Create a new booking (confirmed or potential)
- */
+    if (error) throw new Error(`Failed to ${actionDescription}: ${error.message}`);
+    return { success: true, data };
+  } catch (err) {
+    console.error(`Error while trying to ${actionDescription}:`, err);
+    return { success: false, error: err.message };
+  }
+}
+
+// ------------------------------------------
+//   --  Core Functions -- 
+// ------------------------------------------
+
+// Create a new booking (confirmed or potential) for admin
 export async function createQuickBooking(bookingData, files = {}) {
   try {
     const {
@@ -412,18 +188,48 @@ export async function createQuickBooking(bookingData, files = {}) {
 
     const warnings = [];
 
+    // Admin contract upload (manual PDF). We store only the storage path and update rentals.contract_pdf_url
     if (contractFile) {
       try {
-        await uploadAdminContract(data.id, contractFile);
+        const buffer = await contractFile.arrayBuffer();
+        const pdfBytes = new Uint8Array(buffer);
+        const { success, filePath, error: contractErr } = await uploadContractPdf(pdfBytes, data.id, {
+          scope: 'admin',
+          customerName: data.customer_name
+        });
+        if (!success) {
+          throw new Error(contractErr || 'Failed to upload contract');
+        }
+        const { error: updErr } = await supabase
+          .from('rentals')
+          .update({ contract_pdf_url: filePath })
+          .eq('id', data.id);
+        if (updErr) throw new Error(updErr.message);
       } catch (contractError) {
         console.error('Contract upload error:', contractError);
         warnings.push(contractError.message || 'Contract upload failed.');
       }
     }
 
+    // Admin payment receipt upload: create a payment record then attach receipt (path only)
     if (receiptFile) {
       try {
-        await uploadAdminPaymentReceipt(data.id, receiptFile);
+        // Fetch acting admin user id
+        const { data: authData, error: authErr } = await supabase.auth.getUser();
+        if (authErr || !authData?.user) throw new Error('Auth required for receipt upload');
+        const adminUserId = authData.user.id;
+        const paymentRecord = await createAdminBookingPayment({
+          rentalId: data.id,
+            amount: pricingInfo.totalPrice,
+          createdBy: adminUserId
+        });
+        const uploadResult = await uploadPaymentReceipt({
+          paymentId: paymentRecord.id,
+          rentalId: data.id,
+          file: receiptFile,
+          scope: 'admin'
+        });
+        if (!uploadResult.success) throw new Error(uploadResult.error || 'Failed to upload receipt');
       } catch (receiptError) {
         console.error('Receipt upload error:', receiptError);
         warnings.push(receiptError.message || 'Payment receipt upload failed.');
@@ -445,9 +251,7 @@ export async function createQuickBooking(bookingData, files = {}) {
   }
 }
 
-/**
- * Get all potential bookings (temporary + pending)
- */
+/// Get all potential bookings (temporary + pending)
 export async function getPotentialBookings() {
   try {
     const { data, error } = await supabase
@@ -468,9 +272,7 @@ export async function getPotentialBookings() {
   }
 }
 
-/**
- * Convert potential booking to confirmed
- */
+/// Convert potential booking to confirmed
 export async function convertPotentialToConfirmed(bookingId) {
   try {
     // First, check if booking exists and is potential
@@ -519,9 +321,7 @@ export async function convertPotentialToConfirmed(bookingId) {
   }
 }
 
-/**
- * Update potential booking details
- */
+// Update potential booking details
 export async function updatePotentialBooking(bookingId, updates) {
   try {
     const {
@@ -590,16 +390,14 @@ export async function updatePotentialBooking(bookingId, updates) {
   }
 }
 
-/**
- * Delete a potential booking
- */
+// Delete a potential booking
 export async function deletePotentialBooking(bookingId) {
   try {
     const { error } = await supabase
       .from('rentals')
       .delete()
       .eq('id', bookingId)
-      .eq('booking_type', 'temporary'); // Safety check to only delete temporary bookings
+      .eq('booking_type', 'temporary'); 
 
     if (error) {
       throw new Error(`Failed to delete booking: ${error.message}`);
@@ -612,28 +410,42 @@ export async function deletePotentialBooking(bookingId) {
   }
 }
 
-// --- Conflict Detection Functions ---
+// ------------------------------------------
+//   -- Admin Functions -- 
+// ------------------------------------------
 
-/**
- * Check for booking conflicts with a specific camera and date range
- */
+// Admin confirms equipment received by customer
+export async function adminConfirmReceived(bookingId) {
+  return updateBookingStatus(bookingId, { rental_status: 'active' }, 'mark as received');
+}
+
+// Admin confirms equipment returned by customer
+export async function adminConfirmReturned(bookingId) {
+  return updateBookingStatus(bookingId, { rental_status: 'completed' }, 'mark as returned');
+}
+
+// Admin marks equipment as delivered to customer
+export async function adminMarkDelivered(bookingId) {
+  return updateBookingStatus(bookingId, { shipping_status: 'delivered' }, 'mark as delivered');
+}
+
+// ------------------------------------------
+//   --  Conflict Detection Functions -- 
+// ------------------------------------------
+
+// Check for booking conflicts with a specific camera and date range
 export async function checkBookingConflicts(cameraId, startDate, endDate, excludeBookingId = null) {
   try {
-    // First, let's see ALL bookings for this camera to debug
-    const { data: allBookings, error: debugError } = await supabase
-      .from('rentals')
-      .select('id, rental_status, start_date, end_date, customer_name, booking_type')
-      .eq('camera_id', cameraId);
-
+    // Build base query
     let query = supabase
       .from('rentals')
       .select('id, rental_status, start_date, end_date, customer_name, booking_type')
       .eq('camera_id', cameraId)
-      .in('rental_status', ['confirmed', 'active', 'completed']) // Include confirmed, active, and completed bookings
+      .in('rental_status', ['confirmed', 'active', 'completed'])
       .lte('start_date', endDate)
       .gte('end_date', startDate);
 
-    // Exclude specific booking if provided
+    // Optionally exclude a specific booking
     if (excludeBookingId) {
       query = query.neq('id', excludeBookingId);
     }
@@ -648,8 +460,8 @@ export async function checkBookingConflicts(cameraId, startDate, endDate, exclud
       success: true,
       data: {
         hasConflicts: conflicts.length > 0,
-        conflictingBookings: conflicts || []
-      }
+        conflictingBookings: conflicts,
+      },
     };
   } catch (error) {
     console.error('Error checking booking conflicts:', error);
@@ -657,9 +469,7 @@ export async function checkBookingConflicts(cameraId, startDate, endDate, exclud
   }
 }
 
-/**
- * Get all current conflicts in the system
- */
+// Get all current conflicts in the system
 export async function getBookingConflicts() {
   try {
     // Get all potential bookings
@@ -699,12 +509,11 @@ export async function getBookingConflicts() {
   }
 }
 
-// --- Calendar Data Functions ---
+// ------------------------------------------
+//   --  Calendar Data Functions -- 
+// ------------------------------------------
 
-/**
- * Get confirmed bookings for calendar display
- * Excludes potential bookings to show only confirmed availability
- */
+// Get confirmed bookings for calendar display (excludes pending bookings)
 export async function getCalendarBookings(startDate, endDate) {
   try {
     const { data, error } = await supabase
@@ -715,24 +524,20 @@ export async function getCalendarBookings(startDate, endDate) {
       .gte('end_date', startDate)
       .order('start_date', { ascending: true });
 
-    if (error) {
-      throw new Error(`Failed to fetch calendar bookings: ${error.message}`);
-    }
+    if (error) throw new Error(`Failed to fetch calendar bookings: ${error.message}`);
 
-    return { success: true, data: data || [] };
-  } catch (error) {
-    console.error('Error fetching calendar bookings:', error);
-    return { success: false, error: error.message, data: [] };
+    return { success: true, data: data ?? [] };
+  } catch (err) {
+    console.error('Error fetching calendar bookings:', err);
+    return { success: false, error: err.message, data: [] };
   }
 }
 
-/**
- * Get bookings for a specific camera and month
- */
+// Get bookings for a specific camera and month
 export async function getBookingsByCamera(cameraId, month, year) {
   try {
     const startDate = `${year}-${month.toString().padStart(2, '0')}-01`;
-    const endDate = new Date(year, month, 0).toISOString().split('T')[0]; // Last day of month
+    const endDate = new Date(year, month, 0).toISOString().split('T')[0];
 
     const { data, error } = await supabase
       .from('rentals')
@@ -740,156 +545,69 @@ export async function getBookingsByCamera(cameraId, month, year) {
       .eq('camera_id', cameraId)
       .lte('start_date', endDate)
       .gte('end_date', startDate)
-      .order('start_date', { ascending: true });
+      .order('start_date');
 
-    if (error) {
-      throw new Error(`Failed to fetch camera bookings: ${error.message}`);
-    }
+    if (error) throw new Error(`Failed to fetch camera bookings: ${error.message}`);
 
-    return { success: true, data: data || [] };
-  } catch (error) {
-    console.error('Error fetching camera bookings:', error);
-    return { success: false, error: error.message, data: [] };
+    return { success: true, data: data ?? [] };
+  } catch (err) {
+    console.error('Error fetching camera bookings:', err);
+    return { success: false, error: err.message, data: [] };
   }
 }
 
-// --- Availability Functions ---
 
-/**
- * Quick availability check for a camera and date range
- */
+// ------------------------------------------
+//   -- Availability Functions -- 
+// ------------------------------------------
+
+// Quick availability check for a camera and date range
 export async function isDateRangeAvailable(cameraId, startDate, endDate) {
   try {
-    const conflictCheck = await checkBookingConflicts(cameraId, startDate, endDate);
-    
-    if (!conflictCheck.success) {
-      return { success: false, error: conflictCheck.error };
-    }
+    const { success, data, error } = await checkBookingConflicts(cameraId, startDate, endDate);
+    if (!success) return { success: false, error };
 
     return {
       success: true,
-      isAvailable: !conflictCheck.data.hasConflicts,
-      conflicts: conflictCheck.data.conflictingBookings
+      isAvailable: !data.hasConflicts,
+      conflicts: data.conflictingBookings,
     };
-  } catch (error) {
-    console.error('Error checking date range availability:', error);
-    return { success: false, error: error.message };
+  } catch (err) {
+    console.error('Error checking date range availability:', err);
+    return { success: false, error: err.message };
   }
 }
 
-/**
- * Suggest alternative dates when conflicts exist
- */
+
+// Suggest alternative dates when conflicts exist
 export async function suggestAlternativeDates(cameraId, startDate, endDate) {
   try {
     const rentalDays = calculateBookingDuration(startDate, endDate);
-    const start = new Date(startDate);
+    const baseDate = new Date(startDate);
     const suggestions = [];
 
-    // Check dates within 2 weeks before and after
-    for (let offset = -14; offset <= 14; offset += rentalDays) {
-      if (offset === 0) continue; // Skip original dates
+    // Search 2 weeks before and after the original range
+    for (let offset = -14; offset <= 14 && suggestions.length < 5; offset += rentalDays) {
+      if (offset === 0) continue;
 
-      const alternativeStart = new Date(start);
-      alternativeStart.setDate(start.getDate() + offset);
-      const alternativeEnd = new Date(alternativeStart);
-      alternativeEnd.setDate(alternativeStart.getDate() + rentalDays - 1);
+      const altStart = new Date(baseDate);
+      altStart.setDate(baseDate.getDate() + offset);
 
-      const availabilityCheck = await isDateRangeAvailable(
-        cameraId,
-        alternativeStart.toISOString().split('T')[0],
-        alternativeEnd.toISOString().split('T')[0]
-      );
+      const altEnd = new Date(altStart);
+      altEnd.setDate(altStart.getDate() + rentalDays - 1);
 
-      if (availabilityCheck.success && availabilityCheck.isAvailable) {
-        suggestions.push({
-          startDate: alternativeStart.toISOString().split('T')[0],
-          endDate: alternativeEnd.toISOString().split('T')[0],
-          offsetDays: offset
-        });
+      const startStr = altStart.toISOString().split('T')[0];
+      const endStr = altEnd.toISOString().split('T')[0];
 
-        // Limit to 5 suggestions
-        if (suggestions.length >= 5) break;
+      const { success, isAvailable } = await isDateRangeAvailable(cameraId, startStr, endStr);
+      if (success && isAvailable) {
+        suggestions.push({ startDate: startStr, endDate: endStr, offsetDays: offset });
       }
     }
 
     return { success: true, data: suggestions };
-  } catch (error) {
-    console.error('Error suggesting alternative dates:', error);
-    return { success: false, error: error.message, data: [] };
-  }
-}
-
-// --- Admin Actions for Temporary Bookings ---
-
-/**
- * Admin confirms equipment received by customer
- */
-export async function adminConfirmReceived(bookingId) {
-  try {
-    const { data, error } = await supabase
-      .from('rentals')
-      .update({ rental_status: 'active' })
-      .eq('id', bookingId)
-      .eq('booking_type', 'temporary')
-      .select(BOOKING_SELECT_QUERY)
-      .single();
-
-    if (error) {
-      throw new Error(`Failed to mark as received: ${error.message}`);
-    }
-
-    return { success: true, data };
-  } catch (error) {
-    console.error('Error confirming equipment received:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-/**
- * Admin confirms equipment returned by customer
- */
-export async function adminConfirmReturned(bookingId) {
-  try {
-    const { data, error } = await supabase
-      .from('rentals')
-      .update({ rental_status: 'completed' })
-      .eq('id', bookingId)
-      .eq('booking_type', 'temporary')
-      .select(BOOKING_SELECT_QUERY)
-      .single();
-
-    if (error) {
-      throw new Error(`Failed to mark as returned: ${error.message}`);
-    }
-
-    return { success: true, data };
-  } catch (error) {
-    console.error('Error confirming equipment returned:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-/**
- * Admin marks equipment as delivered to customer
- */
-export async function adminMarkDelivered(bookingId) {
-  try {
-    const { data, error } = await supabase
-      .from('rentals')
-      .update({ shipping_status: 'delivered' })
-      .eq('id', bookingId)
-      .eq('booking_type', 'temporary')
-      .select(BOOKING_SELECT_QUERY)
-      .single();
-
-    if (error) {
-      throw new Error(`Failed to mark as delivered: ${error.message}`);
-    }
-
-    return { success: true, data };
-  } catch (error) {
-    console.error('Error marking as delivered:', error);
-    return { success: false, error: error.message };
+  } catch (err) {
+    console.error('Error suggesting alternative dates:', err);
+    return { success: false, error: err.message, data: [] };
   }
 }
