@@ -1,8 +1,8 @@
 import { supabase } from '../lib/supabaseClient';
-import { deleteAdminDocument } from './bookingService';
-import { adminCreateInitialRentalPayment } from "./paymentService";
+import { adminCreateInitialRentalPayment, deletePaymentReceipt } from "./paymentService";
+import { deleteContractFile } from './pdfService';
 
-// Reusable query for fetching detailed rental information
+// --- Constants ---
 const DETAILED_RENTAL_QUERY = `
   *,
   cameras (*, camera_inclusions (*, inclusion_items (*))),
@@ -11,9 +11,10 @@ const DETAILED_RENTAL_QUERY = `
 `;
 
 // ------------------------------------------
-//    -- Functions --
+//    -- Helper Functions --
 // ------------------------------------------
 
+// Calculate the number of rental days (inclusive)
 export function calculateRentalDays(startDateStr, endDateStr) {
   const start = new Date(startDateStr);
   const end = new Date(endDateStr);
@@ -28,6 +29,7 @@ export function calculateRentalDays(startDateStr, endDateStr) {
   return Math.floor(timeDiff / (1000 * 3600 * 24)) + 1;
 }
 
+// Calculate total price based on camera pricing tiers
 export async function calculateTotalPrice(cameraId, startDate, endDate) {
   const rentalDays = calculateRentalDays(startDate, endDate);
 
@@ -105,6 +107,10 @@ export async function updateRentalStatus(rentalId, statusUpdates) {
   }
 }
 
+// ------------------------------------------
+//  --  Getter Functions --
+// ------------------------------------------
+
 // Get a single rental by its ID with all details
 export async function getRentalById(rentalId) {
   try {
@@ -122,7 +128,7 @@ export async function getRentalById(rentalId) {
   }
 }
 
-// --- Simplified Workflow Functions using single rental_status ---
+// Get rentals by status with filtering out temporary bookings with pending status
 export async function getRentalsByStatus(status = null) {
   try {
     let query = supabase.from('rentals').select(DETAILED_RENTAL_QUERY);
@@ -701,78 +707,140 @@ export async function adminCancelRental(rentalId) {
 // Admin force deletes a rental and all related records (payments, extensions, and documents)
 export async function adminForceDeleteRental(rentalId) {
   try {
-    try {
-      await deleteAdminDocument(rentalId, 'contract');
-    } catch (error) {
-      if (!error.message.includes('No contract found')) {
-        console.warn(`Could not delete contract for rental ${rentalId}:`, error.message);
-      }
-    }
-    
-    try {
-      await deleteAdminDocument(rentalId, 'receipt');
-    } catch (error) {
-      if (!error.message.includes('No payment receipt found')) {
-        console.warn(`Could not delete receipt for rental ${rentalId}:`, error.message);
-      }
-    }
+    if (!rentalId) throw new Error('rentalId required');
 
-    // Delete database records
-    await supabase.from('payments').delete().eq('rental_id', rentalId);
-    await supabase.from('rental_extensions').delete().eq('rental_id', rentalId);
-    
-    const { error } = await supabase.from("rentals").delete().eq("id", rentalId);
-    if (error) throw error;
-
-    return { success: true, message: "Rental and related records deleted." };
-  } catch (err) {
-    console.error("adminForceDeleteRental error:", err);
-    if (err.code === "23503") {
-      return { success: false, error: "Delete blocked by existing dependencies." };
-    }
-    return { success: false, error: err.message || "Failed to delete rental." };
-  }
-}
-
-
-// Admin removes a cancelled rental (frees up the dates)
-export async function adminRemoveCancelledRental(rentalId) {
-  try {
-    const { data: rental, error: fetchError } = await supabase
+    // 1. Fetch rental (need contract path + user context for scope inference if needed later)
+    const { data: rentalRow, error: rentalFetchError } = await supabase
       .from('rentals')
-      .select('id, rental_status')
+      .select('id, user_id, contract_pdf_url, customer_name')
       .eq('id', rentalId)
       .single();
+    if (rentalFetchError) throw rentalFetchError;
 
-    if (fetchError) {
-      throw new Error("Rental not found.");
+    // 2. Fetch all payments tied to this rental BEFORE deleting rows (need ids for receipt deletion)
+    const { data: paymentRows, error: paymentsError } = await supabase
+      .from('payments')
+      .select('id')
+      .eq('rental_id', rentalId);
+    if (paymentsError) throw paymentsError;
+
+    // 3. Delete contract via service helper (handles storage + DB clearing) if present
+    if (rentalRow?.contract_pdf_url) {
+      const contractDeleteResult = await deleteContractFile(rentalRow.contract_pdf_url, rentalId);
+      if (!contractDeleteResult.success) {
+        console.warn(`adminForceDeleteRental: contract delete issue -> ${contractDeleteResult.error}`);
+      }
     }
 
-    if (rental.rental_status !== 'cancelled') {
-      throw new Error("Only cancelled rentals can be removed.");
+    // 4. Delete each payment receipt through service helper ensuring per-payment safe cleanup
+    if (Array.isArray(paymentRows) && paymentRows.length > 0) {
+      for (const p of paymentRows) {
+        // Force admin scope to bypass user ownership constraints; function internally resets payment row
+        const res = await deletePaymentReceipt({ paymentId: p.id, scope: 'admin' });
+        if (!res.success) {
+          console.warn(`adminForceDeleteRental: failed to delete receipt for payment ${p.id}: ${res.error}`);
+        }
+      }
     }
 
-    const { error: paymentDeleteError } = await supabase
+    // 5. Delete related DB rows (order: payments -> extensions -> rental). 
+    const { error: paymentsDeleteError } = await supabase
       .from('payments')
       .delete()
       .eq('rental_id', rentalId);
+    if (paymentsDeleteError) throw paymentsDeleteError;
 
-    const { error: deleteError } = await supabase
+    const { error: extensionsDeleteError } = await supabase
+      .from('rental_extensions')
+      .delete()
+      .eq('rental_id', rentalId);
+    if (extensionsDeleteError) throw extensionsDeleteError;
+
+    const { error: rentalDeleteError } = await supabase
       .from('rentals')
       .delete()
       .eq('id', rentalId);
+    if (rentalDeleteError) throw rentalDeleteError;
 
-    if (deleteError) throw deleteError;
-
-    return { success: true, error: null, message: "Cancelled rental and associated payments removed successfully." };
-  } catch (error) {
-    console.error("Error in adminRemoveCancelledRental:", error);
-    if (error.code === '23503') {
-         return { success: false, error: "Cannot remove rental: Associated payment records exist and could not be deleted. Please try again or contact support." };
+    return { success: true, message: 'Rental, associated payments, extensions, and related storage artifacts deleted.' };
+  } catch (err) {
+    console.error('adminForceDeleteRental error:', err);
+    if (err.code === '23503') {
+      return { success: false, error: 'Delete blocked by existing dependencies.' };
     }
-    return { success: false, error: error.message || "Failed to remove cancelled rental." };
+    return { success: false, error: err.message || 'Failed to delete rental.' };
   }
 }
+
+
+// Admin removes a cancelled rental and its related files/payments
+export async function adminRemoveCancelledRental(rentalId) {
+  try {
+    // Fetch rental details first
+    const { data: rental, error: fetchError } = await supabase
+      .from("rentals")
+      .select("id, rental_status, contract_pdf_url")
+      .eq("id", rentalId)
+      .single();
+
+    if (fetchError || !rental) throw new Error("Rental not found.");
+    if (rental.rental_status !== "cancelled")
+      throw new Error("Only cancelled rentals can be removed.");
+
+    // Fetch payment IDs for targeted deletion
+    const { data: payments, error: paymentsError } = await supabase
+      .from("payments")
+      .select("id")
+      .eq("rental_id", rentalId);
+
+    if (paymentsError) throw new Error("Failed to fetch payment records.");
+
+    // Delete contract file (if exists)
+    if (rental.contract_pdf_url) {
+      const result = await deleteContractFile(rental.contract_pdf_url, rentalId);
+      if (!result.success)
+        console.warn(`Contract delete warning: ${result.error}`);
+    }
+
+    // Delete payment receipts via service (admin scope)
+    if (Array.isArray(payments) && payments.length > 0) {
+      for (const { id } of payments) {
+        const res = await deletePaymentReceipt({ paymentId: id, scope: "admin" });
+        if (!res.success)
+          console.warn(`Failed to delete receipt for payment ${id}: ${res.error}`);
+      }
+    }
+
+    // Delete payments then rental record
+    const { error: deletePaymentsError } = await supabase
+      .from("payments")
+      .delete()
+      .eq("rental_id", rentalId);
+    if (deletePaymentsError) throw deletePaymentsError;
+
+    const { error: deleteRentalError } = await supabase
+      .from("rentals")
+      .delete()
+      .eq("id", rentalId);
+    if (deleteRentalError) throw deleteRentalError;
+
+    return {
+      success: true,
+      message: "Cancelled rental, payments, and documents removed successfully.",
+    };
+  } catch (error) {
+    console.error("Error in adminRemoveCancelledRental:", error);
+    if (error.code === "23503") {
+      return {
+        success: false,
+        error:
+          "Cannot remove rental: Related payment records exist and could not be deleted.",
+      };
+    }
+    return { success: false, error: error.message || "Failed to remove rental." };
+  }
+}
+
 
 // Helper function to redistribute existing conflicting rentals to available units
 export async function adminRedistributeConflictingRentals(cameraModelName) {
