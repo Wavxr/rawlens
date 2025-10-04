@@ -772,7 +772,6 @@ export async function adminForceDeleteRental(rentalId) {
   }
 }
 
-
 // Admin removes a cancelled rental and its related files/payments
 export async function adminRemoveCancelledRental(rentalId) {
   try {
@@ -840,7 +839,6 @@ export async function adminRemoveCancelledRental(rentalId) {
     return { success: false, error: error.message || "Failed to remove rental." };
   }
 }
-
 
 // Helper function to redistribute existing conflicting rentals to available units
 export async function adminRedistributeConflictingRentals(cameraModelName) {
