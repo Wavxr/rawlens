@@ -4,7 +4,8 @@ import { Eye, Calendar, User, CreditCard, CheckCircle, XCircle, ChevronDown, Loa
 import { 
   adminGetSubmittedPayments, 
   adminVerifyRentalPayment, 
-  adminVerifyExtensionPayment 
+  adminVerifyExtensionPayment,
+  getPaymentReceiptUrl
 } from '../../services/paymentService';
 import { subscribeToAllPayments, unsubscribeFromChannel } from '../../services/realtimeService';
 import usePaymentStore from '../../stores/paymentStore';
@@ -16,6 +17,8 @@ const Payments = () => {
   const [storeReady, setStoreReady] = useState(false);
   const [expandedPayments, setExpandedPayments] = useState(new Set());
   const [verifyingPayments, setVerifyingPayments] = useState(new Set());
+  const [receiptUrlCache, setReceiptUrlCache] = useState({}); // paymentId -> signed URL
+  const [receiptLoading, setReceiptLoading] = useState(new Set()); // paymentIds currently loading
   const channelRef = useRef(null);
   const { payments, setPayments, getPaymentsByStatus } = usePaymentStore();
 
@@ -135,6 +138,30 @@ const Payments = () => {
         newSet.delete(paymentId);
         return newSet;
       });
+    }
+  };
+
+  const handleFetchReceiptUrl = async (payment) => {
+    if (!payment?.payment_receipt_url) return; // no stored path
+    const id = payment.id;
+    // Use cached if available
+    if (receiptUrlCache[id]) {
+      window.open(receiptUrlCache[id], '_blank', 'noopener,noreferrer');
+      return;
+    }
+    setReceiptLoading(prev => new Set([...prev, id]));
+    try {
+      const result = await getPaymentReceiptUrl(payment.id, { expiresIn: 3600 });
+      if (result.success) {
+        setReceiptUrlCache(prev => ({ ...prev, [id]: result.url }));
+        window.open(result.url, '_blank', 'noopener,noreferrer');
+      } else {
+        toast.error(result.error || 'Failed to generate receipt link');
+      }
+    } catch (err) {
+      toast.error('Failed to fetch receipt URL');
+    } finally {
+      setReceiptLoading(prev => { const copy = new Set(prev); copy.delete(id); return copy; });
     }
   };
 
@@ -289,17 +316,25 @@ const Payments = () => {
                               <span className="text-xs font-medium text-slate-500">Reference:</span>
                               <span className="text-xs text-slate-900 font-mono text-right">{payment.payment_reference || 'N/A'}</span>
                             </div>
-                            <div className="flex justify-between items-start">
+                            <div className="flex justify-between items-start gap-2">
                               <span className="text-xs font-medium text-slate-500">Receipt:</span>
                               {payment.payment_receipt_url ? (
-                                <a 
-                                  href={payment.payment_receipt_url} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="text-xs text-slate-600 hover:text-slate-800 font-medium flex items-center"
+                                <button
+                                  type="button"
+                                  onClick={() => handleFetchReceiptUrl(payment)}
+                                  disabled={receiptLoading.has(payment.id)}
+                                  className="text-xs text-slate-600 hover:text-slate-800 font-medium inline-flex items-center disabled:opacity-60 disabled:cursor-not-allowed"
                                 >
-                                  <Eye className="h-3 w-3 mr-1" /> View
-                                </a>
+                                  {receiptLoading.has(payment.id) ? (
+                                    <>
+                                      <Loader2 className="h-3 w-3 mr-1 animate-spin" /> Generating...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Eye className="h-3 w-3 mr-1" /> View
+                                    </>
+                                  )}
+                                </button>
                               ) : (
                                 <span className="text-xs text-slate-400">No receipt</span>
                               )}
