@@ -2,11 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { X, ExternalLink } from 'lucide-react';
 import FileUploadZone from './FileUploadZone';
 import {
-  uploadAdminContract,
-  uploadAdminPaymentReceipt,
-  deleteAdminDocument,
-  getAdminDocumentUrls
-} from '../../services/bookingService';
+  uploadPaymentReceipt,
+  deletePaymentReceipt,
+  getPaymentReceiptUrl,
+  createAdminBookingPayment
+} from '../../services/paymentService';
+import { uploadContractPdf, getSignedContractUrl, deleteContractFile } from '../../services/pdfService';
+import { supabase } from '../../lib/supabaseClient';
 
 const DOCUMENT_CONFIG = {
   contract: {
@@ -40,6 +42,7 @@ const DocumentUploadModal = ({
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [currentDocument, setCurrentDocument] = useState(null);
+  const [paymentId, setPaymentId] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -58,9 +61,66 @@ const DocumentUploadModal = ({
 
     const loadExistingDocument = async () => {
       try {
-        const result = await getAdminDocumentUrls(rentalId);
-        if (!isMounted) return;
-        setCurrentDocument(result?.[documentType] || null);
+        if (documentType === 'receipt') {
+          // Fetch most recent admin-created or existing payment for this rental
+          const { data: payments, error: payErr } = await supabase
+            .from('payments')
+            .select('id, payment_receipt_url, payment_status, payment_type, rental_id')
+            .eq('rental_id', rentalId)
+            .eq('payment_type', 'rental')
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          if (payErr) throw payErr;
+
+            const payment = payments?.[0];
+          if (payment) {
+            setPaymentId(payment.id);
+            if (payment.payment_receipt_url) {
+              const { success, url } = await getPaymentReceiptUrl(payment.id, { expiresIn: 3600 });
+              if (success) {
+                setCurrentDocument({
+                  signedUrl: url,
+                  storagePath: payment.payment_receipt_url,
+                  paymentId: payment.id
+                });
+              } else {
+                setCurrentDocument(null);
+              }
+            } else {
+              setCurrentDocument(null);
+            }
+          } else {
+            setCurrentDocument(null);
+          }
+        } else {
+          // CONTRACT: fetch rental to see if contract path exists
+          const { data: rental, error: rentalErr } = await supabase
+            .from('rentals')
+            .select('id, contract_pdf_url')
+            .eq('id', rentalId)
+            .maybeSingle();
+          if (rentalErr) throw rentalErr;
+          if (rental?.contract_pdf_url) {
+            try {
+              const signed = await getSignedContractUrl(rental.contract_pdf_url);
+              setCurrentDocument({
+                signedUrl: signed,
+                storagePath: rental.contract_pdf_url,
+                paymentId: null
+              });
+            } catch (sigErr) {
+              console.warn('Failed to sign contract URL:', sigErr);
+              setCurrentDocument({
+                signedUrl: null,
+                storagePath: rental.contract_pdf_url,
+                paymentId: null
+              });
+            }
+          } else {
+            setCurrentDocument(null);
+          }
+        }
       } catch (loadError) {
         if (!isMounted) return;
         console.error('Failed to load document info:', loadError);
@@ -140,9 +200,57 @@ const DocumentUploadModal = ({
 
     try {
       if (documentType === 'contract') {
-        await uploadAdminContract(rentalId, file);
+        const buffer = await file.arrayBuffer();
+        const pdfBytes = new Uint8Array(buffer);
+        // Fetch rental (need customer_name & existing contract path)
+        const { data: rentalRow, error: rentalErr } = await supabase
+          .from('rentals')
+          .select('id, customer_name, contract_pdf_url')
+          .eq('id', rentalId)
+          .maybeSingle();
+        if (rentalErr || !rentalRow) throw new Error('Rental not found');
+
+        if (currentDocument?.storagePath) {
+          const del = await deleteContractFile(currentDocument.storagePath, rentalId);
+          if (!del.success) throw new Error(`Failed to delete existing contract: ${del.error}`);
+        }
+
+        const { success, filePath, error: upErr } = await uploadContractPdf(pdfBytes, rentalId, {
+          scope: 'admin',
+          customerName: rentalRow.customer_name
+        });
+        if (!success) throw new Error(upErr || 'Failed to upload contract');
+
+        const { error: updateErr } = await supabase
+          .from('rentals')
+          .update({ contract_pdf_url: filePath })
+          .eq('id', rentalId);
+        if (updateErr) throw new Error(updateErr.message);
       } else {
-        await uploadAdminPaymentReceipt(rentalId, file);
+        // If a receipt already exists, delete it (file + reset DB) before uploading new
+        if (currentDocument?.storagePath && paymentId) {
+          const delResult = await deletePaymentReceipt({ paymentId, scope: 'admin' });
+          if (!delResult.success) {
+            throw new Error(delResult.error || 'Failed to delete existing receipt');
+          }
+        }
+        let effectivePaymentId = paymentId;
+        if (!effectivePaymentId) {
+          // Create a placeholder admin payment record to attach receipt
+            const { data: rentalRow, error: rentErr } = await supabase
+              .from('rentals')
+              .select('id, total_price, user_id')
+              .eq('id', rentalId)
+              .maybeSingle();
+            if (rentErr || !rentalRow) throw new Error('Rental not found');
+          const amount = rentalRow.total_price || 0;
+          const created = await createAdminBookingPayment({ rentalId, amount, createdBy: rentalRow.user_id || (await supabase.auth.getUser()).data?.user?.id });
+          effectivePaymentId = created.id;
+          setPaymentId(effectivePaymentId);
+        }
+
+        const result = await uploadPaymentReceipt({ paymentId: effectivePaymentId, rentalId, file, scope: 'admin' });
+        if (!result.success) throw new Error(result.error || 'Failed to upload receipt');
       }
 
       setFile(null);
@@ -158,21 +266,42 @@ const DocumentUploadModal = ({
   };
 
   const handleRemoveCurrent = async () => {
-    if (!currentDocument?.storagePath) {
-      setError('No document found to remove.');
+    if (documentType === 'contract') {
+      if (!currentDocument?.storagePath) {
+        setError('No contract to delete.');
+        return;
+      }
+      setLoading(true);
+      setError('');
+      try {
+        const del = await deleteContractFile(currentDocument.storagePath, rentalId);
+        if (!del.success) throw new Error(del.error || 'Failed to delete contract');
+        setCurrentDocument(null);
+        setRefreshKey((prev) => prev + 1);
+        onSuccess?.();
+      } catch (deleteErr) {
+        console.error('Failed to delete contract:', deleteErr);
+        setError(deleteErr.message || 'Failed to delete contract.');
+      } finally {
+        setLoading(false);
+      }
       return;
     }
-
+    if (!paymentId) {
+      setError('No payment record found for this receipt.');
+      return;
+    }
     setLoading(true);
     setError('');
-
     try {
-      await deleteAdminDocument(rentalId, documentType, currentDocument.paymentId || null);
+      const result = await deletePaymentReceipt({ paymentId, scope: 'admin' });
+      if (!result.success) throw new Error(result.error || 'Failed to delete receipt');
+      setCurrentDocument(null);
       setRefreshKey((prev) => prev + 1);
       onSuccess?.();
     } catch (deleteError) {
-      console.error('Failed to delete document:', deleteError);
-      setError(deleteError.message || 'Failed to delete document.');
+      console.error('Failed to delete receipt:', deleteError);
+      setError(deleteError.message || 'Failed to delete receipt.');
     } finally {
       setLoading(false);
     }

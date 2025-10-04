@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, ExternalLink, CheckCircle, Package, Calendar, User, Phone, Mail, DollarSign, FileText, Clock, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { adminConfirmReceived, adminConfirmReturned, adminMarkDelivered, getAdminDocumentUrls } from '../../services/bookingService';
+import { adminConfirmReceived, adminConfirmReturned, adminMarkDelivered } from '../../services/bookingService';
+import { getSignedContractUrl } from '../../services/pdfService';
+import { getPaymentReceiptUrl } from '../../services/paymentService';
+import { supabase } from '../../lib/supabaseClient';
 import { checkExtensionEligibility } from '../../services/extensionService';
 import useExtensionStore from '../../stores/extensionStore';
 import DocumentUploadModal from './DocumentUploadModal';
@@ -82,8 +85,52 @@ const BookingDetailsModal = ({
     setDocumentsLoading(true);
     setDocumentsError('');
     try {
-      const result = await getAdminDocumentUrls(booking.id);
-      setDocuments(result || { contract: null, receipt: null });
+      // Fetch minimal rental contract path
+      const { data: rentalRow, error: rentalErr } = await supabase
+        .from('rentals')
+        .select('id, contract_pdf_url')
+        .eq('id', booking.id)
+        .maybeSingle();
+      if (rentalErr) throw rentalErr;
+
+      let contractDoc = null;
+      if (rentalRow?.contract_pdf_url) {
+        try {
+          const signed = await getSignedContractUrl(rentalRow.contract_pdf_url);
+          contractDoc = {
+            storagePath: rentalRow.contract_pdf_url,
+            signedUrl: signed
+          };
+        } catch (sigErr) {
+          contractDoc = {
+            storagePath: rentalRow.contract_pdf_url,
+            signedUrl: null
+          };
+        }
+      }
+
+      // Fetch latest payment for this rental with a receipt path
+      const { data: payments, error: payErr } = await supabase
+        .from('payments')
+        .select('id, payment_receipt_url')
+        .eq('rental_id', booking.id)
+        .eq('payment_type', 'rental')
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (payErr) throw payErr;
+
+      let receiptDoc = null;
+      const payment = payments?.[0];
+      if (payment?.payment_receipt_url) {
+        const { success, url } = await getPaymentReceiptUrl(payment.id, { expiresIn: 3600 });
+        receiptDoc = {
+          storagePath: payment.payment_receipt_url,
+          signedUrl: success ? url : null,
+          paymentId: payment.id
+        };
+      }
+
+      setDocuments({ contract: contractDoc, receipt: receiptDoc });
     } catch (error) {
       console.error('Failed to load booking documents:', error);
       setDocuments({ contract: null, receipt: null });
@@ -140,7 +187,7 @@ const BookingDetailsModal = ({
   };
 
   const navigateToRental = () => {
-    const rentalId = booking?.id; // booking.id IS the rental ID
+    const rentalId = booking?.id;
     console.log("BookingDetailsModal navigateToRental:", {
       booking: booking,
       rentalId: rentalId,
@@ -159,7 +206,7 @@ const BookingDetailsModal = ({
   };
 
   const navigateToDelivery = () => {
-    const rentalId = booking?.id; // booking.id IS the rental ID
+    const rentalId = booking?.id;
     console.log("BookingDetailsModal navigateToDelivery:", {
       booking: booking,
       rentalId: rentalId,
