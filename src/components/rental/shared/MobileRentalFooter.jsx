@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
+import DateFilterInput from '../../forms/DateFilterInput';
 
 const MobileRentalFooter = ({
   calculatedPrice,
@@ -213,29 +214,15 @@ const MobileRentalFooter = ({
           <div className="p-3 border-b border-gray-100">
             <div className="mb-4">
               <h3 className="text-sm font-semibold text-gray-900 mb-3">Select Rental Period</h3>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1.5">Start Date</label>
-                  <input
-                    type="date"
-                    value={tempStartDate}
-                    onChange={(e) => setTempStartDate(e.target.value)}
-                    disabled={isCheckingAvailability || isSubmitting || isGeneratingContract}
-                    className="w-full px-3 py-2.5 text-sm rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-[#052844] focus:border-[#052844] disabled:bg-gray-100 disabled:text-gray-500 transition-all duration-150"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1.5">End Date</label>
-                  <input
-                    type="date"
-                    value={tempEndDate}
-                    onChange={(e) => setTempEndDate(e.target.value)}
-                    min={tempStartDate}
-                    disabled={isCheckingAvailability || isSubmitting || isGeneratingContract}
-                    className="w-full px-3 py-2.5 text-sm rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-[#052844] focus:border-[#052844] disabled:bg-gray-100 disabled:text-gray-500 transition-all duration-150"
-                  />
-                </div>
-              </div>
+              <DateFilterInput
+                layout="horizontal"
+                startDate={tempStartDate}
+                endDate={tempEndDate}
+                onStartDateChange={(e) => setTempStartDate(e.target.value)}
+                onEndDateChange={(e) => setTempEndDate(e.target.value)}
+                disabled={isCheckingAvailability || isSubmitting || isGeneratingContract}
+                idPrefix="mobile-footer"
+              />
             </div>
           </div>
         </div>

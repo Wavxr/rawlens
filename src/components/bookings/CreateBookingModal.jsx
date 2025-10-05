@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Camera, Calendar, User, Phone, Mail, DollarSign, AlertTriangle } from 'lucide-react';
+import DateFilterInput from '../forms/DateFilterInput';
 import { createQuickBooking, calculateQuickBookingPrice } from '../../services/bookingService';
 import FileUploadZone from './FileUploadZone';
 
@@ -313,34 +314,24 @@ const CreateBookingModal = ({
               {errors.cameraId && <p className={`text-sm mt-1 ${errorColor}`}>{errors.cameraId}</p>}
             </div>
 
-            {/* Date Range */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${labelColor}`}>
-                  <Calendar className="w-4 h-4 inline mr-2" />
-                  Start Date
-                </label>
-                <input
-                  type="date"
-                  value={formData.startDate}
-                  onChange={(e) => handleInputChange('startDate', e.target.value)}
-                  className={`w-full p-3 border rounded-lg ${inputBg} ${inputBorder} ${inputText} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                />
-                {errors.startDate && <p className={`text-sm mt-1 ${errorColor}`}>{errors.startDate}</p>}
-              </div>
-
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${labelColor}`}>
-                  End Date
-                </label>
-                <input
-                  type="date"
-                  value={formData.endDate}
-                  onChange={(e) => handleInputChange('endDate', e.target.value)}
-                  className={`w-full p-3 border rounded-lg ${inputBg} ${inputBorder} ${inputText} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                />
-                {errors.endDate && <p className={`text-sm mt-1 ${errorColor}`}>{errors.endDate}</p>}
-              </div>
+            {/* Date Range (using shared DateFilterInput without min restriction) */}
+            <div>
+              <label className={`block text-sm font-medium mb-2 ${labelColor}`}>
+                <Calendar className="w-4 h-4 inline mr-2" />
+                Rental Dates
+              </label>
+              <DateFilterInput
+                layout="horizontal"
+                ignoreStartMin={true}
+                theme={isDarkMode ? 'dark' : 'light'}
+                startDate={formData.startDate}
+                endDate={formData.endDate}
+                onStartDateChange={(e) => handleInputChange('startDate', e.target.value)}
+                onEndDateChange={(e) => handleInputChange('endDate', e.target.value)}
+                idPrefix="create-booking"
+              />
+              {errors.startDate && <p className={`text-sm mt-1 ${errorColor}`}>{errors.startDate}</p>}
+              {errors.endDate && <p className={`text-sm mt-1 ${errorColor}`}>{errors.endDate}</p>}
             </div>
 
             {/* Pricing Display */}

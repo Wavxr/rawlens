@@ -199,32 +199,17 @@ const HomeToRentalFlow = ({
           <p className="text-sm text-gray-600 mt-1">Select your rental period and complete your booking</p>
         </div>
 
-        {/* Date Selection - Side by Side */}
+        {/* Date Selection */}
         <div>
           <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">Select Rental Period</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs text-gray-600 mb-1.5">Start Date</label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => handleDateChange(e, 'start')}
-                disabled={isCheckingAvailability || isSubmitting || isGeneratingContract}
-                className="w-full px-3 py-2.5 text-sm rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-[#052844] focus:border-[#052844] disabled:bg-gray-100 disabled:text-gray-500 transition-all duration-150"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-600 mb-1.5">End Date</label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => handleDateChange(e, 'end')}
-                min={startDate}
-                disabled={isCheckingAvailability || isSubmitting || isGeneratingContract}
-                className="w-full px-3 py-2.5 text-sm rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-[#052844] focus:border-[#052844] disabled:bg-gray-100 disabled:text-gray-500 transition-all duration-150"
-              />
-            </div>
-          </div>
+          <DateFilterInput
+            startDate={startDate}
+            endDate={endDate}
+            onStartDateChange={(e) => handleDateChange(e, 'start')}
+            onEndDateChange={(e) => handleDateChange(e, 'end')}
+            disabled={isCheckingAvailability || isSubmitting || isGeneratingContract}
+            idPrefix="rental-flow"
+          />
         </div>
 
         <CameraDetails camera={rentalFlowCamera} isMobile={false} calculatedPrice={calculatedPrice} />
