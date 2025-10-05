@@ -12,6 +12,7 @@ import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import NotFound from './pages/NotFound';
+import ContractGenerator from './pages/ContractGenerator';
 
 // Admin
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -50,6 +51,7 @@ function App() {
         <Routes>
           {/* Public Page */}
           <Route path="/" element={<Landing />} />
+          <Route path="/contract-generator" element={<ContractGenerator />} />
 
           {/* Redirect logged-in users away from login/signup */}
           <Route element={<RedirectRoute />}>
