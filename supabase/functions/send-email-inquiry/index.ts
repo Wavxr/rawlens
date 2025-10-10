@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-nocheck: running in Deno edge context with external ESM; simplify strict TS here for portability
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@1.1.0";
 
@@ -13,7 +13,27 @@ function corsHeaders(req: Request) {
   };
 }
 
-function inquiryEmailTemplate(formData: any) {
+type Rate = { price_1to3?: number | null; price_4plus?: number | null; days?: number | null; total?: number | null };
+type InquiryPayload = {
+  name: string;
+  email: string;
+  phone: string;
+  equipment: string;
+  startDate?: string;
+  endDate?: string;
+  rentalDuration?: number | null;
+  additionalDetails?: string;
+  rate?: Rate;
+  contractPdfBase64?: string;
+  contractFileName?: string;
+};
+
+function formatPeso(n?: number | null) {
+  if (n == null || isNaN(Number(n))) return '—';
+  try { return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', maximumFractionDigits: 0 }).format(Number(n)); } catch { return `₱${Number(n).toLocaleString('en-PH')}`; }
+}
+
+function inquiryEmailTemplate(formData: InquiryPayload) {
   return `
 <!DOCTYPE html>
 <html>
@@ -117,7 +137,18 @@ function inquiryEmailTemplate(formData: any) {
             </div>
         </div>
         
-        ${formData.additionalDetails ? `
+    ${formData.rate ? `
+    <div class="section">
+      <h3>Estimated Rates:</h3>
+      <div class="details">
+        <div class="detail-item"><span class="label">1–3 Days:</span> ${formatPeso(formData.rate.price_1to3)}</div>
+        <div class="detail-item"><span class="label">4+ Days:</span> ${formatPeso(formData.rate.price_4plus)}</div>
+        ${formData.rate.days ? `<div class="detail-item"><span class="label">Quoted Days:</span> ${formData.rate.days}</div>` : ''}
+        ${formData.rate.total ? `<div class="detail-item"><span class="label">Estimated Total:</span> ${formatPeso(formData.rate.total)}</div>` : ''}
+      </div>
+    </div>
+    ` : ''}
+    ${formData.additionalDetails ? `
         <div class="section">
             <h3>Additional Details:</h3>
             <div class="additional-details">
@@ -154,7 +185,7 @@ serve(async (req) => {
   }
 
   try {
-    const formData = await req.json();
+  const formData: InquiryPayload = await req.json();
 
     // Validate required fields
     if (!formData.name || !formData.email || !formData.phone || !formData.equipment) {
@@ -171,12 +202,22 @@ serve(async (req) => {
     const html = inquiryEmailTemplate(formData);
 
     // Send email to admin
+    const attachments = (formData.contractPdfBase64 && formData.contractFileName)
+      ? [{
+          filename: formData.contractFileName,
+          content: formData.contractPdfBase64,
+          path: undefined as unknown as string, // not used
+          contentType: 'application/pdf',
+        }]
+      : undefined;
+
     const { data, error } = await resend.emails.send({
       from: "RawLens Inquiries <noreply@rawlensph.cam>",
       to: "business@rawlensph.cam",
       replyTo: formData.email,
       subject: `New Rental Inquiry from ${formData.name}`,
       html,
+      attachments,
     });
 
     if (error) throw error;

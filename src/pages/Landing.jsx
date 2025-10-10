@@ -17,6 +17,8 @@ import {
 } from "lucide-react"
 import DateFilterInput from "../components/forms/DateFilterInput"
 import { supabase } from "../lib/supabaseClient"
+import { getPublicCameras, getPublicCameraNames, calculateRentalQuote } from "../services/publicService"
+import ContractGeneratorModal from "../components/modals/ContractGeneratorModal"
 import { toast } from "react-toastify"
 
 /* -------------------------------------------------------------------------- */
@@ -58,63 +60,9 @@ const useScrollAnimation = () => {
 /* -------------------------------------------------------------------------- */
 /*  Data                                                                      */
 /* -------------------------------------------------------------------------- */
-const cameras = [
-  {
-    id: 1,
-    name: "Canon PowerShot G7X Mark II",
-    category: "Compact Premium",
-    price1to3: 550,
-    price4plus: 500,
-    image: "/g7xmarkii.png",
-    features: ["20.1MP 1-inch", "4.2x Optical Zoom", "Full HD Video"],
-    description: "Reliable compact camera for all occasions",
-    inclusions: ["Camera Body", "Battery", "Charger", "Memory Card", "Camera Bag"],
-  },
-  {
-    id: 2,
-    name: "Canon PowerShot G7X Mark III",
-    category: "Travel Companion",
-    price1to3: 600,
-    price4plus: 550,
-    image: "/g7xmarkiii.png",
-    features: ["20.1MP 1-inch Sensor", "4K Video Recording", "Live Streaming Ready"],
-    description: "Perfect for content creators and travel enthusiasts",
-    inclusions: ["Camera Body", "Battery", "Charger", "Memory Card", "Carrying Case"],
-  },
-  {
-    id: 3,
-    name: "Canon EOS M100",
-    category: "Content Creator",
-    price1to3: 500,
-    price4plus: 450,
-    image: "/eosm100.webp",
-    features: ["24.2MP APS-C", "Dual Pixel CMOS AF", "Built-in WiFi"],
-    description: "Lightweight mirrorless for everyday photography",
-    inclusions: ["Camera Body", "Kit Lens", "Battery", "Charger", "Memory Card"],
-  },
-  {
-    id: 4,
-    name: "DJI Osmo Pocket 3",
-    category: "Cinematic",
-    price1to3: 550,
-    price4plus: 500,
-    image: "/dji_osmo_3.webp",
-    features: ["4K/120fps Video", "3-Axis Mechanical Gimbal", "ActiveTrack 6.0"],
-    description: "Professional cinematic shots in your pocket",
-    inclusions: ["DJI Pocket 3", "Creator Combo Pack", "Magnetic Mount", "Memory Cards"],
-  },
-  {
-    id: 5,
-    name: "Ricoh GR IIIx",
-    category: "Street Photography",
-    price1to3: 700,
-    price4plus: 650,
-    image: "/ricoh_gh_iiix.png",
-    features: ["24.2MP APS-C", "40mm f/2.8 Lens", "Ultra Compact Design"],
-    description: "Premium compact for street photography",
-    inclusions: ["Camera Body", "Premium Strap", "Battery", "Charger", "Protective Case"],
-  },
-]
+// Populated at runtime from public catalog
+// Shape: { name, description, image_url, price_1to3, price_4plus, inclusions[] }
+const STATIC_FALLBACK = []
 
 const features = [
   {
@@ -165,72 +113,58 @@ export default function Landing() {
     additionalDetails: "",
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [publicCameras, setPublicCameras] = useState(STATIC_FALLBACK)
+  const [cameraNames, setCameraNames] = useState([])
+  const [loadingCatalog, setLoadingCatalog] = useState(false)
+  const [liveEstimate, setLiveEstimate] = useState(null)
+  const [showContractModal, setShowContractModal] = useState(false)
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-
-    try {
-      // Calculate rental duration if dates are provided
-      let rentalDuration = null
-      if (formData.startDate && formData.endDate) {
-        const start = new Date(formData.startDate)
-        const end = new Date(formData.endDate)
-        rentalDuration = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1
-      }
-
-      // Call Supabase Edge Function to send email
-      const { data, error } = await supabase.functions.invoke('send-email-inquiry', {
-        body: {
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          equipment: formData.equipment,
-          startDate: formData.startDate,
-          endDate: formData.endDate,
-          rentalDuration,
-          additionalDetails: formData.additionalDetails,
-        },
+  useEffect(() => {
+    let mounted = true
+    setLoadingCatalog(true)
+    Promise.all([getPublicCameras({ limit: 24 }), getPublicCameraNames()])
+      .then(([pc, names]) => {
+        if (!mounted) return
+        if (!pc.error) setPublicCameras(pc.data)
+        if (!names.error) setCameraNames(names.data)
       })
-
-      if (error) throw error
-
-      toast.success('Inquiry sent successfully! We\'ll get back to you soon.')
-      
-      // Reset form
-      setFormData({
-        name: "",
-        email: "",
-        phone: "",
-        equipment: "",
-        startDate: "",
-        endDate: "",
-        additionalDetails: "",
-      })
-    } catch (error) {
-      console.error('Error sending inquiry:', error)
-      toast.error('Failed to send inquiry. Please try again or contact us directly.')
-    } finally {
-      setIsSubmitting(false)
+      .finally(() => mounted && setLoadingCatalog(false))
+    return () => {
+      mounted = false
     }
-  }
+  }, [])
+
+  // Note: We use the modal to send the email; the inline submit handler was removed to avoid page refresh.
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
+  // Always show a live estimate when equipment + dates are present
+  useEffect(() => {
+    const { equipment, startDate, endDate } = formData
+    if (!equipment || !startDate || !endDate) { setLiveEstimate(null); return }
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+    const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1
+    if (isNaN(days) || days < 1) { setLiveEstimate(null); return }
+    const cam = publicCameras.find(c => c.name === equipment)
+    if (!cam) { setLiveEstimate(null); return }
+    const total = calculateRentalQuote({ days, price_1to3: cam.price_1to3, price_4plus: cam.price_4plus })
+    setLiveEstimate({ days, total })
+  }, [formData.equipment, formData.startDate, formData.endDate, publicCameras])
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="flex items-center space-x-4">
           <div className="w-6 h-6 border-2 border-black border-t-transparent animate-spin rounded-full"></div>
-          <div className="text-black text-lg font-medium">
-            Loading...
-          </div>
+          <div className="text-black text-lg font-medium">Loading...</div>
         </div>
       </div>
     )
+
   }
 
   return (
@@ -379,54 +313,52 @@ export default function Landing() {
       </section>
 
       {/* Camera Collection */}
-      <section id="cameras" ref={camerasRef} className="py-12 sm:py-16 lg:py-32 px-5 lg:px-8 bg-gradient-to-b from-white to-gray-50">
+      <section id="cameras" ref={camerasRef} className="py-10 sm:py-14 lg:py-24 px-5 lg:px-8 bg-gradient-to-b from-white to-gray-50">
         <div className="max-w-7xl mx-auto">
-          <div className={`text-center mb-12 sm:mb-16 lg:mb-24 transition-all duration-1000 ${camerasVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}>
-            <h2 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6 sm:mb-8 leading-tight px-4">
+          <div className={`text-center mb-10 sm:mb-14 lg:mb-20 transition-all duration-1000 ${camerasVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}>
+            <h2 className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-4 sm:mb-6 leading-tight px-4">
               <span className="block text-black">OUR</span>
               <span className="block text-gray-500">COLLECTION</span>
             </h2>
           </div>
 
-          <div className="space-y-12 sm:space-y-16 lg:space-y-40">
-            {cameras.map((camera, index) => (
+          <div className="space-y-10 sm:space-y-14 lg:space-y-24">
+            {(publicCameras.length ? publicCameras : STATIC_FALLBACK).map((camera, index) => (
               <div 
-                key={camera.id} 
+                key={camera.name} 
                 className={`grid lg:grid-cols-2 gap-6 sm:gap-10 lg:gap-20 items-center transition-all duration-1000 ${camerasVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
                 style={{ transitionDelay: `${index * 200}ms` }}
               >
                 <div className={`${index % 2 === 1 ? 'lg:order-2' : ''} relative group`}>
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-2xl sm:rounded-[3rem] transform rotate-1 scale-105 opacity-5 group-hover:opacity-10 transition-opacity duration-500"></div>
                   <img 
-                    src={camera.image || "/placeholder.svg"} 
+                    src={camera.image_url || "/placeholder.svg"} 
                     alt={camera.name}
-                    className="relative w-full max-w-xs sm:max-w-sm lg:max-w-xl mx-auto object-contain group-hover:scale-105 transition-transform duration-700 rounded-2xl sm:rounded-3xl"
+                    className="relative w-full max-w-xs sm:max-w-sm lg:max-w-lg mx-auto object-contain group-hover:scale-105 transition-transform duration-700 rounded-2xl sm:rounded-3xl"
                   />
                 </div>
                 
                 <div className={`space-y-4 sm:space-y-6 lg:space-y-8 ${index % 2 === 1 ? 'lg:order-1' : ''} px-4 sm:px-0`}>
                   <div>
-                    <div className="text-[10px] sm:text-xs lg:text-sm text-blue-500 font-medium mb-2 sm:mb-3 lg:mb-4 tracking-[0.15em] uppercase">
-                      {camera.category}
-                    </div>
-                    <h3 className="text-xl sm:text-2xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-3 sm:mb-4 lg:mb-6 leading-tight text-black">{camera.name}</h3>
-                    <p className="text-sm sm:text-base lg:text-2xl text-gray-600 font-light mb-4 sm:mb-6 lg:mb-8 leading-relaxed">{camera.description}</p>
+                    <div className="text-[10px] sm:text-xs lg:text-sm text-blue-500 font-medium mb-2 sm:mb-3 lg:mb-4 tracking-[0.15em] uppercase">CAMERA</div>
+                    <h3 className="text-xl sm:text-2xl md:text-4xl lg:text-5xl font-bold tracking-tight mb-2 sm:mb-3 lg:mb-5 leading-tight text-black">{camera.name}</h3>
+                    <p className="text-sm sm:text-base lg:text-xl text-gray-600 font-light mb-3 sm:mb-5 lg:mb-6 leading-relaxed">{camera.description}</p>
                   </div>
 
                   <div className="bg-gray-50 border border-gray-200 p-4 sm:p-5 lg:p-8 rounded-xl sm:rounded-2xl lg:rounded-3xl backdrop-blur-sm">
                     <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:gap-8 mb-4 sm:mb-6 lg:mb-8">
                       <div>
                         <div className="text-[10px] sm:text-xs lg:text-sm text-gray-600 mb-1.5 sm:mb-2 lg:mb-3 tracking-[0.15em] font-medium">1-3 DAYS</div>
-                        <div className="text-lg sm:text-xl lg:text-3xl font-bold text-black">₱{camera.price1to3}</div>
+                        <div className="text-lg sm:text-lg lg:text-2xl font-bold text-black">₱{camera.price_1to3 ?? '—'}</div>
                       </div>
                       <div>
                         <div className="text-[10px] sm:text-xs lg:text-sm text-gray-600 mb-1.5 sm:mb-2 lg:mb-3 tracking-[0.15em] font-medium">4+ DAYS</div>
-                        <div className="text-lg sm:text-xl lg:text-3xl font-bold text-blue-500">₱{camera.price4plus}</div>
+                        <div className="text-lg sm:text-lg lg:text-2xl font-bold text-blue-500">₱{camera.price_4plus ?? '—'}</div>
                       </div>
                     </div>
 
                     <div className="space-y-2 sm:space-y-3 lg:space-y-4">
-                      {camera.features.map((feature, i) => (
+                      {(camera.inclusions || []).map((feature, i) => (
                         <div key={i} className="flex items-center text-black">
                           <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full mr-2 sm:mr-3 lg:mr-4"></div>
                           <span className="font-medium text-xs sm:text-sm lg:text-base">{feature}</span>
@@ -498,9 +430,10 @@ export default function Landing() {
             </p>
           </div>
 
-          <form
-            onSubmit={handleSubmit}
+          <div
             className={`bg-card border border-border p-4 sm:p-6 lg:p-12 rounded-xl lg:rounded-2xl backdrop-blur-sm shadow-elegant transition-all duration-1000 delay-300 ${emailFormVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}
+            role="form"
+            aria-label="Send inquiry form"
           >
             <div className="grid md:grid-cols-2 gap-4 sm:gap-6 lg:gap-8 mb-4 sm:mb-6 lg:mb-8">
               <div>
@@ -576,10 +509,8 @@ export default function Landing() {
                   className="w-full px-3 sm:px-4 lg:px-6 py-2.5 sm:py-3 lg:py-4 text-sm lg:text-base bg-background border border-border rounded-lg lg:rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300"
                 >
                   <option value="">Select a camera</option>
-                  {cameras.map((camera) => (
-                    <option key={camera.id} value={camera.name}>
-                      {camera.name}
-                    </option>
+                  {cameraNames.map((name) => (
+                    <option key={name} value={name}>{name}</option>
                   ))}
                   <option value="Other">Other (please specify in details)</option>
                 </select>
@@ -601,7 +532,7 @@ export default function Landing() {
               </div>
             </div>
 
-            <div className="mb-6 sm:mb-8 lg:mb-10">
+            <div className="mb-3 sm:mb-4 lg:mb-5">
               <label
                 htmlFor="additionalDetails"
                 className="block text-xs sm:text-sm lg:text-base font-semibold text-foreground mb-2 lg:mb-3 tracking-wide"
@@ -619,10 +550,19 @@ export default function Landing() {
               />
             </div>
 
-            <button
-              type="submit"
+            {liveEstimate && (
+              <div className="mb-6 sm:mb-8 lg:mb-10 bg-gray-50 border border-gray-200 rounded-lg p-3 sm:p-4 flex items-center justify-between">
+                <span className="text-xs sm:text-sm text-gray-600">Estimated total for {liveEstimate.days} day(s)</span>
+                <span className="text-sm sm:text-base font-semibold text-gray-900">₱{Number(liveEstimate.total).toLocaleString('en-PH')}</span>
+              </div>
+            )}
+
+            <div>
+              <button
+              type="button"
               disabled={isSubmitting}
               className="w-full bg-primary text-primary-foreground font-semibold px-6 sm:px-8 py-3 sm:py-4 lg:py-5 text-sm sm:text-base lg:text-lg tracking-[0.15em] transition-all duration-300 hover:shadow-glow hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100 rounded-lg lg:rounded-xl flex items-center justify-center gap-2 sm:gap-3"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowContractModal(true); }}
             >
               {isSubmitting ? (
                 <>
@@ -635,8 +575,22 @@ export default function Landing() {
                   <span>SEND INQUIRY</span>
                 </>
               )}
-            </button>
-          </form>
+              </button>
+            </div>
+          </div>
+          <ContractGeneratorModal
+            open={showContractModal}
+            onClose={() => setShowContractModal(false)}
+            initialData={{
+              name: formData.name,
+              email: formData.email,
+              phone: formData.phone,
+              equipment: formData.equipment,
+              startDate: formData.startDate,
+              endDate: formData.endDate,
+              additionalDetails: formData.additionalDetails,
+            }}
+          />
         </div>
       </section>
 

@@ -1,62 +1,31 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import SignatureCanvas from 'react-signature-canvas';
-import { FileText, Loader2, Camera, User, ArrowLeft, Download, RefreshCw, Info } from 'lucide-react';
-import { generateSignedContractPdf } from '../services/pdfService';
-import DateFilterInput from '../components/forms/DateFilterInput';
-import { getPublicCameraNames, getPublicCameraByName, calculateRentalQuote } from '../services/publicService';
+import { FileText, Loader2, X, Download, Info, Send } from 'lucide-react';
+import { generateSignedContractPdf } from '../../services/pdfService';
+import { getPublicCameraByName, calculateRentalQuote } from '../../services/publicService';
+import { supabase } from '../../lib/supabaseClient';
+import { toast } from 'react-toastify';
 
-// Loaded from public catalog at runtime
-
-/*
-  Public Contract Generator Page
-  - No authentication required
-  - Collects minimal rental info + signature
-  - Generates an in-browser PDF (downloads directly)
-  - Does NOT upload to Supabase (offline / quick flow for IG inquiries)
-*/
-export default function ContractGenerator() {
-  const navigate = useNavigate();
+// Contract Generator Modal (identical content to page version, adapted for modal)
+export default function ContractGeneratorModal({ open, onClose, initialData = {} }) {
   const [form, setForm] = useState({
-    customerName: '',
-    cameraName: '', // resolved camera name
-    startDate: '',
-    endDate: ''
+    customerName: initialData?.name || '',
+    cameraName: initialData?.equipment || '',
+    startDate: initialData?.startDate || '',
+    endDate: initialData?.endDate || ''
   });
-  const [selectedCameraName, setSelectedCameraName] = useState('');
   const [errors, setErrors] = useState({});
   const [signatureDataUrl, setSignatureDataUrl] = useState(null);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedBlobUrl, setGeneratedBlobUrl] = useState(null);
-  const [showPreview, setShowPreview] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
   const sigCanvasRef = useRef(null);
   const canvasWrapperRef = useRef(null);
-  const [cameraNames, setCameraNames] = useState([]);
-  const [loadingNames, setLoadingNames] = useState(false);
   const [selectedCameraPricing, setSelectedCameraPricing] = useState({ price_1to3: null, price_4plus: null });
   const [estimate, setEstimate] = useState(null);
+  const pricingType = estimate?.days && estimate.days > 3 ? 'Discounted' : 'Standard';
 
-  useEffect(() => {
-    let mounted = true;
-    setLoadingNames(true);
-    getPublicCameraNames()
-      .then(({ data, error }) => {
-        if (!mounted) return;
-        if (!error) setCameraNames(data);
-      })
-      .finally(() => mounted && setLoadingNames(false));
-    return () => { mounted = false; };
-  }, []);
+  // No field inputs shown; we only display summary from initialData
 
-  const handleChange = (field, value) => {
-    setForm(prev => ({ ...prev, [field]: value }));
-    if (errors[field]) setErrors(prev => ({ ...prev, [field]: '' }));
-  };
-
-  const handleCameraSelect = (value) => {
-    setSelectedCameraName(value);
-    handleChange('cameraName', value || '');
-  };
+  // No camera selection; cameraName is from initial data
 
   const clearSignature = () => {
     sigCanvasRef.current?.clear();
@@ -76,50 +45,18 @@ export default function ContractGenerator() {
 
   const validate = () => {
     const next = {};
-    if (!form.customerName.trim()) next.customerName = 'Name required';
-    if (!form.cameraName.trim()) next.cameraName = 'Device required';
-    if (!form.startDate) next.startDate = 'Start date required';
-    if (!form.endDate) next.endDate = 'End date required';
-    if (form.startDate && form.endDate) {
-      if (new Date(form.endDate) < new Date(form.startDate)) {
-        next.endDate = 'Return date must be after start';
-      }
-    }
+    // Name, device, dates come from parent form; only require signature here
     if (!signatureDataUrl) next.signature = 'Signature required';
     setErrors(next);
     return Object.keys(next).length === 0;
   };
 
-  const handleGenerate = async () => {
-    if (!validate()) return;
-    setIsGenerating(true);
-    setGeneratedBlobUrl(old => { if (old) URL.revokeObjectURL(old); return null; });
-    try {
-      // Reuse generateSignedContractPdf but bypass upload; fabricate minimal rentalDetails
-      const rentalDetails = {
-        cameraName: form.cameraName,
-        startDate: form.startDate,
-        endDate: form.endDate,
-        customerName: form.customerName
-      };
-      const pdfBytes = await generateSignedContractPdf(signatureDataUrl, rentalDetails);
-      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      setGeneratedBlobUrl(url);
-      setShowPreview(true);
-    } catch (e) {
-      console.error(e);
-      setErrors(prev => ({ ...prev, submit: e.message || 'Failed to generate PDF' }));
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  // Canvas fix similar to modal (simplified)
+  // Canvas fix similar to page
   useLayoutEffect(() => {
+    if (!open) return;
     if (!canvasWrapperRef.current || !sigCanvasRef.current) return;
     const wrapper = canvasWrapperRef.current;
-    const canvas = sigCanvasRef.current.canvas; // internal canvas
+    const canvas = sigCanvasRef.current.canvas;
     if (!canvas) return;
     const dpr = window.devicePixelRatio || 1;
     const rect = wrapper.getBoundingClientRect();
@@ -129,31 +66,25 @@ export default function ContractGenerator() {
     canvas.style.height = rect.height + 'px';
     const ctx = canvas.getContext('2d');
     ctx.scale(dpr, dpr);
-  }, [isGenerating, signatureDataUrl]);
+  }, [open, signatureDataUrl]);
 
-  const resetAll = () => {
-    setForm({ customerName: '', cameraName: '', startDate: '', endDate: '' });
-  setSelectedCameraName('');
-    setErrors({});
-    clearSignature();
-    setSignatureDataUrl(null);
-    setGeneratedBlobUrl(old => { if (old) URL.revokeObjectURL(old); return null; });
-    setShowPreview(false);
-    setSelectedCameraPricing({ price_1to3: null, price_4plus: null });
-    setEstimate(null);
-  };
+  // No reset UX in modal
 
   // When camera or dates change, fetch pricing and compute estimate
   useEffect(() => {
+    if (!open) return;
     let cancelled = false;
     async function run() {
-      if (!selectedCameraName) { setSelectedCameraPricing({ price_1to3: null, price_4plus: null }); setEstimate(null); return; }
-      const { data } = await getPublicCameraByName(selectedCameraName);
+      const camName = initialData?.equipment || form.cameraName;
+      if (!camName) { setSelectedCameraPricing({ price_1to3: null, price_4plus: null }); setEstimate(null); return; }
+      const { data } = await getPublicCameraByName(camName);
       if (cancelled) return;
       const pricing = { price_1to3: data?.price_1to3 ?? null, price_4plus: data?.price_4plus ?? null };
       setSelectedCameraPricing(pricing);
-      if (form.startDate && form.endDate) {
-        const days = Math.ceil((new Date(form.endDate) - new Date(form.startDate)) / (1000 * 60 * 60 * 24)) + 1;
+      const s = initialData?.startDate || form.startDate;
+      const e = initialData?.endDate || form.endDate;
+      if (s && e) {
+        const days = Math.ceil((new Date(e) - new Date(s)) / (1000 * 60 * 60 * 24)) + 1;
         if (!isNaN(days) && days > 0) {
           const total = calculateRentalQuote({ days, price_1to3: pricing.price_1to3, price_4plus: pricing.price_4plus });
           setEstimate({ days, total });
@@ -166,82 +97,130 @@ export default function ContractGenerator() {
     }
     run();
     return () => { cancelled = true; };
-  }, [selectedCameraName, form.startDate, form.endDate]);
+  }, [open, initialData?.equipment, initialData?.startDate, initialData?.endDate]);
+
+  const arrayBufferToBase64 = (bytes) => {
+    let binary = '';
+    const len = bytes.length;
+    const chunkSize = 0x8000;
+    for (let i = 0; i < len; i += chunkSize) {
+      const chunk = bytes.subarray(i, Math.min(i + chunkSize, len));
+      binary += String.fromCharCode.apply(null, chunk);
+    }
+    return btoa(binary);
+  };
+
+  // Prevent background scroll while modal is open (mobile + desktop)
+  // Must be declared before any early returns to keep hooks order stable
+  useEffect(() => {
+    if (!open) return;
+    const originalBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalBodyOverflow;
+    };
+  }, [open]);
+
+  // Modal no longer offers a separate Generate PDF button
+
+  const handleSendEmail = async () => {
+    if (!validate()) return;
+    setSendingEmail(true);
+    try {
+      // Generate PDF bytes for attachment
+      const rentalDetails = {
+        cameraName: initialData?.equipment || form.cameraName,
+        startDate: initialData?.startDate || form.startDate,
+        endDate: initialData?.endDate || form.endDate,
+        customerName: initialData?.name || form.customerName
+      };
+      const pdfBytes = await generateSignedContractPdf(signatureDataUrl, rentalDetails);
+      const base64 = arrayBufferToBase64(new Uint8Array(pdfBytes));
+
+      const payload = {
+        // Original inquiry fields from the landing form
+  name: initialData?.name || form.customerName,
+  email: initialData?.email || '',
+  phone: initialData?.phone || '',
+  equipment: initialData?.equipment || form.cameraName,
+  startDate: initialData?.startDate || form.startDate,
+  endDate: initialData?.endDate || form.endDate,
+        rentalDuration: estimate?.days || null,
+        additionalDetails: initialData?.additionalDetails || '',
+        // Rate details
+        rate: {
+          price_1to3: selectedCameraPricing.price_1to3,
+          price_4plus: selectedCameraPricing.price_4plus,
+          days: estimate?.days || null,
+          total: estimate?.total || null,
+        },
+        // Attachment
+        contractPdfBase64: base64,
+        contractFileName: `RawLens-Rental-Agreement-${form.customerName || 'renter'}.pdf`,
+      };
+
+      const { data, error } = await supabase.functions.invoke('send-email-inquiry', {
+        body: payload,
+      });
+      if (error) throw error;
+      toast.success('Inquiry sent with contract attached. We\'ll get back to you soon.');
+      onClose?.();
+    } catch (e) {
+      console.error('Send email failed', e);
+      toast.error(e.message || 'Failed to send email.');
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
+  if (!open) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white flex flex-col">
-      <header className="px-4 sm:px-6 py-4 border-b bg-white/85 backdrop-blur supports-[backdrop-filter]:bg-white/60">
-        <div className="max-w-4xl mx-auto flex items-center gap-3">
-          <button onClick={() => navigate('/')} className="p-2 rounded-lg hover:bg-slate-100 text-slate-600 active:scale-95 transition" aria-label="Back to Landing">
-            <ArrowLeft className="h-5 w-5" />
+    <div className="fixed inset-0 z-[100] flex items-center justify-center">
+  <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+  <div className="relative bg-white rounded-xl sm:rounded-2xl shadow-2xl w-full sm:max-w-4xl mx-3 my-4 sm:mx-0 sm:my-0 max-h-[92svh] sm:max-h-[90vh] overflow-hidden border border-slate-200">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b">
+          <div className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-slate-700" />
+            <h2 className="text-sm sm:text-base font-semibold text-slate-800">Rental Agreement</h2>
+          </div>
+          <button type="button" onClick={onClose} className="p-2 rounded-lg hover:bg-slate-100 text-slate-600" aria-label="Close">
+            <X className="h-5 w-5" />
           </button>
-          <h1 className="text-lg sm:text-xl font-semibold text-slate-800">Rental Agreement</h1>
-          <span className="ml-auto text-[10px] sm:text-xs text-slate-500">No data stored</span>
         </div>
-      </header>
-
-      <main className="flex-1">
-        <div className="max-w-4xl mx-auto p-4 sm:p-6 pb-28">
-          <div className="bg-white shadow-sm border border-slate-200 rounded-xl p-4 sm:p-6 md:p-8 space-y-5 sm:space-y-6">
+  <div className="overflow-y-auto max-h-[calc(92svh-56px)] sm:max-h-[calc(90vh-56px)] p-4 sm:p-6 overscroll-contain">
+          <div className="bg-white">
             <section className="space-y-4">
               <div className="flex items-start gap-2 bg-slate-50 border border-slate-200 rounded-lg p-3 sm:p-4">
                 <Info className="h-4 w-4 text-slate-500 mt-0.5 shrink-0" />
                 <p className="text-[11px] sm:text-xs md:text-sm text-slate-600 leading-relaxed">
-                  Fill out this rental agreement and sign to generate your contract. No personal data is saved on our servers. After downloading the PDF, keep a copy for your records.
+                  Review the summary below and sign. After sending, the contract PDF will be attached to the email we receive.
                 </p>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-medium uppercase tracking-wide text-slate-600 flex items-center gap-1">
-                    <User className="h-4 w-4" /> Renter Name
-                  </label>
-                  <input
-                    type="text"
-                    value={form.customerName}
-                    onChange={e => handleChange('customerName', e.target.value)}
-                    placeholder="Juan Dela Cruz"
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-700"
-                  />
-                  {errors.customerName && <p className="text-[11px] text-red-600">{errors.customerName}</p>}
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-medium uppercase tracking-wide text-slate-600 flex items-center gap-1">
-                    <Camera className="h-4 w-4" /> Device Borrowed
-                  </label>
-                  <select
-                    value={selectedCameraName}
-                    onChange={e => handleCameraSelect(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-700"
-                  >
-                    <option value="">Select a device</option>
-                    {cameraNames.map(name => (
-                      <option key={name} value={name}>{name}</option>
-                    ))}
-                  </select>
-                  {errors.cameraName && <p className="text-[11px] text-red-600">{errors.cameraName}</p>}
-                </div>
-                {/* Rental Period using DateFilterInput */}
-                <div className="sm:col-span-2">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-[11px] font-medium uppercase tracking-wide text-slate-600">Rental Period</label>
-                    {(errors.startDate || errors.endDate) && (
-                      <span className="text-[11px] text-red-600">{errors.startDate || errors.endDate}</span>
-                    )}
-                  </div>
-                  <DateFilterInput
-                    startDate={form.startDate}
-                    endDate={form.endDate}
-                    onStartDateChange={(e) => handleChange('startDate', e.target.value)}
-                    onEndDateChange={(e) => handleChange('endDate', e.target.value)}
-                    layout="horizontal"
-                    theme="light"
-                  />
+              {/* Rental Summary (styled like ContractSigningModal) */}
+              <div className="mb-2 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <h3 className="font-semibold text-blue-800 mb-2">Rental Summary</h3>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <span className="font-medium">Camera:</span>
+                  <span>{initialData?.equipment || form.cameraName || '—'}</span>
+                  <span className="font-medium">Rental Period:</span>
+                  <span>{(initialData?.startDate || form.startDate) ? new Date(initialData?.startDate || form.startDate).toLocaleDateString() : '—'} to {(initialData?.endDate || form.endDate) ? new Date(initialData?.endDate || form.endDate).toLocaleDateString() : '—'}</span>
+                  <span className="font-medium">Duration:</span>
+                  <span>{estimate?.days != null ? `${estimate.days} day${estimate.days === 1 ? '' : 's'}` : '—'}</span>
+                  <span className="font-medium">Rate Type:</span>
+                  <span>{pricingType}</span>
+                  <span className="font-medium">Total Price:</span>
+                  <span className="font-bold text-lg">
+                    {estimate?.total != null
+                      ? `₱${Number(estimate.total).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                      : '—'}
+                  </span>
                 </div>
               </div>
+              {/* Rate details removed per request */}
             </section>
 
-            {/* Terms & Conditions (full, matching ContractSigningModal) */}
-            <section className="space-y-3">
+            <section className="space-y-3 mt-6">
               <div className="flex justify-between items-center mb-2">
                 <h2 className="text-sm font-semibold text-gray-800">Terms & Conditions</h2>
                 <a
@@ -254,7 +233,7 @@ export default function ContractGenerator() {
                   View Full Agreement (PDF)
                 </a>
               </div>
-              <div className="border border-gray-300 rounded-lg p-4 h-96 overflow-y-auto text-sm text-gray-700 bg-gray-50">
+              <div className="border border-gray-300 rounded-lg p-4 h-60 sm:h-72 md:h-80 overflow-y-auto text-sm text-gray-700 bg-gray-50">
                 <p className="mb-3">
                   This Camera Rental Agreement is made and entered into by the undersigned renter
                   <span className="font-semibold"> _____________________________________________ </span>
@@ -324,18 +303,11 @@ export default function ContractGenerator() {
               </div>
             </section>
 
-            {/* Signature Section */}
-            <section className="space-y-4">
+            <section className="space-y-4 mt-6">
               <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Signature</h2>
-              {estimate && (
-                <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg p-3">
-                  <span className="text-xs text-slate-600">Estimated total for {estimate.days} day(s)</span>
-                  <span className="text-sm font-semibold text-slate-800">₱{Number(estimate.total).toLocaleString('en-PH')}</span>
-                </div>
-              )}
               {!signatureDataUrl ? (
                 <>
-                  <div ref={canvasWrapperRef} className="border-2 border-dashed border-slate-300 rounded-lg bg-white h-48 p-2">
+                  <div ref={canvasWrapperRef} className="border-2 border-dashed border-slate-300 rounded-lg bg-white h-40 sm:h-48 p-2">
                     <SignatureCanvas
                       ref={sigCanvasRef}
                       penColor="black"
@@ -352,56 +324,31 @@ export default function ContractGenerator() {
                 <div className="space-y-3">
                   <p className="text-green-600 text-sm font-medium">Signature captured.</p>
                   <div className="flex gap-3">
-                    <button onClick={() => setSignatureDataUrl(null)} className="px-3 py-2 text-xs rounded-lg border border-slate-300 hover:bg-slate-50">Resign</button>
+                    <button type="button" onClick={() => setSignatureDataUrl(null)} className="px-3 py-2 text-xs rounded-lg border border-slate-300 hover:bg-slate-50">Resign</button>
                   </div>
                 </div>
               )}
             </section>
 
-            {/* Actions */}
-            <section className="space-y-4">
+            <section className="space-y-4 mt-6">
               {errors.submit && <p className="text-xs text-red-600">{errors.submit}</p>}
               <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:items-center">
                 <button
                   type="button"
-                  onClick={handleGenerate}
-                  disabled={isGenerating}
+                  onClick={handleSendEmail}
+                  disabled={sendingEmail}
                   className="w-full sm:w-auto inline-flex justify-center items-center gap-2 px-6 h-11 rounded-lg bg-[#052844] hover:bg-[#063a5e] text-white text-sm font-medium disabled:opacity-60"
                 >
-                  {isGenerating && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {isGenerating ? 'Generating PDF...' : 'Generate PDF'}
+                  {sendingEmail && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {sendingEmail ? 'Sending Email...' : (<><Send className="h-4 w-4"/> Send Email</>)}
                 </button>
-                <button
-                  type="button"
-                  onClick={resetAll}
-                  disabled={isGenerating}
-                  className="w-full sm:w-auto inline-flex justify-center items-center gap-2 px-5 h-11 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium"
-                >
-                  <RefreshCw className="h-4 w-4" /> Reset
-                </button>
-                {generatedBlobUrl && (
-                  <a
-                    href={generatedBlobUrl}
-                    download={`rental-contract-${form.customerName || 'renter'}.pdf`}
-                    className="w-full sm:w-auto inline-flex justify-center items-center gap-2 px-6 h-11 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium"
-                  >
-                    <FileText className="h-4 w-4" /> Download PDF
-                  </a>
-                )}
+                {/* No separate generate/reset/download in modal */}
               </div>
-              {showPreview && generatedBlobUrl && (
-                <div className="mt-2 sm:mt-4 border border-slate-200 rounded-lg overflow-hidden">
-                  <iframe title="Contract Preview" src={generatedBlobUrl} className="w-full h-[550px] sm:h-[600px] bg-white" />
-                </div>
-              )}
+              {/* No preview iframe in modal */}
             </section>
           </div>
         </div>
-      </main>
-
-      <footer className="pb-6 text-center text-[10px] sm:text-xs text-slate-500">
-        RawLens PH • Rental Agreement Generator • No data stored on server
-      </footer>
+      </div>
     </div>
   );
 }
