@@ -142,6 +142,7 @@ export default function ContractGeneratorModal({ open, onClose, initialData = {}
   name: initialData?.name || form.customerName,
   email: initialData?.email || '',
   phone: initialData?.phone || '',
+  social: initialData?.social || '',
   equipment: initialData?.equipment || form.cameraName,
   startDate: initialData?.startDate || form.startDate,
   endDate: initialData?.endDate || form.endDate,
@@ -153,6 +154,7 @@ export default function ContractGeneratorModal({ open, onClose, initialData = {}
           price_4plus: selectedCameraPricing.price_4plus,
           days: estimate?.days || null,
           total: estimate?.total || null,
+          tier: pricingType,
         },
         // Attachment
         contractPdfBase64: base64,
@@ -207,13 +209,19 @@ export default function ContractGeneratorModal({ open, onClose, initialData = {}
                   <span>{(initialData?.startDate || form.startDate) ? new Date(initialData?.startDate || form.startDate).toLocaleDateString() : '—'} to {(initialData?.endDate || form.endDate) ? new Date(initialData?.endDate || form.endDate).toLocaleDateString() : '—'}</span>
                   <span className="font-medium">Duration:</span>
                   <span>{estimate?.days != null ? `${estimate.days} day${estimate.days === 1 ? '' : 's'}` : '—'}</span>
-                  <span className="font-medium">Rate Type:</span>
-                  <span>{pricingType}</span>
                   <span className="font-medium">Total Price:</span>
                   <span className="font-bold text-lg">
                     {estimate?.total != null
                       ? `₱${Number(estimate.total).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                       : '—'}
+                  </span>
+                  <span className="font-medium">Rate Tier:</span>
+                  <span>{pricingType}</span>
+                  <span className="font-medium">Rates:</span>
+                  <span className="text-slate-700">
+                    {selectedCameraPricing.price_1to3 != null ? `1–3 ₱${Number(selectedCameraPricing.price_1to3).toLocaleString('en-PH')}/day` : '—'}
+                    {" \u00A0•\u00A0 "}
+                    {selectedCameraPricing.price_4plus != null ? `4+ ₱${Number(selectedCameraPricing.price_4plus).toLocaleString('en-PH')}/day` : '—'}
                   </span>
                 </div>
               </div>

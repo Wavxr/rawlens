@@ -107,6 +107,7 @@ export default function Landing() {
     name: "",
     email: "",
     phone: "",
+    social: "",
     equipment: "",
     startDate: "",
     endDate: "",
@@ -117,7 +118,9 @@ export default function Landing() {
   const [cameraNames, setCameraNames] = useState([])
   const [loadingCatalog, setLoadingCatalog] = useState(false)
   const [liveEstimate, setLiveEstimate] = useState(null)
+  const [liveRateTier, setLiveRateTier] = useState(null)
   const [showContractModal, setShowContractModal] = useState(false)
+  const currentCam = publicCameras.find(c => c.name === formData.equipment)
 
   useEffect(() => {
     let mounted = true
@@ -152,7 +155,9 @@ export default function Landing() {
     const cam = publicCameras.find(c => c.name === equipment)
     if (!cam) { setLiveEstimate(null); return }
     const total = calculateRentalQuote({ days, price_1to3: cam.price_1to3, price_4plus: cam.price_4plus })
+    const tier = days > 3 ? 'Discounted' : 'Standard'
     setLiveEstimate({ days, total })
+    setLiveRateTier(tier)
   }, [formData.equipment, formData.startDate, formData.endDate, publicCameras])
 
   if (loading) {
@@ -495,6 +500,24 @@ export default function Landing() {
 
               <div>
                 <label
+                  htmlFor="social"
+                  className="block text-xs sm:text-sm lg:text-base font-semibold text-foreground mb-2 lg:mb-3 tracking-wide"
+                >
+                  SOCIAL (OPTIONAL)
+                </label>
+                <input
+                  type="text"
+                  id="social"
+                  name="social"
+                  value={formData.social}
+                  onChange={handleInputChange}
+                  className="w-full px-3 sm:px-4 lg:px-6 py-2.5 sm:py-3 lg:py-4 text-sm lg:text-base bg-background border border-border rounded-lg lg:rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300"
+                  placeholder="@username or link (Instagram, Facebook, etc.)"
+                />
+              </div>
+
+              <div>
+                <label
                   htmlFor="equipment"
                   className="block text-xs sm:text-sm lg:text-base font-semibold text-foreground mb-2 lg:mb-3 tracking-wide"
                 >
@@ -551,9 +574,34 @@ export default function Landing() {
             </div>
 
             {liveEstimate && (
-              <div className="mb-6 sm:mb-8 lg:mb-10 bg-gray-50 border border-gray-200 rounded-lg p-3 sm:p-4 flex items-center justify-between">
-                <span className="text-xs sm:text-sm text-gray-600">Estimated total for {liveEstimate.days} day(s)</span>
-                <span className="text-sm sm:text-base font-semibold text-gray-900">₱{Number(liveEstimate.total).toLocaleString('en-PH')}</span>
+              <div className="mb-6 sm:mb-8 lg:mb-10">
+                {/* Compact blue rental summary */}
+                <div className="p-3 sm:p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-[11px] sm:text-xs text-blue-800 font-semibold">Rental Summary</div>
+                    <div className="text-[10px] sm:text-xs text-blue-700 bg-blue-100 px-2 py-0.5 rounded-md border border-blue-200">{liveRateTier}</div>
+                  </div>
+                  <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] sm:text-xs text-blue-900">
+                    <div className="opacity-70">Camera</div>
+                    <div className="font-medium text-right truncate">{formData.equipment || '—'}</div>
+                    <div className="opacity-70">Period</div>
+                    <div className="font-medium text-right">
+                      {formData.startDate ? new Date(formData.startDate).toLocaleDateString() : '—'} — {formData.endDate ? new Date(formData.endDate).toLocaleDateString() : '—'}
+                    </div>
+                    <div className="opacity-70">Duration</div>
+                    <div className="font-medium text-right">{liveEstimate.days} day{liveEstimate.days === 1 ? '' : 's'}</div>
+                    <div className="opacity-70">Rates</div>
+                    <div className="text-right text-blue-900">
+                      {currentCam?.price_1to3 != null ? `1–3 ₱${Number(currentCam.price_1to3).toLocaleString('en-PH')}/day` : '—'}
+                      {" \u00A0•\u00A0 "}
+                      {currentCam?.price_4plus != null ? `4+ ₱${Number(currentCam.price_4plus).toLocaleString('en-PH')}/day` : '—'}
+                    </div>
+                    <div className="opacity-70">Estimated Total</div>
+                    <div className="font-bold text-right text-blue-900 flex items-center justify-end gap-2">
+                      <span>₱{Number(liveEstimate.total).toLocaleString('en-PH')}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -585,6 +633,7 @@ export default function Landing() {
               name: formData.name,
               email: formData.email,
               phone: formData.phone,
+              social: formData.social,
               equipment: formData.equipment,
               startDate: formData.startDate,
               endDate: formData.endDate,

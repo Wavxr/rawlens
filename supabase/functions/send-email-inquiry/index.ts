@@ -13,12 +13,13 @@ function corsHeaders(req: Request) {
   };
 }
 
-type Rate = { price_1to3?: number | null; price_4plus?: number | null; days?: number | null; total?: number | null };
+type Rate = { price_1to3?: number | null; price_4plus?: number | null; days?: number | null; total?: number | null; tier?: string | null };
 type InquiryPayload = {
   name: string;
   email: string;
   phone: string;
   equipment: string;
+  social?: string;
   startDate?: string;
   endDate?: string;
   rentalDuration?: number | null;
@@ -114,6 +115,7 @@ function inquiryEmailTemplate(formData: InquiryPayload) {
                 <div class="detail-item">
                     <span class="label">Phone:</span> ${formData.phone}
                 </div>
+        ${formData.social ? `<div class="detail-item"><span class="label">Social:</span> ${formData.social}</div>` : ''}
             </div>
         </div>
         
@@ -143,6 +145,7 @@ function inquiryEmailTemplate(formData: InquiryPayload) {
       <div class="details">
         <div class="detail-item"><span class="label">1–3 Days:</span> ${formatPeso(formData.rate.price_1to3)}</div>
         <div class="detail-item"><span class="label">4+ Days:</span> ${formatPeso(formData.rate.price_4plus)}</div>
+        ${formData.rate.tier ? `<div class="detail-item"><span class="label">Rate Tier:</span> ${formData.rate.tier}</div>` : ''}
         ${formData.rate.days ? `<div class="detail-item"><span class="label">Quoted Days:</span> ${formData.rate.days}</div>` : ''}
         ${formData.rate.total ? `<div class="detail-item"><span class="label">Estimated Total:</span> ${formatPeso(formData.rate.total)}</div>` : ''}
       </div>
