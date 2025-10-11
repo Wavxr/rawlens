@@ -4,7 +4,7 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 
 export default [
-  { ignores: ['dist'] },
+  { ignores: ['dist', 'supabase/functions/**/*.ts'] },
   {
     files: ['**/*.{js,jsx}'],
     languageOptions: {
@@ -28,6 +28,26 @@ export default [
         'warn',
         { allowConstantExport: true },
       ],
+    },
+  },
+  // Node server files (Vercel API routes, Supabase functions, scripts)
+  {
+    files: ['api/**/*.js', 'supabase/**/*.js', 'supabase/**/index.ts', 'scripts/**/*.js'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+  },
+  // Service worker and Firebase SW globals
+  {
+    files: ['public/firebase-messaging-sw.js'],
+    languageOptions: {
+      globals: {
+        self: 'readonly',
+        importScripts: 'readonly',
+        firebase: 'readonly',
+      },
     },
   },
 ]
