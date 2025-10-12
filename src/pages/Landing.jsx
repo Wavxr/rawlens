@@ -16,17 +16,15 @@ import {
   Facebook,
 } from "lucide-react"
 import DateFilterInput from "../components/forms/DateFilterInput"
-import { supabase } from "../lib/supabaseClient"
 import { getPublicCameras, getPublicCameraNames, calculateRentalQuote } from "../services/publicService"
 import ContractGeneratorModal from "../components/modals/ContractGeneratorModal"
-import { toast } from "react-toastify"
 
 /* -------------------------------------------------------------------------- */
 /*  Mock auth hook                                                            */
 /* -------------------------------------------------------------------------- */
 const useAuth = () => {
   const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(false)
+  const [loading] = useState(false)
   return { user, loading, setUser }
 }
 
@@ -40,17 +38,11 @@ const useScrollAnimation = () => {
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true)
-        }
+        if (entry.isIntersecting) setIsVisible(true)
       },
       { threshold: 0.1 },
     )
-
-    if (ref.current) {
-      observer.observe(ref.current)
-    }
-
+    if (ref.current) observer.observe(ref.current)
     return () => observer.disconnect()
   }, [])
 
@@ -60,8 +52,6 @@ const useScrollAnimation = () => {
 /* -------------------------------------------------------------------------- */
 /*  Data                                                                      */
 /* -------------------------------------------------------------------------- */
-// Populated at runtime from public catalog
-// Shape: { name, description, image_url, price_1to3, price_4plus, inclusions[] }
 const STATIC_FALLBACK = []
 
 const features = [
@@ -93,12 +83,11 @@ const features = [
 /* -------------------------------------------------------------------------- */
 export default function Landing() {
   const { user, loading } = useAuth()
+
   const [heroRef, heroVisible] = useScrollAnimation()
-  const [aboutRef, aboutVisible] = useScrollAnimation()
   const [featuresRef, featuresVisible] = useScrollAnimation()
   const [camerasRef, camerasVisible] = useScrollAnimation()
   const [processRef, processVisible] = useScrollAnimation()
-  const [ctaRef, ctaVisible] = useScrollAnimation()
   const [emailFormRef, emailFormVisible] = useScrollAnimation()
   const [contactCtaRef, contactCtaVisible] = useScrollAnimation()
   const [socialRef, socialVisible] = useScrollAnimation()
@@ -113,63 +102,71 @@ export default function Landing() {
     endDate: "",
     additionalDetails: "",
   })
-  const [isSubmitting, setIsSubmitting] = useState(false)
   const [publicCameras, setPublicCameras] = useState(STATIC_FALLBACK)
   const [cameraNames, setCameraNames] = useState([])
-  const [loadingCatalog, setLoadingCatalog] = useState(false)
   const [liveEstimate, setLiveEstimate] = useState(null)
   const [liveRateTier, setLiveRateTier] = useState(null)
   const [showContractModal, setShowContractModal] = useState(false)
+  const [isSubmitting] = useState(false)
+
   const currentCam = publicCameras.find(c => c.name === formData.equipment)
 
   useEffect(() => {
     let mounted = true
-    setLoadingCatalog(true)
-    Promise.all([getPublicCameras({ limit: 24 }), getPublicCameraNames()])
-      .then(([pc, names]) => {
-        if (!mounted) return
-        if (!pc.error) setPublicCameras(pc.data)
-        if (!names.error) setCameraNames(names.data)
-      })
-      .finally(() => mounted && setLoadingCatalog(false))
+    Promise.all([getPublicCameras({ limit: 24 }), getPublicCameraNames()]).then(([pc, names]) => {
+      if (!mounted) return
+      if (!pc.error) setPublicCameras(pc.data)
+      if (!names.error) setCameraNames(names.data)
+    })
     return () => {
       mounted = false
     }
   }, [])
 
-  // Note: We use the modal to send the email; the inline submit handler was removed to avoid page refresh.
-
   const handleInputChange = (e) => {
     const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
+    setFormData(prev => ({ ...prev, [name]: value }))
   }
 
-  // Always show a live estimate when equipment + dates are present
   useEffect(() => {
     const { equipment, startDate, endDate } = formData
-    if (!equipment || !startDate || !endDate) { setLiveEstimate(null); return }
+    if (!equipment || !startDate || !endDate) {
+      setLiveEstimate(null)
+      return
+    }
+
     const start = new Date(startDate)
     const end = new Date(endDate)
     const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1
-    if (isNaN(days) || days < 1) { setLiveEstimate(null); return }
+    if (isNaN(days) || days < 1) {
+      setLiveEstimate(null)
+      return
+    }
+
     const cam = publicCameras.find(c => c.name === equipment)
-    if (!cam) { setLiveEstimate(null); return }
-    const total = calculateRentalQuote({ days, price_1to3: cam.price_1to3, price_4plus: cam.price_4plus })
-    const tier = days > 3 ? 'Discounted' : 'Standard'
+    if (!cam) {
+      setLiveEstimate(null)
+      return
+    }
+
+    const total = calculateRentalQuote({
+      days,
+      price_1to3: cam.price_1to3,
+      price_4plus: cam.price_4plus,
+    })
     setLiveEstimate({ days, total })
-    setLiveRateTier(tier)
+    setLiveRateTier(days > 3 ? "Discounted" : "Standard")
   }, [formData.equipment, formData.startDate, formData.endDate, publicCameras])
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="flex items-center space-x-4">
           <div className="w-6 h-6 border-2 border-black border-t-transparent animate-spin rounded-full"></div>
           <div className="text-black text-lg font-medium">Loading...</div>
         </div>
       </div>
     )
-
   }
 
   return (

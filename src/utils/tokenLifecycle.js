@@ -1,4 +1,3 @@
-// src/utils/tokenLifecycle.js
 import { supabase } from '../lib/supabaseClient';
 import { 
   getFcmToken, 
@@ -11,13 +10,23 @@ import {
 
 // Cache to prevent redundant token refreshes
 const tokenRefreshCache = new Map();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_DURATION = 5 * 60 * 1000; // 5 min
+const refreshDebounceMap = new Map();
 
-/**
- * Refresh FCM token for a user in user_fcm_tokens table
- * @param {string} userId - User ID
- * @returns {Promise<boolean>} Success status
- */
+// ------------------------------------------
+//    -- Functions --
+// ------------------------------------------
+
+// Context-aware token refresh based on user role
+export async function refreshTokenForCurrentContext(userId, userRole) {
+  if (userRole === 'admin') {
+    return await refreshAdminToken(userId);
+  } else {
+    return await refreshUserToken(userId);
+  }
+}
+
+// Refresh FCM token for a user in user_fcm_tokens table
 export async function refreshUserToken(userId) {
   if (!userId || !isPushSupported()) {
     return false;
@@ -62,11 +71,7 @@ export async function refreshUserToken(userId) {
   }
 }
 
-/**
- * Refresh FCM token for an admin in admin_fcm_tokens table
- * @param {string} userId - User ID
- * @returns {Promise<boolean>} Success status
- */
+// Refresh FCM token for an admin in admin_fcm_tokens table
 export async function refreshAdminToken(userId) {
   if (!userId || !isPushSupported()) {
     return false;
@@ -111,25 +116,7 @@ export async function refreshAdminToken(userId) {
   }
 }
 
-/**
- * Context-aware token refresh based on user role
- * @param {string} userId - User ID
- * @param {string} userRole - User role ('user' or 'admin')
- * @returns {Promise<boolean>} Success status
- */
-export async function refreshTokenForCurrentContext(userId, userRole) {
-  if (userRole === 'admin') {
-    return await refreshAdminToken(userId);
-  } else {
-    return await refreshUserToken(userId);
-  }
-}
-
-/**
- * Debounced version of refreshTokenForCurrentContext to prevent rapid successive calls
- */
-const refreshDebounceMap = new Map();
-
+// Debounced version of refreshTokenForCurrentContext to prevent rapid successive calls
 export function debouncedRefreshUserToken(userId, userRole = 'user', delay = 1000) {
   const key = `${userId}_${userRole}`;
   const existingTimeout = refreshDebounceMap.get(key);
@@ -148,9 +135,7 @@ export function debouncedRefreshUserToken(userId, userRole = 'user', delay = 100
   });
 }
 
-/**
- * Clear token refresh cache (useful for force refresh)
- */
+// Clear token refresh cache (useful for force refresh)
 export function clearTokenRefreshCache(userId = null) {
   if (userId) {
     tokenRefreshCache.delete(`refresh_${userId}`);
@@ -159,11 +144,7 @@ export function clearTokenRefreshCache(userId = null) {
   }
 }
 
-/**
- * Clean up inactive tokens older than specified days from user_fcm_tokens
- * @param {string} userId - User ID
- * @param {number} olderThanDays - Days threshold
- */
+// Clean up inactive tokens older than specified days from user_fcm_tokens
 export async function cleanupInactiveUserTokens(userId, olderThanDays = 30) {
   if (!userId) return;
 
@@ -188,11 +169,7 @@ export async function cleanupInactiveUserTokens(userId, olderThanDays = 30) {
   }
 }
 
-/**
- * Clean up inactive tokens older than specified days from admin_fcm_tokens
- * @param {string} userId - User ID
- * @param {number} olderThanDays - Days threshold
- */
+// Clean up inactive tokens older than specified days from admin_fcm_tokens
 export async function cleanupInactiveAdminTokens(userId, olderThanDays = 30) {
   if (!userId) return;
 
@@ -217,11 +194,7 @@ export async function cleanupInactiveAdminTokens(userId, olderThanDays = 30) {
   }
 }
 
-/**
- * Deactivate only the current device's token from user_fcm_tokens
- * @param {string} userId - User ID
- * @returns {Promise<boolean>} Success status
- */
+// Deactivate only the current device's token from user_fcm_tokens
 export async function deactivateCurrentUserDeviceToken(userId) {
   if (!userId) return false;
 
@@ -254,11 +227,7 @@ export async function deactivateCurrentUserDeviceToken(userId) {
   }
 }
 
-/**
- * Deactivate only the current device's token from admin_fcm_tokens
- * @param {string} userId - User ID
- * @returns {Promise<boolean>} Success status
- */
+// Deactivate only the current device's token from admin_fcm_tokens
 export async function deactivateCurrentAdminDeviceToken(userId) {
   if (!userId) return false;
 
@@ -291,11 +260,7 @@ export async function deactivateCurrentAdminDeviceToken(userId) {
   }
 }
 
-/**
- * Mark user's FCM tokens as inactive in user_fcm_tokens (when user disables push notifications globally)
- * @param {string} userId - User ID
- * @returns {Promise<boolean>} Success status
- */
+// Mark user's FCM tokens as inactive in user_fcm_tokens (when user disables push notifications globally)
 export async function deactivateAllUserTokens(userId) {
   if (!userId) return;
 
@@ -321,11 +286,7 @@ export async function deactivateAllUserTokens(userId) {
   }
 }
 
-/**
- * Mark admin's FCM tokens as inactive in admin_fcm_tokens (when admin disables push notifications globally)
- * @param {string} userId - User ID
- * @returns {Promise<boolean>} Success status
- */
+// Mark admin's FCM tokens as inactive in admin_fcm_tokens (when admin disables push notifications globally)
 export async function deactivateAllAdminTokens(userId) {
   if (!userId) return;
 
@@ -351,11 +312,7 @@ export async function deactivateAllAdminTokens(userId) {
   }
 }
 
-/**
- * Get active token count for a user from user_fcm_tokens
- * @param {string} userId - User ID
- * @returns {Promise<number>} Number of active tokens
- */
+// Get active token count for a user from user_fcm_tokens
 export async function getUserActiveTokenCount(userId) {
   if (!userId) return 0;
 
@@ -379,11 +336,7 @@ export async function getUserActiveTokenCount(userId) {
   }
 }
 
-/**
- * Get active token count for an admin from admin_fcm_tokens
- * @param {string} userId - User ID
- * @returns {Promise<number>} Number of active tokens
- */
+// Get active token count for an admin from admin_fcm_tokens
 export async function getAdminActiveTokenCount(userId) {
   if (!userId) return 0;
 
@@ -407,11 +360,7 @@ export async function getAdminActiveTokenCount(userId) {
   }
 }
 
-/**
- * Check if user has push notifications enabled in user_settings
- * @param {string} userId - User ID
- * @returns {Promise<boolean>} Whether push notifications are enabled
- */
+// Check if user has push notifications enabled in user_settings
 export async function isUserPushNotificationEnabled(userId) {
   if (!userId) return false;
 
@@ -434,11 +383,7 @@ export async function isUserPushNotificationEnabled(userId) {
   }
 }
 
-/**
- * Check if admin has push notifications enabled in admin_settings
- * @param {string} userId - User ID
- * @returns {Promise<boolean>} Whether push notifications are enabled
- */
+// Check if admin has push notifications enabled in admin_settings 
 export async function isAdminPushNotificationEnabled(userId) {
   if (!userId) return false;
 
@@ -461,17 +406,12 @@ export async function isAdminPushNotificationEnabled(userId) {
   }
 }
 
-/**
- * Update user's push notification preference in user_settings
- * @param {string} userId - User ID
- * @param {boolean} enabled - Whether to enable push notifications
- * @returns {Promise<boolean>} Success status
- */
+// Update user's push notification preference in user_settings
 export async function updateUserPushNotificationSetting(userId, enabled) {
   if (!userId) return false;
 
   try {
-    const { data: existingData, error: selectError } = await supabase
+    const { data: existingData } = await supabase
       .from('user_settings')
       .select('id')
       .eq('user_id', userId)
@@ -512,17 +452,12 @@ export async function updateUserPushNotificationSetting(userId, enabled) {
   }
 }
 
-/**
- * Update admin's push notification preference in admin_settings
- * @param {string} userId - User ID
- * @param {boolean} enabled - Whether to enable push notifications
- * @returns {Promise<boolean>} Success status
- */
+// Update admin's push notification preference in admin_settings 
 export async function updateAdminPushNotificationSetting(userId, enabled) {
   if (!userId) return false;
 
   try {
-    const { data: existingData, error: selectError } = await supabase
+    const { data: existingData } = await supabase
       .from('admin_settings')
       .select('id')
       .eq('user_id', userId)
@@ -563,13 +498,7 @@ export async function updateAdminPushNotificationSetting(userId, enabled) {
   }
 }
 
-// Backward compatibility functions
-/**
- * Backward compatibility function for isPushNotificationEnabled
- * @param {string} userId - User ID
- * @param {string} userRole - User role ('user' or 'admin')
- * @returns {Promise<boolean>} Whether push notifications are enabled
- */
+// Backward compatibility function for isPushNotificationEnabled
 export async function isPushNotificationEnabled(userId, userRole = 'user') {
   if (userRole === 'admin') {
     return await isAdminPushNotificationEnabled(userId);
@@ -580,10 +509,6 @@ export async function isPushNotificationEnabled(userId, userRole = 'user') {
 
 /**
  * Backward compatibility function for updatePushNotificationSetting
- * @param {string} userId - User ID
- * @param {boolean} enabled - Whether to enable push notifications
- * @param {string} userRole - User role ('user' or 'admin')
- * @returns {Promise<boolean>} Success status
  */
 export async function updatePushNotificationSetting(userId, enabled, userRole = 'user') {
   if (userRole === 'admin') {
@@ -593,11 +518,7 @@ export async function updatePushNotificationSetting(userId, enabled, userRole = 
   }
 }
 
-/**
- * Mark current device's user token as mapped=true for login (session mapping)
- * @param {string} userId - User ID
- * @returns {Promise<boolean>} Success status
- */
+// Mark current device's user token as mapped=true for login (session mapping)
 export async function mapUserTokenOnLogin(userId) {
   if (!userId) return false;
 
@@ -630,11 +551,7 @@ export async function mapUserTokenOnLogin(userId) {
   }
 }
 
-/**
- * Mark current device's admin token as mapped=true for login (session mapping)
- * @param {string} userId - User ID
- * @returns {Promise<boolean>} Success status
- */
+// Mark current device's admin token as mapped=true for login (session mapping)
 export async function mapAdminTokenOnLogin(userId) {
   if (!userId) return false;
 
@@ -667,11 +584,7 @@ export async function mapAdminTokenOnLogin(userId) {
   }
 }
 
-/**
- * Mark current device's user token as mapped=false for logout (session unmapping)
- * @param {string} userId - User ID
- * @returns {Promise<boolean>} Success status
- */
+// Mark current device's user token as mapped=false for logout (session unmapping)
 export async function unmapUserTokenOnLogout(userId) {
   if (!userId) return false;
 
@@ -704,11 +617,7 @@ export async function unmapUserTokenOnLogout(userId) {
   }
 }
 
-/**
- * Mark current device's admin token as mapped=false for logout (session unmapping)
- * @param {string} userId - User ID
- * @returns {Promise<boolean>} Success status
- */
+// Mark current device's admin token as mapped=false for logout (session unmapping)
 export async function unmapAdminTokenOnLogout(userId) {
   if (!userId) return false;
 
