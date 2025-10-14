@@ -1,9 +1,8 @@
-"use client"
 import { ArrowLeft, Camera } from "lucide-react"
 
 const DesktopRentalLayout = ({ children, onBackToBrowse, camera }) => {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="max-h-screen bg-white">
       {/* Header */}
       <div className="lg:mt-8">
         <div className="max-w-7xl mx-auto px-6 py-5">
