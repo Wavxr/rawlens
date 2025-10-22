@@ -13,6 +13,7 @@
     "@supabase/supabase-js": "^2.50.2",
     "@tailwindcss/vite": "^4.1.4",
     "downloadjs": "^1.4.7",
+    "eslint-config-prettier": "^10.1.8",
     "firebase": "^12.1.0",
     "framer-motion": "^12.23.12",
     "leaflet": "^1.9.4",
