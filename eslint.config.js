@@ -1,7 +1,8 @@
-import js from '@eslint/js'
-import globals from 'globals'
-import reactHooks from 'eslint-plugin-react-hooks'
-import reactRefresh from 'eslint-plugin-react-refresh'
+import js from '@eslint/js';
+import globals from 'globals';
+import reactHooks from 'eslint-plugin-react-hooks';
+import reactRefresh from 'eslint-plugin-react-refresh';
+import prettierConfig from 'eslint-config-prettier';
 
 export default [
   { ignores: ['dist', 'supabase/functions/**/*.ts'] },
@@ -23,6 +24,7 @@ export default [
     rules: {
       ...js.configs.recommended.rules,
       ...reactHooks.configs.recommended.rules,
+      ...prettierConfig.rules,
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
       'react-refresh/only-export-components': [
         'warn',
@@ -32,7 +34,12 @@ export default [
   },
   // Node server files (Vercel API routes, Supabase functions, scripts)
   {
-    files: ['api/**/*.js', 'supabase/**/*.js', 'supabase/**/index.ts', 'scripts/**/*.js'],
+    files: [
+      'api/**/*.js',
+      'supabase/**/*.js',
+      'supabase/**/index.ts',
+      'scripts/**/*.js',
+    ],
     languageOptions: {
       globals: {
         ...globals.node,
@@ -50,4 +57,4 @@ export default [
       },
     },
   },
-]
+];

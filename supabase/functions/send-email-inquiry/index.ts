@@ -1,19 +1,27 @@
 // @ts-nocheck: running in Deno edge context with external ESM; simplify strict TS here for portability
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { Resend } from "https://esm.sh/resend@1.1.0";
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { Resend } from 'https://esm.sh/resend@1.1.0';
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
 
 function corsHeaders(req: Request) {
-  const reqHeaders = req.headers.get("Access-Control-Request-Headers") || "";
+  const reqHeaders = req.headers.get('Access-Control-Request-Headers') || '';
   return {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": reqHeaders || "content-type, authorization, apikey, x-client-info, x-client-version",
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers':
+      reqHeaders ||
+      'content-type, authorization, apikey, x-client-info, x-client-version',
   };
 }
 
-type Rate = { price_1to3?: number | null; price_4plus?: number | null; days?: number | null; total?: number | null; tier?: string | null };
+type Rate = {
+  price_1to3?: number | null;
+  price_4plus?: number | null;
+  days?: number | null;
+  total?: number | null;
+  tier?: string | null;
+};
 type InquiryPayload = {
   name: string;
   email: string;
@@ -31,7 +39,15 @@ type InquiryPayload = {
 
 function formatPeso(n?: number | null) {
   if (n == null || isNaN(Number(n))) return '—';
-  try { return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', maximumFractionDigits: 0 }).format(Number(n)); } catch { return `₱${Number(n).toLocaleString('en-PH')}`; }
+  try {
+    return new Intl.NumberFormat('en-PH', {
+      style: 'currency',
+      currency: 'PHP',
+      maximumFractionDigits: 0,
+    }).format(Number(n));
+  } catch {
+    return `₱${Number(n).toLocaleString('en-PH')}`;
+  }
 }
 
 function inquiryEmailTemplate(formData: InquiryPayload) {
@@ -131,15 +147,21 @@ function inquiryEmailTemplate(formData: InquiryPayload) {
                 <div class="detail-item">
                     <span class="label">End Date:</span> ${formData.endDate ? new Date(formData.endDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Not specified'}
                 </div>
-                ${formData.rentalDuration ? `
+                ${
+                  formData.rentalDuration
+                    ? `
                 <div class="detail-item">
                     <span class="label">Rental Duration:</span> ${formData.rentalDuration} day(s)
                 </div>
-                ` : ''}
+                `
+                    : ''
+                }
             </div>
         </div>
         
-    ${formData.rate ? `
+    ${
+      formData.rate
+        ? `
     <div class="section">
       <h3>Estimated Rates:</h3>
       <div class="details">
@@ -150,15 +172,21 @@ function inquiryEmailTemplate(formData: InquiryPayload) {
         ${formData.rate.total ? `<div class="detail-item"><span class="label">Estimated Total:</span> ${formatPeso(formData.rate.total)}</div>` : ''}
       </div>
     </div>
-    ` : ''}
-    ${formData.additionalDetails ? `
+    `
+        : ''
+    }
+    ${
+      formData.additionalDetails
+        ? `
         <div class="section">
             <h3>Additional Details:</h3>
             <div class="additional-details">
                 ${formData.additionalDetails}
             </div>
         </div>
-        ` : ''}
+        `
+        : ''
+    }
         
         <div class="section">
             <p><strong>Action Required:</strong> Please respond to this inquiry within 24 hours.</p>
@@ -176,28 +204,33 @@ function inquiryEmailTemplate(formData: InquiryPayload) {
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
+  if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders(req) });
   }
 
-  if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
-      headers: { "Content-Type": "application/json", ...corsHeaders(req) },
+      headers: { 'Content-Type': 'application/json', ...corsHeaders(req) },
     });
   }
 
   try {
-  const formData: InquiryPayload = await req.json();
+    const formData: InquiryPayload = await req.json();
 
     // Validate required fields
-    if (!formData.name || !formData.email || !formData.phone || !formData.equipment) {
+    if (
+      !formData.name ||
+      !formData.email ||
+      !formData.phone ||
+      !formData.equipment
+    ) {
       return new Response(
-        JSON.stringify({ error: "Missing required fields" }), 
+        JSON.stringify({ error: 'Missing required fields' }),
         {
           status: 400,
-          headers: { "Content-Type": "application/json", ...corsHeaders(req) },
-        }
+          headers: { 'Content-Type': 'application/json', ...corsHeaders(req) },
+        },
       );
     }
 
@@ -205,18 +238,21 @@ serve(async (req) => {
     const html = inquiryEmailTemplate(formData);
 
     // Send email to admin
-    const attachments = (formData.contractPdfBase64 && formData.contractFileName)
-      ? [{
-          filename: formData.contractFileName,
-          content: formData.contractPdfBase64,
-          path: undefined as unknown as string, // not used
-          contentType: 'application/pdf',
-        }]
-      : undefined;
+    const attachments =
+      formData.contractPdfBase64 && formData.contractFileName
+        ? [
+            {
+              filename: formData.contractFileName,
+              content: formData.contractPdfBase64,
+              path: undefined as unknown as string, // not used
+              contentType: 'application/pdf',
+            },
+          ]
+        : undefined;
 
     const { data, error } = await resend.emails.send({
-      from: "RawLens Inquiries <noreply@rawlensph.cam>",
-      to: "business@rawlensph.cam",
+      from: 'RawLens Inquiries <noreply@rawlensph.cam>',
+      to: 'business@rawlensph.cam',
       replyTo: formData.email,
       subject: `New Rental Inquiry from ${formData.name}`,
       html,
@@ -227,13 +263,13 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ success: true, data }), {
       status: 200,
-      headers: { "Content-Type": "application/json", ...corsHeaders(req) },
+      headers: { 'Content-Type': 'application/json', ...corsHeaders(req) },
     });
   } catch (error) {
-    console.error("Error sending inquiry email:", error);
+    console.error('Error sending inquiry email:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
-      headers: { "Content-Type": "application/json", ...corsHeaders(req) },
+      headers: { 'Content-Type': 'application/json', ...corsHeaders(req) },
     });
   }
 });

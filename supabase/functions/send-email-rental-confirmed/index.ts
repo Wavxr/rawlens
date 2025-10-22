@@ -1,23 +1,26 @@
 // @ts-nocheck
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { Resend } from "https://esm.sh/resend@1.1.0";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.0.0'
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { Resend } from 'https://esm.sh/resend@1.1.0';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.0.0';
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
 
 function corsHeaders(req: Request) {
-  const reqHeaders = req.headers.get("Access-Control-Request-Headers") || "";
+  const reqHeaders = req.headers.get('Access-Control-Request-Headers') || '';
   return {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": reqHeaders || "content-type, authorization, apikey, x-client-info, x-client-version",
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers':
+      reqHeaders ||
+      'content-type, authorization, apikey, x-client-info, x-client-version',
   };
 }
 
 function rentalConfirmedTemplate(userData: any, rentalData: any) {
   // Construct full name from user data
-  const fullName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim();
-  
+  const fullName =
+    `${userData.first_name || ''} ${userData.last_name || ''}`.trim();
+
   return `
 <!DOCTYPE html>
 <html>
@@ -155,14 +158,14 @@ function rentalConfirmedTemplate(userData: any, rentalData: any) {
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
+  if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders(req) });
   }
 
-  if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
-      headers: { "Content-Type": "application/json", ...corsHeaders(req) },
+      headers: { 'Content-Type': 'application/json', ...corsHeaders(req) },
     });
   }
 
@@ -172,7 +175,7 @@ serve(async (req) => {
     // Create a Supabase client with the service_role key
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     );
 
     // Check user email preferences
@@ -183,14 +186,20 @@ serve(async (req) => {
       .maybeSingle();
 
     if (settingsErr) {
-      console.error(`Error fetching settings for user ${user_data.id}:`, settingsErr);
+      console.error(
+        `Error fetching settings for user ${user_data.id}:`,
+        settingsErr,
+      );
       // proceed to avoid losing critical emails if settings query fails
     } else if (settings && settings.email_notifications === false) {
       console.log(`User ${user_data.id} has opted out of email notifications.`);
-      return new Response(JSON.stringify({ message: "User opted out of email notifications" }), {
-        status: 200,
-        headers: { "Content-Type": "application/json", ...corsHeaders(req) },
-      });
+      return new Response(
+        JSON.stringify({ message: 'User opted out of email notifications' }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders(req) },
+        },
+      );
     }
 
     // Generate email HTML
@@ -198,7 +207,7 @@ serve(async (req) => {
 
     // Send email
     const { data, error } = await resend.emails.send({
-      from: "RawLens PH <noreply@rawlensph.cam>",
+      from: 'RawLens PH <noreply@rawlensph.cam>',
       to: user_data.email,
       subject: 'Your Rental Has Been Confirmed',
       html,
@@ -208,13 +217,13 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ success: true, data }), {
       status: 200,
-      headers: { "Content-Type": "application/json", ...corsHeaders(req) },
+      headers: { 'Content-Type': 'application/json', ...corsHeaders(req) },
     });
   } catch (error) {
-    console.error("Error sending rental confirmed email:", error);
+    console.error('Error sending rental confirmed email:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
-      headers: { "Content-Type": "application/json", ...corsHeaders(req) },
+      headers: { 'Content-Type': 'application/json', ...corsHeaders(req) },
     });
   }
 });

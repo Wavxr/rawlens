@@ -5,6 +5,7 @@ A comprehensive camera rental platform built with modern web technologies. RawLe
 ## 🌟 Features
 
 ### 📱 User Experience
+
 - **Modern Landing Page** - Responsive design with camera showcase and feature highlights
 - **Smart Search & Filtering** - Advanced camera discovery with multiple filter options
 - **Digital Rental Process** - Streamlined booking with integrated signature capture
@@ -12,6 +13,7 @@ A comprehensive camera rental platform built with modern web technologies. RawLe
 - **Mobile-First Design** - Optimized for all device sizes with Tailwind CSS v4
 
 ### 🔐 Security & Verification
+
 - **Multi-Step KYC Process** - Government ID, selfie, and video verification
 - **Secure File Management** - Encrypted storage with automatic cleanup
 - **Role-Based Access Control** - User and admin permission systems
@@ -19,6 +21,7 @@ A comprehensive camera rental platform built with modern web technologies. RawLe
 - **Session Management** - Secure authentication with automatic cleanup
 
 ### 📋 Rental Management
+
 - **Dynamic Pricing Tiers** - Flexible pricing based on rental duration
 - **Digital Contracts** - Auto-generated PDF agreements with embedded signatures
 - **Status Tracking** - Complete rental lifecycle management
@@ -26,6 +29,7 @@ A comprehensive camera rental platform built with modern web technologies. RawLe
 - **Inclusion Items** - Configurable accessories and equipment packages
 
 ### 👥 Administration Dashboard
+
 - **User Management** - Comprehensive user verification and status control
 - **Camera Inventory** - Full CRUD operations for camera equipment
 - **Rental Oversight** - Application review and rental status management
@@ -35,6 +39,7 @@ A comprehensive camera rental platform built with modern web technologies. RawLe
 ## 🛠 Technology Stack
 
 ### Frontend
+
 - **React 18** - Modern React with hooks and functional components
 - **Vite** - Fast build tool and development server
 - **Tailwind CSS v4** - Utility-first CSS with custom design tokens
@@ -42,18 +47,21 @@ A comprehensive camera rental platform built with modern web technologies. RawLe
 - **React Router** - Client-side routing with protected routes
 
 ### Backend & Database
+
 - **Supabase** - Backend-as-a-Service with PostgreSQL
 - **Real-time Subscriptions** - Live data updates across the platform
 - **Row Level Security** - Database-level access control
 - **Edge Functions** - Serverless function execution
 
 ### File & Document Management
+
 - **Supabase Storage** - Secure file storage with signed URLs
 - **PDF Generation** - Dynamic contract creation with pdf-lib
 - **Image Processing** - Optimized media handling and transformations
 - **Digital Signatures** - Canvas-based signature capture
 
 ### Development Tools
+
 - **ESLint** - Code quality and consistency
 - **Modern JavaScript** - ES6+ features and async/await patterns
 - **Component Architecture** - Reusable and maintainable UI components
@@ -61,6 +69,7 @@ A comprehensive camera rental platform built with modern web technologies. RawLe
 ## 🏗 Architecture
 
 ### Project Structure
+
 ```
 src/
 ├── components/         # Reusable UI components
@@ -74,6 +83,7 @@ src/
 ```
 
 ### Key Services
+
 - **Authentication Service** - User registration, login, and session management
 - **User Service** - Profile management and verification workflows
 - **Camera Service** - Inventory management and availability tracking
@@ -84,6 +94,7 @@ src/
 ## 🚀 Key Capabilities
 
 ### For Users
+
 - Browse and search camera inventory with detailed specifications
 - Complete secure verification process with document upload
 - Book equipment with flexible date selection and pricing
@@ -92,6 +103,7 @@ src/
 - Manage profile and resubmit verification if needed
 
 ### For Administrators
+
 - Review and approve user verification documents
 - Manage complete camera inventory with pricing tiers
 - Process rental applications and track equipment
@@ -99,6 +111,7 @@ src/
 - Handle appeals and customer support requests
 
 ### Technical Highlights
+
 - **Real-time Updates** - Instant synchronization across all user sessions
 - **Responsive Design** - Optimized for desktop, tablet, and mobile devices
 - **Security First** - Comprehensive data protection and access controls
