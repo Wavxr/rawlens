@@ -1,91 +1,80 @@
-// =========================
-// Imports
-// =========================
-import { supabase } from "../lib/supabaseClient";
+import { supabase } from "../lib/supabaseClient"
 
-// =========================
-// Constants
-// =========================
-const TABLE = "public_cameras"; // materialized public-safe catalog
-
-// =========================
-// Helper Functions
-// =========================
-function normalizeCameraRow(row) {
-  if (!row) return null;
-  return {
-    name: row.name,
-    description: row.description ?? "",
-    image_url: row.image_url ?? "",
-    price_1to3: row.price_1to3 ?? null,
-    price_4plus: row.price_4plus ?? null,
-    inclusions: Array.isArray(row.inclusions) ? row.inclusions : [],
-  };
-}
+const TABLE_NAME = "public_cameras"
 
 export function calculateRentalQuote({ days, price_1to3, price_4plus }) {
-  // Contract: days >= 1; if price_4plus is null, fallback to price_1to3
-  if (!days || days < 1) return 0;
-  const p13 = Number(price_1to3 || 0);
-  const p4 = Number(price_4plus || p13 || 0);
-  if (days <= 3) return days * p13;
-  // 1-3 days at price_1to3, remaining at price_4plus
-  return 3 * p13 + (days - 3) * p4;
+  if (!days || days < 1) return 0
+  const shortTermRate = Number(price_1to3 || 0)
+  const longTermRate = Number(price_4plus || shortTermRate || 0)
+  if (days <= 3) { return days * shortTermRate }
+
+  return days * longTermRate
 }
 
-// =========================
-// Public Functions
-// =========================
-export async function getPublicCameras({ search = "", limit = 24, order = { by: "name", asc: true } } = {}) {
-  let query = supabase
-    .from(TABLE)
-    .select("name, description, image_url, price_1to3, price_4plus, inclusions");
+export async function getPublicCameras({ search = "", limit = 24 } = {}) {
+  try {
+    let query = supabase
+      .from(TABLE_NAME)
+      .select("name, description, image_url, price_1to3, price_4plus, inclusions")
+      .order("name", { ascending: true })
 
-  if (search) {
-    query = query.ilike("name", `%${search}%`);
+    if (search) { query = query.ilike("name", `%${search}%`) }
+    if (limit) { query = query.limit(limit) }
+    const { data, error } = await query
+
+    if (error) {
+      console.error("Error fetching cameras:", error)
+      return { data: [], error }
+    }
+
+    return { data: data || [], error: null }
+    
+  } catch (error) {
+    console.error("Error in getPublicCameras:", error)
+    return { data: [], error }
   }
-
-  if (order?.by) {
-    query = query.order(order.by, { ascending: !!order.asc, nullsFirst: false });
-  }
-
-  if (limit) {
-    query = query.limit(limit);
-  }
-
-  const { data, error } = await query;
-  if (error) return { data: [], error };
-  return { data: (data || []).map(normalizeCameraRow), error: null };
-}
-
-export async function getPublicCameraByName(name) {
-  if (!name) return { data: null, error: new Error("Name is required") };
-  const { data, error } = await supabase
-    .from(TABLE)
-    .select("name, description, image_url, price_1to3, price_4plus, inclusions")
-    .eq("name", name)
-    .maybeSingle();
-  if (error) return { data: null, error };
-  return { data: normalizeCameraRow(data), error: null };
 }
 
 export async function getPublicCameraNames() {
-  const { data, error } = await supabase.from(TABLE).select("name").order("name", { ascending: true });
-  if (error) return { data: [], error };
-  // dedup defensively
-  const seen = new Set();
-  const names = [];
-  for (const row of data || []) {
-    if (row?.name && !seen.has(row.name)) {
-      seen.add(row.name);
-      names.push(row.name);
+  try {
+    const { data, error } = await supabase
+      .from(TABLE_NAME)
+      .select("name")
+      .order("name", { ascending: true })
+    const names = [...new Set(data?.map((row) => row.name).filter(Boolean) || [])]
+
+    if (error) {
+      console.error("Error fetching camera names:", error)
+      return { data: [], error }
     }
+
+    return { data: names, error: null }
+
+  } catch (error) {
+    console.error("Error in getPublicCameraNames:", error)
+    return { data: [], error }
   }
-  return { data: names, error: null };
 }
 
-export async function getFeaturedCameras(limit = 8) {
-  // Simple featured selection by name order for now
-  const { data, error } = await getPublicCameras({ limit, order: { by: "name", asc: true } });
-  return { data, error };
+export async function getPublicCameraByName(cameraName) {
+  if (!cameraName) { return { data: null, error: new Error("Camera name is required") } }
+
+  try {
+    const { data, error } = await supabase
+      .from(TABLE_NAME)
+      .select("name, description, image_url, price_1to3, price_4plus, inclusions")
+      .eq("name", cameraName)
+      .single()
+
+    if (error) {
+      console.error("Error fetching camera by name:", error)
+      return { data: null, error }
+    }
+
+    return { data, error: null }
+
+  } catch (error) {
+    console.error("Error in getPublicCameraByName:", error)
+    return { data: null, error }
+  }
 }
