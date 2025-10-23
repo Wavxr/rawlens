@@ -13,7 +13,6 @@ const BookingCalendarCell = ({
   camera,
   bookings,
   isHighlighted,
-  selectedPotentialBooking,
   onDateRangeSelect,
   onDayClick,
   onBookingContextMenu,
@@ -75,14 +74,14 @@ const BookingCalendarCell = ({
   };
 
   // Handle mouse enter during drag
-  const handleMouseEnter = (e) => {
+  const handleMouseEnter = () => {
     if (isSelecting && dragStart && !hasBookings) {
       // Could implement visual drag feedback here
     }
   };
 
   // Handle mouse up to complete selection
-  const handleMouseUp = (e) => {
+  const handleMouseUp = () => {
     if (isSelecting && dragStart) {
       const endDate = date;
       const startDate = dragStart;
@@ -242,8 +241,8 @@ const BookingCalendarCell = ({
     <button
       className={`relative h-12 sm:h-14 md:h-16 rounded-md sm:rounded-lg border flex flex-col items-center justify-between p-0.5 sm:p-1 transition ${cellClass}`}
       onMouseDown={handleMouseDown}
-      onMouseEnter={(e) => {
-        handleMouseEnter(e);
+      onMouseEnter={() => {
+        handleMouseEnter();
         if (hasBookings) setShowTooltip(true);
       }}
       onMouseLeave={() => {

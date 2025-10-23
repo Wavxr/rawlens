@@ -51,8 +51,7 @@ const CameraMiniCalendar = ({
   onDateRangeSelect,
   onDayClick,
   onBookingContextMenu,
-  isDarkMode,
-  showPotentialSidebar 
+  isDarkMode 
 }) => {
   const cells = useMemo(() => getMonthDaysGrid(monthDate), [monthDate]);
   const label = monthDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
@@ -210,7 +209,6 @@ const BookingCalendarGrid = ({
           onDayClick={onDayClick}
           onBookingContextMenu={onBookingContextMenu}
           isDarkMode={isDarkMode}
-          showPotentialSidebar={showPotentialSidebar}
         />
       ))}
     </div>

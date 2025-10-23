@@ -132,7 +132,7 @@ const BookingContextMenu = ({
       style={getMenuStyle()}
       className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-2 min-w-[200px]"
     >
-      {availableItems.map((item, index) => (
+      {availableItems.map((item) => (
         <button
           key={item.id}
           onClick={() => {
