@@ -61,14 +61,8 @@ const BookingDetailsModal = ({
   
   const { getExtensionsByRentalId } = useExtensionStore();
 
-  // Check extension eligibility when modal opens
-  useEffect(() => {
-    if (open && booking) {
-      checkCanExtend();
-    }
-  }, [open, booking]);
-
-  const checkCanExtend = async () => {
+  const checkExtensionEligibilityForBooking = useCallback(async () => {
+    if (!booking?.id) return;
     setExtensionCheckLoading(true);
     try {
       const result = await checkExtensionEligibility(booking.id);
@@ -78,14 +72,19 @@ const BookingDetailsModal = ({
     } finally {
       setExtensionCheckLoading(false);
     }
-  };
+  }, [booking?.id]);
+
+  useEffect(() => {
+    if (open && booking) {
+      checkExtensionEligibilityForBooking();
+    }
+  }, [open, booking, checkExtensionEligibilityForBooking]);
 
   const loadDocuments = useCallback(async () => {
     if (!booking?.id) return;
     setDocumentsLoading(true);
     setDocumentsError('');
     try {
-      // Fetch minimal rental contract path
       const { data: rentalRow, error: rentalErr } = await supabase
         .from('rentals')
         .select('id, contract_pdf_url')
@@ -109,7 +108,6 @@ const BookingDetailsModal = ({
         }
       }
 
-      // Fetch latest payment for this rental with a receipt path
       const { data: payments, error: payErr } = await supabase
         .from('payments')
         .select('id, payment_receipt_url')
@@ -242,15 +240,12 @@ const BookingDetailsModal = ({
     }
   };
 
-  // Format dates
   const startDate = new Date(booking.start_date).toLocaleDateString();
   const endDate = new Date(booking.end_date).toLocaleDateString();
   const createdDate = new Date(booking.created_at).toLocaleDateString();
 
-  // Calculate rental duration
   const days = Math.ceil((new Date(booking.end_date) - new Date(booking.start_date)) / (1000 * 60 * 60 * 24)) + 1;
 
-  // Theme classes
   const bgColor = isDarkMode ? 'bg-gray-900' : 'bg-white';
   const borderColor = isDarkMode ? 'border-gray-700' : 'border-slate-200';
   const textColor = isDarkMode ? 'text-gray-100' : 'text-slate-800';
@@ -263,7 +258,6 @@ const BookingDetailsModal = ({
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       
       <div className={`relative rounded-lg shadow-xl w-full max-w-3xl mx-4 border ${bgColor} ${borderColor}`}>
-        {/* Header */}
         <div className={`px-6 py-4 border-b flex items-center justify-between ${borderColor}`}>
           <div>
             <h3 className={`text-lg font-semibold ${textColor}`}>Booking Details</h3>
@@ -282,9 +276,7 @@ const BookingDetailsModal = ({
           </button>
         </div>
 
-        {/* Content */}
         <div className="p-6 max-h-[70vh] overflow-y-auto space-y-6">
-          {/* Status Overview */}
           <div className={`p-4 rounded-lg ${sectionBg}`}>
             <div className="flex items-center justify-between mb-4">
               <h4 className={`font-medium ${textColor}`}>Status Overview</h4>
@@ -310,7 +302,6 @@ const BookingDetailsModal = ({
             </div>
           </div>
 
-          {/* Customer Information */}
           <div className={`p-4 rounded-lg ${sectionBg}`}>
             <h4 className={`font-medium mb-4 ${textColor}`}>
               <User className="w-4 h-4 inline mr-2" />
@@ -341,7 +332,6 @@ const BookingDetailsModal = ({
             </div>
           </div>
 
-          {/* Booking Details */}
           <div className={`p-4 rounded-lg ${sectionBg}`}>
             <h4 className={`font-medium mb-4 ${textColor}`}>
               <Calendar className="w-4 h-4 inline mr-2" />
@@ -368,7 +358,6 @@ const BookingDetailsModal = ({
             </div>
           </div>
 
-          {/* Pricing Information */}
           {(booking.total_price || booking.price_per_day) && (
             <div className={`p-4 rounded-lg ${sectionBg}`}>
               <h4 className={`font-medium mb-4 ${textColor}`}>
@@ -395,7 +384,6 @@ const BookingDetailsModal = ({
             </div>
           )}
 
-          {/* Contract Information */}
           <div className={`p-4 rounded-lg ${sectionBg}`}>
             <h4 className={`font-medium mb-4 ${textColor}`}>
               <FileText className="w-4 h-4 inline mr-2" />
@@ -476,7 +464,6 @@ const BookingDetailsModal = ({
             )}
           </div>
 
-          {/* Extension History */}
           {rentalExtensions.length > 0 && (
             <div className={`p-4 rounded-lg ${sectionBg}`}>
               <h4 className={`font-medium mb-4 ${textColor}`}>
@@ -516,7 +503,6 @@ const BookingDetailsModal = ({
             </div>
           )}
 
-          {/* Extension Action */}
           {canExtend && onExtendRental && (
             <div className={`p-4 rounded-lg ${sectionBg} border-l-4 border-blue-500`}>
               <div className="flex items-center justify-between">
@@ -541,7 +527,6 @@ const BookingDetailsModal = ({
             </div>
           )}
 
-          {/* Admin Actions for Temporary Bookings */}
           {isTemporaryBooking && (
             <div className={`p-4 rounded-lg border ${adminActionsBg}`}>
               <h4 className={`font-medium mb-3 ${isDarkMode ? 'text-orange-200' : 'text-orange-800'}`}>
@@ -588,7 +573,6 @@ const BookingDetailsModal = ({
             </div>
           )}
 
-          {/* Navigation Actions */}
           <div className="flex gap-3">
             <button
               onClick={navigateToRental}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { X, Camera, Calendar, User, Phone, Mail, DollarSign, AlertTriangle } from 'lucide-react';
 import DateFilterInput from '../forms/DateFilterInput';
 import { createQuickBooking, calculateQuickBookingPrice } from '../../services/bookingService';
@@ -34,7 +34,6 @@ const CreateBookingModal = ({
   const [submitted, setSubmitted] = useState(false);
   const [bookingTypeTouched, setBookingTypeTouched] = useState(false);
 
-  // Initialize form with preselected values
   useEffect(() => {
     if (open) {
       setFormData({
@@ -58,16 +57,33 @@ const CreateBookingModal = ({
     }
   }, [open, preselectedCamera, preselectedDateRange]);
 
-  // Calculate pricing when camera or dates change
+  const calculatePricing = useCallback(async () => {
+    if (!formData.cameraId || !formData.startDate || !formData.endDate) {
+      setPricing(null);
+      return;
+    }
+
+    try {
+      const result = await calculateQuickBookingPrice(
+        formData.cameraId,
+        formData.startDate,
+        formData.endDate
+      );
+      setPricing(result);
+    } catch (error) {
+      console.error('Error calculating pricing:', error);
+      setPricing(null);
+    }
+  }, [formData.cameraId, formData.startDate, formData.endDate]);
+
   useEffect(() => {
     if (formData.cameraId && formData.startDate && formData.endDate) {
       calculatePricing();
     } else {
       setPricing(null);
     }
-  }, [formData.cameraId, formData.startDate, formData.endDate]);
+  }, [formData.cameraId, formData.startDate, formData.endDate, calculatePricing]);
 
-  // Auto-select completed status when both dates are in the past (unless manually overridden)
   useEffect(() => {
     if (!open || bookingTypeTouched) return;
     if (!formData.startDate || !formData.endDate) return;
@@ -114,20 +130,6 @@ const CreateBookingModal = ({
     });
   }, [receiptFile]);
 
-  const calculatePricing = async () => {
-    try {
-      const result = await calculateQuickBookingPrice(
-        formData.cameraId,
-        formData.startDate,
-        formData.endDate
-      );
-      setPricing(result);
-    } catch (error) {
-      console.error('Error calculating pricing:', error);
-      setPricing(null);
-    }
-  };
-
   const validateForm = () => {
     const newErrors = {};
 
@@ -137,7 +139,6 @@ const CreateBookingModal = ({
     if (!formData.customerName.trim()) newErrors.customerName = 'Customer name is required';
     if (!formData.customerContact.trim()) newErrors.customerContact = 'Contact is required';
 
-    // Validate date range
     if (formData.startDate && formData.endDate) {
       const start = new Date(formData.startDate);
       const end = new Date(formData.endDate);
@@ -198,7 +199,6 @@ const CreateBookingModal = ({
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
-    // Clear field error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
@@ -261,47 +261,45 @@ const CreateBookingModal = ({
 
   const submitLabel = submitLabelMap[formData.bookingType] || 'Create Booking';
 
-  if (!open) return null;
+  const themeClasses = useMemo(() => ({
+    bgColor: isDarkMode ? 'bg-gray-900' : 'bg-white',
+    borderColor: isDarkMode ? 'border-gray-700' : 'border-slate-200',
+    textColor: isDarkMode ? 'text-gray-100' : 'text-slate-800',
+    secondaryTextColor: isDarkMode ? 'text-gray-400' : 'text-slate-600',
+    inputBg: isDarkMode ? 'bg-gray-800' : 'bg-white',
+    inputBorder: isDarkMode ? 'border-gray-600' : 'border-slate-300',
+    inputText: isDarkMode ? 'text-gray-100' : 'text-slate-900',
+    labelColor: isDarkMode ? 'text-gray-300' : 'text-slate-700',
+    errorColor: isDarkMode ? 'text-red-400' : 'text-red-600',
+    sectionBg: isDarkMode ? 'bg-gray-800' : 'bg-slate-50',
+    sectionBorder: isDarkMode ? 'border-gray-600' : 'border-slate-200'
+  }), [isDarkMode]);
 
-  // Theme classes
-  const bgColor = isDarkMode ? 'bg-gray-900' : 'bg-white';
-  const borderColor = isDarkMode ? 'border-gray-700' : 'border-slate-200';
-  const textColor = isDarkMode ? 'text-gray-100' : 'text-slate-800';
-  const secondaryTextColor = isDarkMode ? 'text-gray-400' : 'text-slate-600';
-  const inputBg = isDarkMode ? 'bg-gray-800' : 'bg-white';
-  const inputBorder = isDarkMode ? 'border-gray-600' : 'border-slate-300';
-  const inputText = isDarkMode ? 'text-gray-100' : 'text-slate-900';
-  const labelColor = isDarkMode ? 'text-gray-300' : 'text-slate-700';
-  const errorColor = isDarkMode ? 'text-red-400' : 'text-red-600';
-  const sectionBg = isDarkMode ? 'bg-gray-800' : 'bg-slate-50';
-  const sectionBorder = isDarkMode ? 'border-gray-600' : 'border-slate-200';
+  if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       
-      <div className={`relative rounded-lg shadow-xl w-full max-w-2xl mx-4 border ${bgColor} ${borderColor}`}>
-        {/* Header */}
-        <div className={`px-6 py-4 border-b flex items-center justify-between ${borderColor}`}>
-          <h3 className={`text-lg font-semibold ${textColor}`}>Create New Booking</h3>
+      <div className={`relative rounded-lg shadow-xl w-full max-w-2xl mx-4 border ${themeClasses.bgColor} ${themeClasses.borderColor}`}>
+        <div className={`px-6 py-4 border-b flex items-center justify-between ${themeClasses.borderColor}`}>
+          <h3 className={`text-lg font-semibold ${themeClasses.textColor}`}>Create New Booking</h3>
           <button onClick={onClose} className={`text-gray-400 hover:text-gray-600`}>
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 max-h-[70vh] overflow-y-auto">
           <div className="space-y-6">
-            {/* Camera Selection */}
             <div>
-              <label className={`block text-sm font-medium mb-2 ${labelColor}`}>
+              <label className={`block text-sm font-medium mb-2 ${themeClasses.labelColor}`}>
                 <Camera className="w-4 h-4 inline mr-2" />
                 Camera
               </label>
               <select
                 value={formData.cameraId}
                 onChange={(e) => handleInputChange('cameraId', e.target.value)}
-                className={`w-full p-3 border rounded-lg ${inputBg} ${inputBorder} ${inputText} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`w-full p-3 border rounded-lg ${themeClasses.inputBg} ${themeClasses.inputBorder} ${themeClasses.inputText} focus:outline-none focus:ring-2 focus:ring-blue-500`}
               >
                 <option value="">Select a camera</option>
                 {cameras.map(camera => (
@@ -311,12 +309,11 @@ const CreateBookingModal = ({
                   </option>
                 ))}
               </select>
-              {errors.cameraId && <p className={`text-sm mt-1 ${errorColor}`}>{errors.cameraId}</p>}
+              {errors.cameraId && <p className={`text-sm mt-1 ${themeClasses.errorColor}`}>{errors.cameraId}</p>}
             </div>
 
-            {/* Date Range (using shared DateFilterInput without min restriction) */}
             <div>
-              <label className={`block text-sm font-medium mb-2 ${labelColor}`}>
+              <label className={`block text-sm font-medium mb-2 ${themeClasses.labelColor}`}>
                 <Calendar className="w-4 h-4 inline mr-2" />
                 Rental Dates
               </label>
@@ -330,45 +327,43 @@ const CreateBookingModal = ({
                 onEndDateChange={(e) => handleInputChange('endDate', e.target.value)}
                 idPrefix="create-booking"
               />
-              {errors.startDate && <p className={`text-sm mt-1 ${errorColor}`}>{errors.startDate}</p>}
-              {errors.endDate && <p className={`text-sm mt-1 ${errorColor}`}>{errors.endDate}</p>}
+              {errors.startDate && <p className={`text-sm mt-1 ${themeClasses.errorColor}`}>{errors.startDate}</p>}
+              {errors.endDate && <p className={`text-sm mt-1 ${themeClasses.errorColor}`}>{errors.endDate}</p>}
             </div>
 
-            {/* Pricing Display */}
             {pricing && (
               <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-600' : 'bg-slate-50 border-slate-200'}`}>
                 <div className="flex items-center gap-2 mb-2">
-                  <DollarSign className={`w-4 h-4 ${secondaryTextColor}`} />
-                  <span className={`font-medium ${textColor}`}>Pricing Details</span>
+                  <DollarSign className={`w-4 h-4 ${themeClasses.secondaryTextColor}`} />
+                  <span className={`font-medium ${themeClasses.textColor}`}>Pricing Details</span>
                 </div>
                 <div className="grid grid-cols-3 gap-4 text-sm">
                   <div>
-                    <span className={secondaryTextColor}>Duration</span>
-                    <p className={`font-medium ${textColor}`}>{pricing.rentalDays} days</p>
+                    <span className={themeClasses.secondaryTextColor}>Duration</span>
+                    <p className={`font-medium ${themeClasses.textColor}`}>{pricing.rentalDays} days</p>
                   </div>
                   <div>
-                    <span className={secondaryTextColor}>Rate</span>
-                    <p className={`font-medium ${textColor}`}>₱{pricing.pricePerDay}/day</p>
+                    <span className={themeClasses.secondaryTextColor}>Rate</span>
+                    <p className={`font-medium ${themeClasses.textColor}`}>₱{pricing.pricePerDay}/day</p>
                   </div>
                   <div>
-                    <span className={secondaryTextColor}>Total</span>
-                    <p className={`font-medium text-lg ${textColor}`}>₱{pricing.totalPrice.toFixed(2)}</p>
+                    <span className={themeClasses.secondaryTextColor}>Total</span>
+                    <p className={`font-medium text-lg ${themeClasses.textColor}`}>₱{pricing.totalPrice.toFixed(2)}</p>
                   </div>
                 </div>
                 {pricing.tierDescription && (
-                  <p className={`text-xs mt-2 ${secondaryTextColor}`}>
+                  <p className={`text-xs mt-2 ${themeClasses.secondaryTextColor}`}>
                     Tier: {pricing.tierDescription}
                   </p>
                 )}
               </div>
             )}
 
-            {/* Customer Information */}
             <div className="space-y-4">
-              <h4 className={`text-lg font-medium ${textColor}`}>Customer Information</h4>
+              <h4 className={`text-lg font-medium ${themeClasses.textColor}`}>Customer Information</h4>
               
               <div>
-                <label className={`block text-sm font-medium mb-2 ${labelColor}`}>
+                <label className={`block text-sm font-medium mb-2 ${themeClasses.labelColor}`}>
                   <User className="w-4 h-4 inline mr-2" />
                   Full Name
                 </label>
@@ -376,14 +371,14 @@ const CreateBookingModal = ({
                   type="text"
                   value={formData.customerName}
                   onChange={(e) => handleInputChange('customerName', e.target.value)}
-                  className={`w-full p-3 border rounded-lg ${inputBg} ${inputBorder} ${inputText} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  className={`w-full p-3 border rounded-lg ${themeClasses.inputBg} ${themeClasses.inputBorder} ${themeClasses.inputText} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                   placeholder="Enter customer's full name"
                 />
-                {errors.customerName && <p className={`text-sm mt-1 ${errorColor}`}>{errors.customerName}</p>}
+                {errors.customerName && <p className={`text-sm mt-1 ${themeClasses.errorColor}`}>{errors.customerName}</p>}
               </div>
 
               <div>
-                <label className={`block text-sm font-medium mb-2 ${labelColor}`}>
+                <label className={`block text-sm font-medium mb-2 ${themeClasses.labelColor}`}>
                   <Phone className="w-4 h-4 inline mr-2" />
                   Contact Number
                 </label>
@@ -391,14 +386,14 @@ const CreateBookingModal = ({
                   type="text"
                   value={formData.customerContact}
                   onChange={(e) => handleInputChange('customerContact', e.target.value)}
-                  className={`w-full p-3 border rounded-lg ${inputBg} ${inputBorder} ${inputText} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  className={`w-full p-3 border rounded-lg ${themeClasses.inputBg} ${themeClasses.inputBorder} ${themeClasses.inputText} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                   placeholder="Phone number or Instagram handle"
                 />
-                {errors.customerContact && <p className={`text-sm mt-1 ${errorColor}`}>{errors.customerContact}</p>}
+                {errors.customerContact && <p className={`text-sm mt-1 ${themeClasses.errorColor}`}>{errors.customerContact}</p>}
               </div>
 
               <div>
-                <label className={`block text-sm font-medium mb-2 ${labelColor}`}>
+                <label className={`block text-sm font-medium mb-2 ${themeClasses.labelColor}`}>
                   <Mail className="w-4 h-4 inline mr-2" />
                   Email (Optional)
                 </label>
@@ -406,15 +401,14 @@ const CreateBookingModal = ({
                   type="email"
                   value={formData.customerEmail}
                   onChange={(e) => handleInputChange('customerEmail', e.target.value)}
-                  className={`w-full p-3 border rounded-lg ${inputBg} ${inputBorder} ${inputText} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  className={`w-full p-3 border rounded-lg ${themeClasses.inputBg} ${themeClasses.inputBorder} ${themeClasses.inputText} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                   placeholder="customer@example.com"
                 />
               </div>
             </div>
 
-            {/* Booking Type */}
             <div>
-              <label className={`block text-sm font-medium mb-2 ${labelColor}`}>
+              <label className={`block text-sm font-medium mb-2 ${themeClasses.labelColor}`}>
                 Booking Status
               </label>
               <div className="flex gap-4">
@@ -426,7 +420,7 @@ const CreateBookingModal = ({
                     onChange={(e) => handleBookingTypeSelect(e.target.value)}
                     className="mr-2"
                   />
-                  <span className={textColor}>Confirmed</span>
+                  <span className={themeClasses.textColor}>Confirmed</span>
                 </label>
                 <label className="flex items-center">
                   <input
@@ -436,7 +430,7 @@ const CreateBookingModal = ({
                     onChange={(e) => handleBookingTypeSelect(e.target.value)}
                     className="mr-2"
                   />
-                  <span className={textColor}>Potential</span>
+                  <span className={themeClasses.textColor}>Potential</span>
                 </label>
                 <label className="flex items-center">
                   <input
@@ -446,14 +440,13 @@ const CreateBookingModal = ({
                     onChange={(e) => handleBookingTypeSelect(e.target.value)}
                     className="mr-2"
                   />
-                  <span className={textColor}>Completed</span>
+                  <span className={themeClasses.textColor}>Completed</span>
                 </label>
               </div>
             </div>
 
-            {/* Document Uploads */}
-            <div className={`p-4 rounded-lg border ${sectionBg} ${sectionBorder}`}>
-              <h4 className={`text-lg font-medium mb-4 ${textColor}`}>Documents (Optional)</h4>
+            <div className={`p-4 rounded-lg border ${themeClasses.sectionBg} ${themeClasses.sectionBorder}`}>
+              <h4 className={`text-lg font-medium mb-4 ${themeClasses.textColor}`}>Documents (Optional)</h4>
               <div className="space-y-4">
                 <FileUploadZone
                   label="Contract (PDF)"
@@ -483,13 +476,12 @@ const CreateBookingModal = ({
                   helperText="Upload a receipt image (JPG or PNG)."
                 />
 
-                <p className={`text-xs ${secondaryTextColor}`}>
+                <p className={`text-xs ${themeClasses.secondaryTextColor}`}>
                   Contracts and payment receipts are optional. You can add or replace them later from the booking details.
                 </p>
               </div>
             </div>
 
-            {/* Submit Error */}
             {errors.submit && (
               <div className={`p-3 rounded border ${isDarkMode ? 'bg-red-900/30 border-red-800 text-red-300' : 'bg-red-50 border-red-200 text-red-700'}`}>
                 {errors.submit}
@@ -509,7 +501,6 @@ const CreateBookingModal = ({
             )}
           </div>
 
-          {/* Form Actions */}
           <div className="flex gap-3 mt-6 pt-6 border-t border-gray-200">
             <button
               type="button"
