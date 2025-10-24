@@ -1,4 +1,3 @@
-import React, { useEffect } from 'react';
 import { Calendar, CheckCircle, AlertCircle, Loader2, FileText } from 'lucide-react';
 import DateFilterInput from '../../forms/DateFilterInput';
 import CameraDetails from '../shared/CameraDetails';
@@ -6,7 +5,6 @@ import PricingSummary from '../shared/PricingSummary';
 import SuccessView from '../shared/SuccessView';
 import ContractSigningModal from '../../modals/ContractSigningModal';
 import useCameraStore from '../../../stores/cameraStore';
-import useAuthStore from '../../../stores/useAuthStore';
 
 const HomeToRentalFlow = ({ 
   onBackToBrowse, 
@@ -15,7 +13,6 @@ const HomeToRentalFlow = ({
   pricing,
   submission
 }) => {
-  const { user } = useAuthStore();
   const {
     rentalFlowCamera,
     rentalFlowCameraModelName,
@@ -59,7 +56,6 @@ const HomeToRentalFlow = ({
     handleViewPdf,
     handleOpenPdfInNewTab,
     setShowContractModal,
-    setRequestError,
   } = submission;
 
   const cameraModelName = rentalFlowCameraModelName || rentalFlowCamera?.name;

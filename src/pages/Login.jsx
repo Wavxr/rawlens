@@ -1,5 +1,4 @@
 import { useState } from "react"
-import { useNavigate } from "react-router-dom"
 import { Camera, Eye, EyeOff, Mail, Lock, ArrowRight } from "lucide-react"
 import useAuthStore from "../stores/useAuthStore"
 
@@ -11,7 +10,6 @@ export default function Login() {
   const [error, setError] = useState("")
 
   const login = useAuthStore((state) => state.login)
-  const navigate = useNavigate()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -21,7 +19,6 @@ export default function Login() {
     try {
       await login(email, password)
     } catch (err) {
-      console.error(err)
       setError("Invalid email or password")
     } finally {
       setLoading(false)
@@ -31,7 +28,7 @@ export default function Login() {
   const handleGoogleLogin = async () => {
     try {
       console.log("Google login")
-    } catch (err) {
+    } catch {
       setError("Failed to login with Google")
     }
   }

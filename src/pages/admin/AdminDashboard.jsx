@@ -32,7 +32,6 @@ import {
 export default function AdminDashboard() {
   const navigate = useNavigate()
   const location = useLocation()
-  const logout = useAuthStore((state) => state.logout)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
@@ -48,7 +47,7 @@ export default function AdminDashboard() {
           names.forEach(name => caches.delete(name));
         });
       }
-    } catch (error) {
+    } catch {
       useAuthStore.getState().forceCleanup();
       navigate("/login", { replace: true });
     }
@@ -120,11 +119,6 @@ export default function AdminDashboard() {
     window.addEventListener("resize", handleResize)
     return () => window.removeEventListener("resize", handleResize)
   }, [])
-
-  const getCurrentPageName = () => {
-    const currentItem = navigationItems.find((item) => isActiveRoute(item.path, item.exact))
-    return currentItem?.name || "Dashboard"
-  }
 
   const { darkMode, toggleTheme } = useThemeStore()
 

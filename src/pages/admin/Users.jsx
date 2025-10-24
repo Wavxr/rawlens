@@ -57,7 +57,6 @@ export default function AdminUsers() {
   const [filteredUsers, setFilteredUsers] = useState([])
   const [modalUser, setModalUser] = useState(null)
   const [imgs, setImgs] = useState({ nat: "", selfie: "", video: "", natLoaded: false, selfieLoaded: false, videoLoaded: false })
-  const [loadingImg, setLoadingImg] = useState(false)
   const [loadingUsers, setLoadingUsers] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [roleFilter, setRoleFilter] = useState("all")

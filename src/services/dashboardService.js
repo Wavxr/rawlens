@@ -100,7 +100,6 @@ export async function getDashboardStats() {
     // Get rental growth (rentals created this month vs yesterday)
     const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStart = yesterday.toISOString().split('T')[0];
     
     const todayRentals = rentalsResult.data?.filter(rental => {
       const rentalDate = new Date(rental.created_at);

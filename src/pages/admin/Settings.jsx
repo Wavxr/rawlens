@@ -1,13 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import useAuthStore from '../../stores/useAuthStore';
 import useSettingsStore from '../../stores/settingsStore';
 import AdminNotificationSettings from '../../components/notifications/AdminNotificationSettings';
 import { updateDeviceActivity } from '../../services/pushService';
 
 const Settings = () => {
-  const { user, role } = useAuthStore();
+  const { user } = useAuthStore();
   const { settings, init: initSettings, update: updateSettings, loading, currentRole } = useSettingsStore();
-  const [settingsInitialized, setSettingsInitialized] = useState(false);
 
   // First effect: Initialize settings when user is available
   useEffect(() => {
@@ -16,7 +15,6 @@ const Settings = () => {
         try {
           // Always initialize admin settings for admin pages
           await initSettings(user.id, 'admin');
-          setSettingsInitialized(true);
         } catch (error) {
           console.error('Failed to initialize admin settings:', error);
         }

@@ -158,7 +158,7 @@ export async function userRequestRentalExtension(rentalId, userId, newEndDate) {
 
     const additionalPrice = extensionDays * rental.price_per_day;
 
-    const extensionRecord = await createRentalExtension(
+    const extensionResult = await createRentalExtension(
       rentalId,
       userId,
       newEndDate,
@@ -167,15 +167,19 @@ export async function userRequestRentalExtension(rentalId, userId, newEndDate) {
       additionalPrice
     );
 
+    if (!extensionResult.success || !extensionResult.data) {
+      return { success: false, data: null, error: extensionResult.error || 'Failed to create extension.' };
+    }
+
     const payment = await createPayment({
       rentalId,
-      extensionId: extensionRecord.id,
+      extensionId: extensionResult.data.id,
       userId,
       amount: additionalPrice,
       type: "extension",
     });
 
-    return { success: true, data: { extension: extensionRecord, payment }, error: null };
+    return { success: true, data: { extension: extensionResult.data, payment }, error: null };
   } catch (error) {
     return { success: false, data: null, error: error.message || "Extension request failed." };
   }
@@ -268,7 +272,7 @@ export async function createAdminExtension(rentalId, extensionData, paymentFile)
     const extensionDays = Math.ceil((newEnd - currentEnd) / (1000 * 3600 * 24));
     const additionalPrice = extensionDays * rental.price_per_day;
 
-    const extensionRecord = await createRentalExtension(
+    const extensionResult = await createRentalExtension(
       rentalId,
       rental.user_id,
       extensionData.newEndDate,
@@ -279,20 +283,28 @@ export async function createAdminExtension(rentalId, extensionData, paymentFile)
       extensionData.notes
     );
 
+    if (!extensionResult.success || !extensionResult.data) {
+      return { success: false, data: null, error: extensionResult.error || 'Failed to create extension.' };
+    }
+
+    // For admin-created rentals (temporary), rental.user_id may be null.
+    // Use adminId as the payments.user_id fallback to satisfy NOT NULL and RLS policies.
+    const paymentUserId = rental.user_id || extensionData.adminId;
+
     const payment = await createPayment({
       rentalId,
-      extensionId: extensionRecord.id,
-      userId: rental.user_id,
+      extensionId: extensionResult.data.id,
+      userId: paymentUserId,
       amount: additionalPrice,
       type: "extension",
     });
 
     // If file provided, use generic uploader
     if (paymentFile) {
-    await uploadPaymentReceipt({ paymentId: payment.id, rentalId, file: paymentFile, scope: 'admin', extensionId: extensionRecord.id });
+    await uploadPaymentReceipt({ paymentId: payment.id, rentalId, file: paymentFile, scope: 'admin', extensionId: extensionResult.data.id });
     }
 
-    return { success: true, data: { extension: extensionRecord, payment }, error: null };
+    return { success: true, data: { extension: extensionResult.data, payment }, error: null };
   } catch (error) {
     return { success: false, data: null, error: error.message || "Failed to create admin extension." };
   }

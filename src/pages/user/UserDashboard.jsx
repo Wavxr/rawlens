@@ -1,14 +1,12 @@
-// src/components/UserDashboard.jsx
 import { Outlet, useNavigate, useLocation } from "react-router-dom"
 import useAuthStore from "../../stores/useAuthStore"
-import { Home, Search, ShoppingCart, Calendar, User, Menu, X, Camera, ChevronDown, LogOut } from "lucide-react"
+import { Home, Search, ShoppingCart, Calendar, User, Camera, ChevronDown, LogOut } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
 
 export default function UserDashboard() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, profile, logout } = useAuthStore()
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false)
   const dropdownRef = useRef(null)
 

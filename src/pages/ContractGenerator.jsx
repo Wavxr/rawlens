@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SignatureCanvas from 'react-signature-canvas';
 import { FileText, Loader2, Camera, User, ArrowLeft, Download, RefreshCw, Info } from 'lucide-react';
@@ -32,19 +32,15 @@ export default function ContractGenerator() {
   const sigCanvasRef = useRef(null);
   const canvasWrapperRef = useRef(null);
   const [cameraNames, setCameraNames] = useState([]);
-  const [loadingNames, setLoadingNames] = useState(false);
-  const [selectedCameraPricing, setSelectedCameraPricing] = useState({ price_1to3: null, price_4plus: null });
   const [estimate, setEstimate] = useState(null);
 
   useEffect(() => {
     let mounted = true;
-    setLoadingNames(true);
     getPublicCameraNames()
       .then(({ data, error }) => {
         if (!mounted) return;
         if (!error) setCameraNames(data);
       })
-      .finally(() => mounted && setLoadingNames(false));
     return () => { mounted = false; };
   }, []);
 
@@ -139,7 +135,6 @@ export default function ContractGenerator() {
     setSignatureDataUrl(null);
     setGeneratedBlobUrl(old => { if (old) URL.revokeObjectURL(old); return null; });
     setShowPreview(false);
-    setSelectedCameraPricing({ price_1to3: null, price_4plus: null });
     setEstimate(null);
   };
 
@@ -147,11 +142,10 @@ export default function ContractGenerator() {
   useEffect(() => {
     let cancelled = false;
     async function run() {
-      if (!selectedCameraName) { setSelectedCameraPricing({ price_1to3: null, price_4plus: null }); setEstimate(null); return; }
+      if (!selectedCameraName) { setEstimate(null); return; }
       const { data } = await getPublicCameraByName(selectedCameraName);
       if (cancelled) return;
       const pricing = { price_1to3: data?.price_1to3 ?? null, price_4plus: data?.price_4plus ?? null };
-      setSelectedCameraPricing(pricing);
       if (form.startDate && form.endDate) {
         const days = Math.ceil((new Date(form.endDate) - new Date(form.startDate)) / (1000 * 60 * 60 * 24)) + 1;
         if (!isNaN(days) && days > 0) {
