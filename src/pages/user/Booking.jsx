@@ -1,5 +1,4 @@
-// Imports
-import { useEffect, useMemo, useState, useRef } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useNavigate } from "react-router-dom"
 import useAuthStore from "../../stores/useAuthStore"
 import useRentalStore from "../../stores/rentalStore"
@@ -30,7 +29,7 @@ import CancellationModal from "../../components/modals/CancellationModal";
 import PaymentDetails from "../../components/payment/PaymentDetails";
 import RentalExtensionManager from "../../components/rental/RentalExtensionManager";
 import { getRentalFeedback } from "../../services/feedbackService";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import { toast, ToastContainer } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -132,7 +131,7 @@ export default function Rentals() {
             ...prev,
             [selectedRental.id]: !!existingFeedback
           }));
-        } catch (err) {
+        } catch {
           console.error("Error checking feedback:", err);
         }
       }
@@ -1092,7 +1091,7 @@ export default function Rentals() {
           {/* Feedback Form Modal */}
           <AnimatePresence>
             {showFeedbackForm && (
-              <motion.div 
+              <div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
@@ -1107,7 +1106,7 @@ export default function Rentals() {
                     onSkip={() => setShowFeedbackForm(false)}
                   />
                 </div>
-              </motion.div>
+              </div>
             )}
           </AnimatePresence>
 

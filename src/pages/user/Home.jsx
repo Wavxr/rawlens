@@ -1,7 +1,6 @@
-// src/pages/user/Home.jsx
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Camera } from 'lucide-react';
+import { Camera } from 'lucide-react';
 import CameraCard from '../../components/camera/CameraCard';
 import CameraCardBig from '../../components/camera/CameraCardBig';
 import useCameraStore from '../../stores/cameraStore';
@@ -73,10 +72,6 @@ export default function Home() {
         sourcePageType: "home"
       }
     });
-  };
-
-  const handleBackToBrowse = () => {
-    resetRentalFlowState();
   };
 
   const handleFavoriteClick = (cameraId) => {

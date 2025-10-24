@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import useAuthStore from '../../stores/useAuthStore';
 import useRentalStore from '../../stores/rentalStore';
 import { 
@@ -18,14 +18,6 @@ function formatDate(dateStr) {
   if (!dateStr) return '';
   const d = new Date(dateStr);
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-}
-
-function isUpcoming(dateStr) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const d = new Date(dateStr);
-  d.setHours(0, 0, 0, 0);
-  return d >= today;
 }
 
 const StatusPill = ({ status }) => {
@@ -61,11 +53,9 @@ const StatusPill = ({ status }) => {
     glow: 'shadow-slate-100'
   };
 
-  const Icon = config.icon;
-
   return (
     <div className={`inline-flex items-center gap-1 md:gap-1.5 px-2.5 md:px-3 py-1 md:py-1.5 text-xs font-medium border rounded-md ${config.bg} ${config.text} ${config.border} shadow-sm ${config.glow}`}>
-      <Icon className="w-2.5 h-2.5 md:w-3 md:h-3" />
+      <config.icon className="w-2.5 h-2.5 md:w-3 md:h-3" />
       <span className="capitalize text-xs md:text-xs">{status}</span>
     </div>
   );
@@ -115,7 +105,7 @@ const RequestRow = ({ rental, onUploadComplete, onCancelComplete }) => {
       } else {
         toast.error(result.error || 'Failed to cancel rental request');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to cancel rental request');
     } finally {
       setIsCancelling(false);
@@ -134,7 +124,7 @@ const RequestRow = ({ rental, onUploadComplete, onCancelComplete }) => {
       } else {
         toast.error(result.error || 'Failed to cancel rental');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to cancel rental');
     }
   };
@@ -335,10 +325,10 @@ const RequestRow = ({ rental, onUploadComplete, onCancelComplete }) => {
   );
 };
 
-const EmptyState = ({ title, subtitle, icon: Icon }) => (
+const EmptyState = ({ title, subtitle, icon: IconComponent }) => (
   <div className="py-12 md:py-16 text-center">
     <div className="mx-auto w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl bg-gradient-to-br from-slate-100 to-gray-100 flex items-center justify-center mb-3 md:mb-4 shadow-sm">
-      <Icon className="w-6 h-6 md:w-8 md:h-8 text-slate-400" />
+      <IconComponent className="w-6 h-6 md:w-8 md:h-8 text-slate-400" />
     </div>
     <div className="max-w-sm mx-auto px-4">
       <h4 className="text-base md:text-lg font-medium md:font-semibold text-slate-800 mb-1 md:mb-2">{title}</h4>

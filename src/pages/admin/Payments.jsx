@@ -16,10 +16,10 @@ const Payments = () => {
   const [storeReady, setStoreReady] = useState(false);
   const [expandedPayments, setExpandedPayments] = useState(new Set());
   const [verifyingPayments, setVerifyingPayments] = useState(new Set());
-  const [receiptUrlCache, setReceiptUrlCache] = useState({}); // paymentId -> signed URL
-  const [receiptLoading, setReceiptLoading] = useState(new Set()); // paymentIds currently loading
+  const [receiptUrlCache, setReceiptUrlCache] = useState({});
+  const [receiptLoading, setReceiptLoading] = useState(new Set());
   const channelRef = useRef(null);
-  const { payments, setPayments, getPaymentsByStatus } = usePaymentStore();
+  const { setPayments, getPaymentsByStatus } = usePaymentStore();
 
   // Get only submitted payments from the store
   const submittedPayments = storeReady ? getPaymentsByStatus('submitted') : [];
@@ -34,7 +34,7 @@ const Payments = () => {
         } else {
           // Handle API error
         }
-      } catch (error) {
+      } catch {
         // Handle fetch error
       } finally {
         setLoading(false);
@@ -118,7 +118,7 @@ const Payments = () => {
           }
         );
       }
-    } catch (error) {
+    } catch {
       toast.error(
         'An unexpected error occurred while verifying the payment',
         {

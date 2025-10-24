@@ -72,10 +72,10 @@ export async function signUp(
     if (dbErr) throw dbErr;
 
     return { success: true };
-  } catch (err) {
+  } catch (error) {
     // Rollback user if signup fails after auth
     await supabase.auth.admin.deleteUser(uid);
-    return { error: err };
+    return { error };
   }
 }
 

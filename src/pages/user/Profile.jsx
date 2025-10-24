@@ -1,4 +1,3 @@
-// src/pages/Profile.jsx
 import { useEffect, useState, useRef } from "react";
 import { updateUserProfile } from "../../services/userService";
 import { getSignedUrl } from "../../services/storageService";
@@ -21,7 +20,6 @@ export default function Profile() {
   const [files, setFiles] = useState({});
   const [savingPersonal, setSavingPersonal] = useState(false);
   const [appealing, setAppealing] = useState(false);
-  const [error, setError] = useState(null);
 
   // Video Recording State
   const [showVideoModal, setShowVideoModal] = useState(false);
@@ -347,10 +345,6 @@ export default function Profile() {
         </div>
       </div>
     );
-  }
-
-  if (error) {
-    return <p className="text-red-500 text-center py-12">Error loading profile: {error}</p>;
   }
 
   if (!authLoading && !profile) {
