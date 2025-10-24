@@ -6,7 +6,6 @@ export default function DateFilterInput({
   minStartDate = null,
   minEndDate = null,
   disabled = false,
-  label = "Rental Period",
   idPrefix = "date-filter",
   layout = "vertical",
   ignoreStartMin = false,

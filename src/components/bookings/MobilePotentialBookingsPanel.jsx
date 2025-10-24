@@ -187,10 +187,8 @@ const MobilePotentialBookingsPanel = ({
   potentialBookings,
   selectedBooking,
   onSelectBooking,
-  onClearSelection,
   onBookingUpdate,
   onEditBooking,
-  cameras,
   isDarkMode,
   isOpen,
   onClose

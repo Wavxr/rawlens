@@ -73,7 +73,7 @@ const BookingDetailsModal = ({
     try {
       const result = await checkExtensionEligibility(booking.id);
       setCanExtend(result.isEligible);
-    } catch (error) {
+    } catch {
       setCanExtend(false);
     } finally {
       setExtensionCheckLoading(false);
@@ -101,7 +101,7 @@ const BookingDetailsModal = ({
             storagePath: rentalRow.contract_pdf_url,
             signedUrl: signed
           };
-        } catch (sigErr) {
+        } catch {
           contractDoc = {
             storagePath: rentalRow.contract_pdf_url,
             signedUrl: null

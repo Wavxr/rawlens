@@ -12,7 +12,7 @@ const PaymentDetailsComponent = ({ rental, className = "" }) => {
       setCopiedField(field);
       toast.success(`${field} copied to clipboard!`);
       setTimeout(() => setCopiedField(null), 2000);
-    } catch (err) {
+    } catch {
       toast.error('Failed to copy to clipboard');
     }
   };

@@ -2,176 +2,155 @@ import React, { useMemo } from 'react';
 import { CalendarIcon } from 'lucide-react';
 import BookingCalendarCell from './BookingCalendarCell';
 
-// Calendar helper functions
-function getMonthDaysGrid(currentMonthDate) {
-  const start = new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth(), 1);
-  const end = new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth() + 1, 0);
-  const startWeekday = (start.getDay() + 6) % 7; // Make Monday = 0
-  const daysInMonth = end.getDate();
-  const cells = [];
-  
-  // Leading blank cells
-  for (let i = 0; i < startWeekday; i++) {
-    cells.push(null);
+function getMonthGridDates(monthDate) {
+  const firstOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+  const lastOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
+
+  // Adjust weekday so that Monday = 0
+  const mondayStartOffset = (firstOfMonth.getDay() + 6) % 7;
+
+  const totalDays = lastOfMonth.getDate();
+  const gridDates = [];
+
+  for (let i = 0; i < mondayStartOffset; i++) gridDates.push(null);
+  for (let day = 1; day <= totalDays; day++) {
+    gridDates.push(new Date(monthDate.getFullYear(), monthDate.getMonth(), day));
   }
-  
-  // Days of the month
-  for (let day = 1; day <= daysInMonth; day++) {
-    cells.push(new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth(), day));
-  }
-  
-  // Trailing blank cells to complete weeks
-  while (cells.length % 7 !== 0) {
-    cells.push(null);
-  }
-  
-  return cells;
+  while (gridDates.length % 7 !== 0) gridDates.push(null);
+
+  return gridDates;
 }
 
-function overlaps(date, booking) {
+function isDateWithinBooking(date, booking) {
   if (!date || !booking) return false;
-  
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  
-  const start = new Date(booking.start_date);
-  const end = new Date(booking.end_date);
-  start.setHours(0, 0, 0, 0);
-  end.setHours(0, 0, 0, 0);
-  
-  return d >= start && d <= end;
+
+  const normalizedDate = new Date(date);
+  normalizedDate.setHours(0, 0, 0, 0);
+
+  const bookingStart = new Date(booking.start_date);
+  const bookingEnd = new Date(booking.end_date);
+  bookingStart.setHours(0, 0, 0, 0);
+  bookingEnd.setHours(0, 0, 0, 0);
+
+  return normalizedDate >= bookingStart && normalizedDate <= bookingEnd;
 }
 
-const CameraMiniCalendar = ({ 
-  camera, 
-  monthDate, 
-  bookings, 
-  highlightedDates, 
+function useFilteredBookings(bookings) {
+  return useMemo(
+    () => bookings.filter(({ rental_status }) =>
+      ['confirmed', 'active', 'completed'].includes(rental_status)
+    ),
+    [bookings]
+  );
+}
+
+function useThemeClasses(isDarkMode) {
+  return {
+    background: isDarkMode ? 'bg-gray-800' : 'bg-white',
+    border: isDarkMode ? 'border-gray-700' : 'border-slate-200',
+    primaryText: isDarkMode ? 'text-gray-100' : 'text-slate-800',
+    secondaryText: isDarkMode ? 'text-gray-400' : 'text-slate-500',
+    icon: isDarkMode ? 'text-gray-500' : 'text-slate-400',
+    placeholder: isDarkMode ? 'bg-gray-700' : 'bg-slate-100',
+  };
+}
+
+function CameraMiniCalendar({
+  camera,
+  monthDate,
+  bookings,
+  highlightedDates,
   selectedPotentialBooking,
   onDateRangeSelect,
   onDayClick,
   onBookingContextMenu,
-  isDarkMode 
-}) => {
-  const cells = useMemo(() => getMonthDaysGrid(monthDate), [monthDate]);
-  const label = monthDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  isDarkMode,
+}) {
+  const monthGridDates = useMemo(() => getMonthGridDates(monthDate), [monthDate]);
+  const monthLabel = monthDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  const confirmedBookings = useFilteredBookings(bookings);
+  const theme = useThemeClasses(isDarkMode);
 
-  // Filter bookings to show only confirmed, active, and completed
-  const displayBookings = useMemo(() => {
-    return bookings.filter(booking => 
-      ['confirmed', 'active', 'completed'].includes(booking.rental_status)
+  const isHighlighted = (date) =>
+    !!date &&
+    highlightedDates.some(
+      (highlight) =>
+        highlight.cameraId === camera.id &&
+        highlight.date.toDateString() === date.toDateString()
     );
-  }, [bookings]);
 
-  // Check if a date should be highlighted
-  const isDateHighlighted = (date) => {
-    if (!date || !highlightedDates.length) return false;
-    return highlightedDates.some(highlight => 
-      highlight.cameraId === camera.id && 
-      highlight.date.toDateString() === date.toDateString()
-    );
-  };
-
-  // Check if a highlighted date has conflicts with existing bookings
-  const hasDateConflicts = (date) => {
-    if (!date || !isDateHighlighted(date)) return false;
-    
-    // Check if this highlighted date overlaps with any confirmed/active bookings
-    const dayBookings = displayBookings.filter(booking => overlaps(date, booking));
-    return dayBookings.length > 0;
-  };
-
-  // Get status color classes
-  const getStatusColor = (status) => {
-    const baseStyles = 'border';
-    if (isDarkMode) {
-      switch(status) {
-        case 'active': return `${baseStyles} bg-emerald-900/50 border-emerald-700`;
-        case 'confirmed': return `${baseStyles} bg-blue-900/50 border-blue-700`;
-        case 'completed': return `${baseStyles} bg-slate-700 border-slate-600`;
-        default: return `${baseStyles} bg-slate-800 border-slate-700`;
-      }
-    } else {
-      switch(status) {
-        case 'active': return `${baseStyles} bg-emerald-200/50 border-emerald-300`;
-        case 'confirmed': return `${baseStyles} bg-blue-200/50 border-blue-300`;
-        case 'completed': return `${baseStyles} bg-slate-200 border-slate-300`;
-        default: return `${baseStyles} bg-slate-100 border-slate-200`;
-      }
-    }
-  };
-
-  // Theme classes
-  const bgColor = isDarkMode ? 'bg-gray-800' : 'bg-white';
-  const borderColor = isDarkMode ? 'border-gray-700' : 'border-slate-200';
-  const textColor = isDarkMode ? 'text-gray-100' : 'text-slate-800';
-  const secondaryTextColor = isDarkMode ? 'text-gray-400' : 'text-slate-500';
-  const iconColor = isDarkMode ? 'text-gray-500' : 'text-slate-400';
+  const hasBookingConflict = (date) =>
+    !!date &&
+    isHighlighted(date) &&
+    confirmedBookings.some((booking) => isDateWithinBooking(date, booking));
 
   return (
-    <div className={`border rounded-xl overflow-hidden shadow-sm ${bgColor} ${borderColor}`}>
-      {/* Camera Header */}
-      <div className={`p-3 flex items-center gap-3 border-b ${borderColor}`}>
+    <div className={`border rounded-xl overflow-hidden shadow-sm ${theme.background} ${theme.border}`}>
+      <div className={`p-3 flex items-center gap-3 border-b ${theme.border}`}>
         {camera.image_url ? (
-          <img 
-            src={camera.image_url} 
-            alt={camera.name} 
-            className="w-8 h-8 sm:w-10 sm:h-10 rounded object-cover flex-shrink-0" 
-            onError={(e) => { e.currentTarget.style.display = 'none'; }} 
+          <img
+            src={camera.image_url}
+            alt={camera.name}
+            className="w-8 h-8 sm:w-10 sm:h-10 rounded object-cover flex-shrink-0"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
           />
         ) : (
-          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded flex-shrink-0 ${isDarkMode ? 'bg-gray-700' : 'bg-slate-100'}`} />
+          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded flex-shrink-0 ${theme.placeholder}`} />
         )}
+
         <div className="flex-1 min-w-0">
-          <div className={`font-medium text-sm sm:text-base truncate ${textColor}`}>
+          <div className={`font-medium text-sm sm:text-base truncate ${theme.primaryText}`}>
             {camera.name}
             {camera.serial_number && (
-              <span className={`ml-2 text-xs font-normal ${isDarkMode ? 'text-gray-400' : 'text-slate-500'}`}>
+              <span className={`ml-2 text-xs font-normal ${theme.secondaryText}`}>
                 #{camera.serial_number}
               </span>
             )}
           </div>
-          <div className={`text-xs ${secondaryTextColor}`}>{label}</div>
+          <div className={`text-xs ${theme.secondaryText}`}>{monthLabel}</div>
         </div>
-        <CalendarIcon className={`w-4 h-4 flex-shrink-0 ${iconColor}`} />
+
+        <CalendarIcon className={`w-4 h-4 flex-shrink-0 ${theme.icon}`} />
       </div>
 
-      {/* Days of Week Header */}
-      <div className={`grid grid-cols-7 text-xs px-2 sm:px-3 pt-2 sm:pt-3 ${isDarkMode ? 'text-gray-400' : 'text-slate-600'}`}>
-        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
-          <div key={day} className="text-center font-medium pb-1 sm:pb-2">{day}</div>
+      <div className={`grid grid-cols-7 text-xs px-2 sm:px-3 pt-2 sm:pt-3 ${theme.secondaryText}`}>
+        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((weekday) => (
+          <div key={weekday} className="text-center font-medium pb-1 sm:pb-2">
+            {weekday}
+          </div>
         ))}
       </div>
 
-      {/* Calendar Grid */}
       <div className="grid grid-cols-7 gap-0.5 sm:gap-1 p-2 sm:p-3 pt-1">
-        {cells.map((date, idx) => {
-          const dayBookings = date ? displayBookings.filter(booking => overlaps(date, booking)) : [];
-          const isHighlighted = isDateHighlighted(date);
-          const hasConflicts = hasDateConflicts(date);
-          
+        {monthGridDates.map((date, index) => {
+          const dayBookings = date
+            ? confirmedBookings.filter((booking) => isDateWithinBooking(date, booking))
+            : [];
+
           return (
             <BookingCalendarCell
-              key={idx}
+              key={index}
               date={date}
               camera={camera}
               bookings={dayBookings}
-              isHighlighted={isHighlighted}
+              isHighlighted={isHighlighted(date)}
+              hasConflicts={hasBookingConflict(date)}
               selectedPotentialBooking={selectedPotentialBooking}
               onDateRangeSelect={onDateRangeSelect}
               onDayClick={onDayClick}
               onBookingContextMenu={onBookingContextMenu}
               isDarkMode={isDarkMode}
-              hasConflicts={hasConflicts}
             />
           );
         })}
       </div>
     </div>
   );
-};
+}
 
-const BookingCalendarGrid = ({
+function BookingCalendarGrid({
   cameras,
   monthDate,
   bookingsByCamera,
@@ -182,21 +161,15 @@ const BookingCalendarGrid = ({
   onBookingContextMenu,
   isDarkMode,
   showPotentialSidebar,
-  showExtensionSidebar
-}) => {
-  // Responsive grid columns based on screen size and sidebar state
-  const getGridCols = () => {
-    if (showPotentialSidebar || showExtensionSidebar) {
-      // When either sidebar is shown: 1 col on mobile, 2 on large screens
-      return 'grid-cols-1 lg:grid-cols-2';
-    } else {
-      // When no sidebar: 1 col on mobile, 3 on tablet, 4 on desktop
-      return 'grid-cols-1 md:grid-cols-3 xl:grid-cols-4';
-    }
-  };
+  showExtensionSidebar,
+}) {
+  const gridLayout =
+    showPotentialSidebar || showExtensionSidebar
+      ? 'grid-cols-1 lg:grid-cols-2'
+      : 'grid-cols-1 md:grid-cols-3 xl:grid-cols-4';
 
   return (
-    <div className={`grid gap-3 sm:gap-4 ${getGridCols()} transition-all duration-300`}>
+    <div className={`grid gap-3 sm:gap-4 ${gridLayout} transition-all duration-300`}>
       {cameras.map((camera) => (
         <CameraMiniCalendar
           key={camera.id}
@@ -213,6 +186,6 @@ const BookingCalendarGrid = ({
       ))}
     </div>
   );
-};
+}
 
 export default BookingCalendarGrid;

@@ -42,7 +42,7 @@ export const NotificationToastManager = () => {
             }
             browserNotification.close();
           };
-        } catch (error) {
+        } catch {
           console.log('Browser notification failed, showing toast only');
         }
       }

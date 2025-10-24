@@ -10,7 +10,6 @@ const PotentialBookingsSidebar = ({
   onClearSelection,
   onBookingUpdate,
   onEditBooking,
-  cameras,
   isDarkMode
 }) => {
   const [filter, setFilter] = useState('all'); // 'all', 'conflicts', 'no-conflicts'
