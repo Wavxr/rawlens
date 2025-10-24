@@ -3,7 +3,7 @@ import { Camera, Tag, Calendar, Package, Info } from 'lucide-react';
 import { calculateTotalPrice, calculateRentalDays } from '../../services/rentalService';
 import { getCameraWithInclusions } from '../../services/inclusionService';
 
-const CameraCardBig = ({ camera, onRentClick, onFavoriteClick, isFavorite, startDate, endDate }) => {
+const CameraCardBig = ({ camera, onRentClick, startDate, endDate }) => {
   const [pricingInfo, setPricingInfo] = useState(null);
   const [loadingPrice, setLoadingPrice] = useState(false);
   const [inclusions, setInclusions] = useState([]);
@@ -72,13 +72,6 @@ const CameraCardBig = ({ camera, onRentClick, onFavoriteClick, isFavorite, start
   // Handle image loading with proper sizing and fallback
   const handleImageError = (e) => {
     e.target.style.display = 'none';
-  };
-
-  // Truncate description to a reasonable length
-  const truncateDescription = (text, maxLength = 120) => {
-    if (!text) return 'No description available';
-    if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength).trim() + '...';
   };
 
   return (

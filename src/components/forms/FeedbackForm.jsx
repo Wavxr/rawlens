@@ -1,7 +1,6 @@
-import { useState } from "react";
+import { React, useState } from "react";
 import { submitRentalFeedback } from "../../services/feedbackService";
 import { Star, MessageSquare, Send, X } from "lucide-react";
-import { motion } from "framer-motion";
 
 export default function FeedbackForm({ rentalId, userId, onSuccess, onSkip }) {
   const [rating, setRating] = useState(null);
@@ -28,13 +27,7 @@ export default function FeedbackForm({ rentalId, userId, onSuccess, onSkip }) {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ duration: 0.2 }}
-      className="bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden w-full max-w-md"
-    >
+    <div className="bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden w-full max-w-md">
       <div className="bg-[#052844] p-5 flex justify-between items-center">
         <h3 className="text-lg font-semibold text-white flex items-center gap-2">
           <MessageSquare size={20} />
@@ -49,11 +42,9 @@ export default function FeedbackForm({ rentalId, userId, onSuccess, onSkip }) {
           </label>
           <div className="flex gap-1 justify-center py-2">
             {[1, 2, 3, 4, 5].map((star) => (
-              <motion.button
+              <button
                 key={star}
                 type="button"
-                whileHover={{ scale: 1.2 }}
-                whileTap={{ scale: 0.9 }}
                 onMouseEnter={() => setHoverRating(star)}
                 onMouseLeave={() => setHoverRating(null)}
                 onClick={() => setRating(star)}
@@ -68,7 +59,7 @@ export default function FeedbackForm({ rentalId, userId, onSuccess, onSkip }) {
                       : "text-gray-300"
                   } transition-colors duration-200`}
                 />
-              </motion.button>
+              </button>
             ))}
           </div>
           <div className="text-center">
@@ -91,30 +82,24 @@ export default function FeedbackForm({ rentalId, userId, onSuccess, onSkip }) {
         </div>
 
         <div className="flex gap-3 pt-2">
-          <motion.button
+          <button
             type="button"
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.98 }}
             onClick={onSkip}
             className="flex-1 py-3 px-4 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
           >
             <X size={18} />
             Skip
-          </motion.button>
+          </button>
           
-          <motion.button
+          <button
             type="submit"
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.98 }}
             disabled={loading || (rating === null && !feedback.trim())}
             className="flex-1 py-3 px-4 bg-[#052844] rounded-lg text-white font-medium hover:bg-[#063a5e] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-150 flex items-center justify-center gap-2"
           >
             {loading ? (
               <>
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                  className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
+                <div
+                  className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"
                 />
                 Sending...
               </>
@@ -124,9 +109,9 @@ export default function FeedbackForm({ rentalId, userId, onSuccess, onSkip }) {
                 Submit Feedback
               </>
             )}
-          </motion.button>
+          </button>
         </div>
       </form>
-    </motion.div>
+    </div>
   );
 }

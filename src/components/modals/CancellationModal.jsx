@@ -5,8 +5,7 @@ const CancellationModal = ({
   isOpen, 
   onClose, 
   onConfirm, 
-  rental,
-  loading = false 
+  rental
 }) => {
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
