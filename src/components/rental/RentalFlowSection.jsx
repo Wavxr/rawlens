@@ -1,4 +1,3 @@
-import React from 'react';
 import useIsMobile from '../../hooks/useIsMobile';
 import useCameraStore from '../../stores/cameraStore';
 import useAuthStore from '../../stores/useAuthStore';
@@ -105,17 +104,6 @@ const RentalFlowSection = ({ onBackToBrowse, sourcePageType = "home", preSelecte
 
   const handleMobileRentNow = () => {
     handleRentNow(isAvailable, isAvailabilityChecked, calculatedPrice);
-  };
-
-  // Create a shared handleSubmitRental function for mobile footers
-  const handleMobileSubmitRental = async (signatureDataUrl) => {
-    await submitRentalRequest(signatureDataUrl, {
-      selectedCameraUnitId,
-      cameraModelName,
-      startDate: preSelectedDates?.startDate || startDate,
-      endDate: preSelectedDates?.endDate || endDate,
-      calculatedPrice,
-    });
   };
 
   // Render content based on source page type

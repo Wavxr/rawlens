@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import { FileText, Loader2, X, Download, Info, Send } from 'lucide-react';
 import { generateSignedContractPdf } from '../../services/pdfService';
@@ -8,7 +8,7 @@ import { toast } from 'react-toastify';
 
 // Contract Generator Modal (identical content to page version, adapted for modal)
 export default function ContractGeneratorModal({ open, onClose, initialData = {} }) {
-  const [form, setForm] = useState({
+  const [form] = useState({
     customerName: initialData?.name || '',
     cameraName: initialData?.equipment || '',
     startDate: initialData?.startDate || '',
@@ -161,7 +161,7 @@ export default function ContractGeneratorModal({ open, onClose, initialData = {}
         contractFileName: `RawLens-Rental-Agreement-${form.customerName || 'renter'}.pdf`,
       };
 
-      const { data, error } = await supabase.functions.invoke('send-email-inquiry', {
+      const { error } = await supabase.functions.invoke('send-email-inquiry', {
         body: payload,
       });
       if (error) throw error;

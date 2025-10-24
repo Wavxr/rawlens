@@ -1,4 +1,3 @@
-// src/components/PushMigrationPrompt.jsx
 import { useState, useEffect } from 'react';
 import { usePushNotifications } from '../../hooks/usePushNotifications';
 import useAuthStore from '../../stores/useAuthStore';
@@ -7,14 +6,12 @@ import { supabase } from '../../lib/supabaseClient';
 const PushMigrationPrompt = () => {
   const { session, role } = useAuthStore();
   const userId = session?.user?.id;
-  const userRole = role || 'user'; // Use actual user role from auth store
+  const userRole = role || 'user';
   
   const {
     isSupported,
-    permission,
     isProcessing,
     enablePushNotifications,
-    disablePushNotifications
   } = usePushNotifications(userId, userRole);
 
   const [showPrompt, setShowPrompt] = useState(false);

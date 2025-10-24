@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Calendar, 
   Clock, 
@@ -9,11 +9,9 @@ import {
   PhilippinePeso,
   Loader2,
   Search,
-  MessageSquare,
-  Zap
+  MessageSquare
 } from 'lucide-react';
 import { 
-  adminGetPendingExtensions,
   adminGetAllExtensions,
   adminApproveExtension, 
   adminRejectExtension,
@@ -138,7 +136,7 @@ const Extensions = () => {
       } else {
         toast.error(result.error || 'Failed to approve extension');
       }
-    } catch (error) {
+    } catch {
       toast.error('Error approving extension');
     } finally {
       setProcessingExtension(prev => ({ ...prev, [extensionId]: false }));
@@ -160,7 +158,7 @@ const Extensions = () => {
       } else {
         toast.error(result.error || 'Failed to reject extension');
       }
-    } catch (error) {
+    } catch {
       toast.error('Error rejecting extension');
     } finally {
       setProcessingExtension(prev => ({ ...prev, [selectedExtension.id]: false }));
@@ -528,23 +526,6 @@ const Extensions = () => {
                             <>
                               <XCircle className="w-3 h-3 sm:w-4 sm:h-4" />
                               <span className="text-xs sm:text-sm">Reject Request</span>
-                            </>
-                          )}
-                        </button>
-                        <button
-                          onClick={() => checkConflictForExtension(extension.id, extension.rental_id, extension.requested_end_date)}
-                          disabled={isCheckingConflict}
-                          className="flex items-center justify-center gap-2 px-4 py-3 border border-blue-200 text-blue-600 font-medium rounded-lg hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                        >
-                          {isCheckingConflict ? (
-                            <>
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                              Checking...
-                            </>
-                          ) : (
-                            <>
-                              <Zap className="w-4 h-4" />
-                              Re-check Availability
                             </>
                           )}
                         </button>

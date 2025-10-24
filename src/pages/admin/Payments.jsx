@@ -1,6 +1,5 @@
-// src/pages/admin/Payments.jsx
-import React, { useEffect, useState, useRef } from 'react';
-import { Eye, Calendar, User, CreditCard, CheckCircle, XCircle, ChevronDown, Loader2 } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { Eye, Calendar, User, CreditCard, CheckCircle, ChevronDown, Loader2 } from 'lucide-react';
 import { 
   adminGetSubmittedPayments, 
   adminVerifyRentalPayment, 
@@ -43,7 +42,7 @@ const Payments = () => {
     };    fetchPayments();
 
     // Subscribe to real-time updates - the store will be updated by the realtime service
-    const channel = subscribeToAllPayments((payload) => {
+    const channel = subscribeToAllPayments(() => {
       // The real-time service handles updating the store with hydrated data
       // We don't need to manually manage updates here
     });
@@ -158,7 +157,7 @@ const Payments = () => {
       } else {
         toast.error(result.error || 'Failed to generate receipt link');
       }
-    } catch (err) {
+    } catch {
       toast.error('Failed to fetch receipt URL');
     } finally {
       setReceiptLoading(prev => { const copy = new Set(prev); copy.delete(id); return copy; });

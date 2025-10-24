@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Calendar, 
   Clock, 
@@ -71,7 +71,7 @@ const RentalExtensionManager = ({ rental, userId, onRefresh }) => {
       } else {
         toast.error(result.error || 'Failed to request extension');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to request extension');
     } finally {
       setIsLoading(false);
@@ -97,7 +97,7 @@ const RentalExtensionManager = ({ rental, userId, onRefresh }) => {
       } else {
         toast.error(result.error || 'Failed to upload receipt');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to upload payment receipt');
     } finally {
       setUploadingPayment(prev => ({ ...prev, [extensionPaymentId]: false }));

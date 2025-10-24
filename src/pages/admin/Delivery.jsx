@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ToastContainer, toast } from 'react-toastify';
 import useRentalStore from "../../stores/rentalStore";
@@ -30,12 +30,12 @@ import { getUserById } from "../../services/userService";
 import useAuthStore from "../../stores/useAuthStore";
 
 const DELIVERY_FILTERS = [
-  { key: "needs_action", label: "Needs Action", color: "bg-red-50 text-red-700 border-red-200" },
-  { key: "outbound", label: "Outbound", color: "bg-blue-50 text-blue-700 border-blue-200" },
-  { key: "delivered", label: "Delivered", color: "bg-green-50 text-green-700 border-green-200" },
-  { key: "returns", label: "Returns", color: "bg-purple-50 text-purple-700 border-purple-200" },
-  { key: "returned", label: "Returned", color: "bg-teal-50 text-teal-700 border-teal-200" },
-  { key: "none", label: "No Shipping", color: "bg-gray-50 text-gray-600 border-gray-200" },
+  { key: "needs_action", label: "Needs Action" },
+  { key: "outbound", label: "Outbound" },
+  { key: "delivered", label: "Delivered" },
+  { key: "returns", label: "Returns" },
+  { key: "returned", label: "Returned" },
+  { key: "none", label: "No Shipping" },
 ]
 
 function getShippingBadgeClasses(status) {
@@ -60,25 +60,6 @@ function getShippingBadgeClasses(status) {
 function prettyShippingStatus(status) {
   if (!status) return "No Status"
   return status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
-}
-
-function getStatusColor(status) {
-  switch (status) {
-    case "pending":
-      return "bg-yellow-100 text-yellow-800 border-yellow-200"
-    case "confirmed":
-      return "bg-blue-100 text-blue-800 border-blue-200"
-    case "active":
-      return "bg-green-100 text-green-800 border-green-200"
-    case "completed":
-      return "bg-gray-100 text-gray-800 border-gray-200"
-    case "cancelled":
-      return "bg-red-100 text-red-800 border-red-200"
-    case "rejected":
-      return "bg-red-100 text-red-800 border-red-200"
-    default:
-      return "bg-gray-100 text-gray-600 border-gray-200"
-  }
 }
 
 function getStatusText(status) {
@@ -302,23 +283,6 @@ export default function Delivery() {
     setRentals(filtered)
   }, [allRentals, selectedShippingFilter, searchTerm, selectedMonth])
 
-  const shippingCounts = useMemo(() => {
-    const counts = {
-      none: 0,
-      ready_to_ship: 0,
-      in_transit_to_user: 0,
-      delivered: 0,
-      return_scheduled: 0,
-      in_transit_to_owner: 0,
-      returned: 0,
-    }
-    for (const r of allRentals) {
-      const key = r.shipping_status || "none"
-      if (counts[key] !== undefined) counts[key] += 1
-    }
-    return counts
-  }, [allRentals])
-
   const setBusy = (id, action) => setActionLoading((prev) => ({ ...prev, [id]: action }))
   const clearBusy = (id) =>
     setActionLoading((prev) => {
@@ -394,7 +358,7 @@ export default function Delivery() {
         return;
       }
       toast.success("Item marked as ready to ship!");
-    } catch (err) {
+    } catch {
       toast.error("Failed to update shipping status. Please try again.");
     } finally {
       clearBusy(rentalId)
@@ -410,7 +374,7 @@ export default function Delivery() {
         return;
       }
       toast.success("Item marked as in transit to customer!");
-    } catch (err) {
+    } catch {
       toast.error("Failed to update shipping status. Please try again.");
     } finally {
       clearBusy(rentalId)
@@ -426,7 +390,7 @@ export default function Delivery() {
         return;
       }
       toast.success("Item return confirmed successfully! Rental completed.");
-    } catch (err) {
+    } catch {
       toast.error("Failed to confirm return. Please try again.");
     } finally {
       clearBusy(rentalId);
@@ -626,7 +590,7 @@ export default function Delivery() {
                         } else {
                           toast.error(`Failed to confirm receipt: ${result.error}`);
                         }
-                      } catch (error) {
+                      } catch {
                         toast.error("Failed to confirm receipt");
                       } finally {
                         setActionLoading((prev) => {
@@ -659,7 +623,7 @@ export default function Delivery() {
                         } else {
                           toast.error(`Failed to confirm return: ${result.error}`);
                         }
-                      } catch (error) {
+                      } catch {
                         toast.error("Failed to confirm return");
                       } finally {
                         setActionLoading((prev) => {
@@ -692,7 +656,7 @@ export default function Delivery() {
                         } else {
                           toast.error(`Failed to mark as delivered: ${result.error}`);
                         }
-                      } catch (error) {
+                      } catch {
                         toast.error("Failed to mark as delivered");
                       } finally {
                         setActionLoading((prev) => {

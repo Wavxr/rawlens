@@ -226,8 +226,8 @@ export default function MonthlyHeatmap() {
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-white">Activity Heatmap - Last 6 Months</h3>
           <div className="flex items-center space-x-2">
-            {React.createElement(metricConfig[selectedMetric].icon, { 
-              className: `h-5 w-5 ${metricConfig[selectedMetric].color}` 
+            {React.createElement(metricConfig[selectedMetric].icon, {
+              className: `h-5 w-5 ${metricConfig[selectedMetric].color}`
             })}
             <span className={`text-sm ${metricConfig[selectedMetric].color}`}>
               {metricConfig[selectedMetric].description}
@@ -255,16 +255,11 @@ export default function MonthlyHeatmap() {
               const weekGrid = [];
               const sortedDays = monthData.sort((a, b) => new Date(a.date) - new Date(b.date));
               
-              // Find the first day of the month and its day of week
-              const firstDay = new Date(sortedDays[0]?.date);
-              const startDayOfWeek = (firstDay.getDay() + 6) % 7; // Convert to Monday = 0
-              
               // Create weeks
               let currentWeek = new Array(7).fill(null);
               let weekIndex = 0;
               
               sortedDays.forEach(day => {
-                const dayOfMonth = new Date(day.date).getDate();
                 const dayOfWeek = (new Date(day.date).getDay() + 6) % 7;
                 
                 if (weekIndex === 0) {

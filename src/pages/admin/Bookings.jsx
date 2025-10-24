@@ -1,8 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Loader2, Sun, Moon, Plus, Menu, Clock } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight, Loader2, Plus, Menu, Clock } from 'lucide-react';
 import { getAllCameras } from '../../services/cameraService';
 import { getCalendarBookings, getPotentialBookings } from '../../services/bookingService';
-import { adminGetAllExtensions } from '../../services/extensionService';
 import BookingCalendarGrid from '../../components/bookings/BookingCalendarGrid';
 import PotentialBookingsSidebar from '../../components/bookings/PotentialBookingsSidebar';
 import MobilePotentialBookingsPanel from '../../components/bookings/MobilePotentialBookingsPanel';
@@ -67,15 +66,14 @@ const Bookings = () => {
   const [bookingsByCamera, setBookingsByCamera] = useState({});
   
   // Extension store
-  const { extensions, getPendingExtensions } = useExtensionStore();
+  const { getPendingExtensions } = useExtensionStore();
 
   // UI state
   const [showPotentialSidebar, setShowPotentialSidebar] = useState(false);
   const [showExtensionSidebar, setShowExtensionSidebar] = useState(false);
   const [selectedPotentialBooking, setSelectedPotentialBooking] = useState(null);
-  const [selectedDateRange, setSelectedDateRange] = useState(null);
   const [highlightedDates, setHighlightedDates] = useState([]);
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [isDarkMode] = useState(true);
   const [error, setError] = useState('');
 
   // Modal state
@@ -163,7 +161,6 @@ const Bookings = () => {
 
   // Handle date range selection for booking creation
   const handleDateRangeSelect = (camera, startDate, endDate) => {
-    setSelectedDateRange({ camera, startDate, endDate });
     setCreateBookingModal({
       open: true,
       camera,
@@ -225,25 +222,11 @@ const Bookings = () => {
     });
   };
 
-  const handleContextEditBooking = (booking) => {
-    setEditingBooking(booking);
-  };
-
   const handleContextExtendRental = (booking) => {
     setExtendBookingModal({
       open: true,
       booking
     });
-  };
-
-  const handleContextCancelBooking = (booking) => {
-    // TODO: Implement cancel booking functionality
-    console.log('Cancel booking:', booking);
-  };
-
-  const handleContextMarkDelivered = (booking) => {
-    // TODO: Implement mark as delivered/returned functionality
-    console.log('Mark as delivered/returned:', booking);
   };
 
   // Handle potential booking selection
@@ -294,10 +277,6 @@ const Bookings = () => {
   // Theme classes
   const bgColor = isDarkMode ? 'bg-gray-900' : 'bg-slate-100';
   const textColor = isDarkMode ? 'text-gray-100' : 'text-slate-800';
-  const secondaryTextColor = isDarkMode ? 'text-gray-400' : 'text-slate-600';
-  const buttonBg = isDarkMode ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-slate-200';
-  const buttonBorder = isDarkMode ? 'border-gray-700' : 'border-slate-300';
-  const buttonTextColor = isDarkMode ? 'text-gray-300' : 'text-slate-700';
   const errorBg = isDarkMode ? 'bg-rose-900/30 border-rose-800 text-rose-300' : 'bg-rose-50 border-rose-200 text-rose-700';
   const loadingTextColor = isDarkMode ? 'text-gray-400' : 'text-slate-600';
 
@@ -310,7 +289,7 @@ const Bookings = () => {
           {/* Month Navigation */}
           <div className="flex items-center gap-2">
             <button
-              className={`p-2 rounded border transition ${buttonBg} ${buttonBorder} ${buttonTextColor}`}
+              className={`p-2 rounded border transition ${isDarkMode ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-slate-200'} ${isDarkMode ? 'border-gray-700' : 'border-slate-300'} ${isDarkMode ? 'text-gray-300' : 'text-slate-700'}`}
               onClick={() => setMonthDate(prev => addMonths(prev, -1))}
             >
               <ChevronLeft className="w-5 h-5" />
@@ -319,7 +298,7 @@ const Bookings = () => {
               {monthLabel}
             </div>
             <button
-              className={`p-2 rounded border transition ${buttonBg} ${buttonBorder} ${buttonTextColor}`}
+              className={`p-2 rounded border transition ${isDarkMode ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-slate-200'} ${isDarkMode ? 'border-gray-700' : 'border-slate-300'} ${isDarkMode ? 'text-gray-300' : 'text-slate-700'}`}
               onClick={() => setMonthDate(prev => addMonths(prev, 1))}
             >
               <ChevronRight className="w-5 h-5" />
@@ -328,7 +307,7 @@ const Bookings = () => {
 
           {/* Create Booking Button - Mobile optimized */}
           <button
-            className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded border transition ${buttonBg} ${buttonBorder} ${buttonTextColor} text-sm sm:text-base`}
+            className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded border transition ${isDarkMode ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-slate-200'} ${isDarkMode ? 'border-gray-700' : 'border-slate-300'} ${isDarkMode ? 'text-gray-300' : 'text-slate-700'} text-sm sm:text-base`}
             onClick={() => setCreateBookingModal({ open: true, camera: null, dateRange: null })}
           >
             <Plus className="w-4 h-4" />
@@ -344,7 +323,7 @@ const Bookings = () => {
             className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded border transition text-sm sm:text-base ${
               showPotentialSidebar 
                 ? (isDarkMode ? 'bg-blue-900 border-blue-700 text-blue-200' : 'bg-blue-100 border-blue-300 text-blue-800')
-                : `${buttonBg} ${buttonBorder} ${buttonTextColor}`
+                : `${isDarkMode ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-slate-200'} ${isDarkMode ? 'border-gray-700' : 'border-slate-300'} ${isDarkMode ? 'text-gray-300' : 'text-slate-700'}`
             }`}
             onClick={() => {
               const newState = !showPotentialSidebar;
@@ -373,7 +352,7 @@ const Bookings = () => {
             className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded border transition text-sm sm:text-base ${
               showExtensionSidebar 
                 ? (isDarkMode ? 'bg-purple-900 border-purple-700 text-purple-200' : 'bg-purple-100 border-purple-300 text-purple-800')
-                : `${buttonBg} ${buttonBorder} ${buttonTextColor}`
+                : `${isDarkMode ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-slate-200'} ${isDarkMode ? 'border-gray-700' : 'border-slate-300'} ${isDarkMode ? 'text-gray-300' : 'text-slate-700'}`
             }`}
             onClick={() => {
               const newState = !showExtensionSidebar;
@@ -534,10 +513,7 @@ const Bookings = () => {
         booking={contextMenu.booking}
         onClose={handleCloseContextMenu}
         onViewDetails={handleContextViewDetails}
-        onEditBooking={handleContextEditBooking}
         onExtendRental={handleContextExtendRental}
-        onCancelBooking={handleContextCancelBooking}
-        onMarkDelivered={handleContextMarkDelivered}
       />
     </div>
   );

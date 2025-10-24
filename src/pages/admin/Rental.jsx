@@ -33,13 +33,12 @@ import {
   transferRentalToUnit,
   getAvailableUnitsOfModel,
 } from "../../services/rentalService";
-import { adminVerifyRentalPayment, adminVerifyExtensionPayment, userUpdatePaymentStatus, getPaymentReceiptUrl } from "../../services/paymentService";
+import { adminVerifyRentalPayment, userUpdatePaymentStatus, getPaymentReceiptUrl } from "../../services/paymentService";
 import ConflictResolutionModal from "../../components/modals/ConflictResolutionModal";
 import { PaymentVerificationModal, PaymentStatusBadge } from "../../components/payment/PaymentVerificationComponents";
 import {
   adminConfirmReceived,
   adminConfirmReturned,
-  adminMarkDelivered,
 } from "../../services/bookingService";
 import { getSignedContractUrl } from "../../services/pdfService";
 import RentalStepper from "../../components/rental/RentalStepper";
@@ -154,7 +153,7 @@ export default function Rentals() {
     try {
       const userData = await getUserById(rental.user_id);
       setSelectedUser(userData);
-    } catch (error) {
+    } catch {
       toast.error("Failed to load user details");
       setSelectedUser(null);
     }
@@ -522,7 +521,7 @@ export default function Rentals() {
           setSelectedStatus("confirmed");
         }
       }
-    } catch (error) {
+    } catch {
       console.error("Error approving rental:", error);
       toast.error("Failed to approve rental");
     } finally {
@@ -543,7 +542,7 @@ export default function Rentals() {
         return;
       }
       toast.success("Rental rejected successfully!");
-    } catch (error) {
+    } catch {
       toast.error("Failed to reject rental");
     } finally {
       setActionLoading((prev) => {
@@ -563,7 +562,7 @@ export default function Rentals() {
         return;
       }
       toast.success("Rental activated successfully!");
-    } catch (error) {
+    } catch {
       toast.error("Failed to start rental");
     } finally {
       setActionLoading((prev) => {
@@ -583,7 +582,7 @@ export default function Rentals() {
         return;
       }
       toast.success("Rental completed successfully!");
-    } catch (error) {
+    } catch {
       toast.error("Failed to complete rental");
     } finally {
       setActionLoading((prev) => {
@@ -603,7 +602,7 @@ export default function Rentals() {
         return;
       }
       toast.success("Rental cancelled successfully!");
-    } catch (error) {
+    } catch {
       toast.error("Failed to cancel rental");
     } finally {
       setActionLoading((prev) => {
@@ -624,7 +623,7 @@ export default function Rentals() {
       }
       toast.success("Rental deleted successfully!");
       setShowDeleteConfirm(null);
-    } catch (error) {
+    } catch {
       toast.error("Failed to delete rental");
     } finally {
       setActionLoading((prev) => {
@@ -644,7 +643,7 @@ export default function Rentals() {
         return;
       }
       toast.success("Cancelled rental removed successfully!");
-    } catch (error) {
+    } catch {
       toast.error("Failed to remove cancelled rental");
     } finally {
       setActionLoading((prev) => {
@@ -668,7 +667,7 @@ export default function Rentals() {
       setShowConflictModal(false);
       setConflictData(null);
       await loadAllRentals(); // Refresh data
-    } catch (error) {
+    } catch {
       console.error("Error confirming with current unit:", error);
       toast.error("Failed to confirm rental");
     } finally {
@@ -695,7 +694,7 @@ export default function Rentals() {
       setShowConflictModal(false);
       setConflictData(null);
       await loadAllRentals(); // Refresh data
-    } catch (error) {
+    } catch {
       console.error("Error transferring rental:", error);
       toast.error("Failed to transfer rental");
     } finally {
@@ -735,7 +734,7 @@ export default function Rentals() {
       setShowConflictModal(false);
       setConflictData(null);
       await loadAllRentals(); // Refresh data
-    } catch (error) {
+    } catch {
       console.error("Error rejecting conflicts:", error);
       toast.error("Failed to reject conflicting bookings");
     } finally {
@@ -1073,7 +1072,7 @@ export default function Rentals() {
                             `Failed to confirm receipt: ${result.error}`
                           );
                         }
-                      } catch (error) {
+                      } catch {
                         toast.error("Failed to confirm receipt");
                       } finally {
                         setActionLoading((prev) => {
@@ -1112,7 +1111,7 @@ export default function Rentals() {
                             `Failed to confirm return: ${result.error}`
                           );
                         }
-                      } catch (error) {
+                      } catch {
                         toast.error("Failed to confirm return");
                       } finally {
                         setActionLoading((prev) => {
@@ -1152,7 +1151,7 @@ export default function Rentals() {
                             `Failed to mark as delivered: ${result.error}`
                           );
                         }
-                      } catch (error) {
+                      } catch {
                         toast.error("Failed to mark as delivered");
                       } finally {
                         setActionLoading((prev) => {
