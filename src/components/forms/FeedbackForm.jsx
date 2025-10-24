@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { submitRentalFeedback } from "../../services/feedbackService";
 import { Star, MessageSquare, Send, X } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 
 export default function FeedbackForm({ rentalId, userId, onSuccess, onSkip }) {
   const [rating, setRating] = useState(null);

@@ -56,7 +56,7 @@ const ExtendBookingModal = ({ isOpen, onClose, booking }) => {
       if (!result.isEligible) {
         setError(result.error);
       }
-    } catch (error) {
+    } catch {
       setError('Failed to check extension eligibility');
     } finally {
       setEligibilityChecked(true);

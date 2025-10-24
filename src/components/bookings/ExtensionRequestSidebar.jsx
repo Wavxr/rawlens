@@ -42,7 +42,7 @@ const ExtensionRequestSidebar = ({ isOpen, onClose, isDarkMode }) => {
       } else {
         setError(result.error);
       }
-    } catch (error) {
+    } catch {
       setError('Failed to load extension requests');
     } finally {
       setLoading(false);
@@ -108,7 +108,7 @@ const ExtensionRequestSidebar = ({ isOpen, onClose, isDarkMode }) => {
       } else {
         setError(result.error);
       }
-    } catch (error) {
+    } catch {
       setError('Failed to approve extension');
     } finally {
       setActionLoading(prev => ({ ...prev, [extensionId]: null }));
@@ -124,7 +124,7 @@ const ExtensionRequestSidebar = ({ isOpen, onClose, isDarkMode }) => {
       } else {
         setError(result.error);
       }
-    } catch (error) {
+    } catch {
       setError('Failed to reject extension');
     } finally {
       setActionLoading(prev => ({ ...prev, [extensionId]: null }));

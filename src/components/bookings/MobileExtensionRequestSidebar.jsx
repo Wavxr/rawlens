@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { X, Clock, UserCheck, Users, ChevronUp, ChevronDown, CheckCircle, XCircle, Eye, Filter, Calendar, Camera, User, DollarSign } from 'lucide-react';
-import useIsMobile from '../../hooks/useIsMobile';
 import useExtensionStore from '../../stores/extensionStore';
 import { adminGetAllExtensions, adminApproveExtension, adminRejectExtension } from '../../services/extensionService';
 import { supabase } from '../../lib/supabaseClient';
@@ -209,7 +208,6 @@ const MobileExtensionRequestCard = ({ extension, onApprove, onReject, loading, i
 };
 
 const MobileExtensionRequestSidebar = ({ isOpen, onClose, isDarkMode }) => {
-  const isMobile = useIsMobile();
   const {
     extensions,
     loading,
@@ -246,7 +244,7 @@ const MobileExtensionRequestSidebar = ({ isOpen, onClose, isDarkMode }) => {
       } else {
         setError(result.error);
       }
-    } catch (error) {
+    } catch {
       setError('Failed to load extension requests');
     } finally {
       setLoading(false);
@@ -311,7 +309,7 @@ const MobileExtensionRequestSidebar = ({ isOpen, onClose, isDarkMode }) => {
       } else {
         setError(result.error);
       }
-    } catch (error) {
+    } catch {
       setError('Failed to approve extension');
     } finally {
       setActionLoading(prev => ({ ...prev, [extensionId]: null }));
@@ -327,7 +325,7 @@ const MobileExtensionRequestSidebar = ({ isOpen, onClose, isDarkMode }) => {
       } else {
         setError(result.error);
       }
-    } catch (error) {
+    } catch {
       setError('Failed to reject extension');
     } finally {
       setActionLoading(prev => ({ ...prev, [extensionId]: null }));

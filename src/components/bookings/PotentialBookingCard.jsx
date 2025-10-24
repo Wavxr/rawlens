@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CheckCircle, Edit, Trash2, AlertTriangle, Camera, Calendar, DollarSign } from 'lucide-react';
-import { convertPotentialToConfirmed, updatePotentialBooking, checkBookingConflicts, deletePotentialBooking } from '../../services/bookingService';
+import { convertPotentialToConfirmed, checkBookingConflicts, deletePotentialBooking } from '../../services/bookingService';
 
 const PotentialBookingCard = ({
   booking,
