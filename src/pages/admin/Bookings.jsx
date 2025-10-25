@@ -61,7 +61,6 @@ const Bookings = () => {
   // Data state
   const [loading, setLoading] = useState(true);
   const [cameras, setCameras] = useState([]);
-  const [setCalendarBookings] = useState([]);
   const [potentialBookings, setPotentialBookings] = useState([]);
   const [bookingsByCamera, setBookingsByCamera] = useState({});
   
@@ -144,7 +143,6 @@ const Bookings = () => {
       // Handle calendar bookings
       if (!calendarRes.success) throw new Error(calendarRes.error);
       const confirmedBookings = calendarRes.data || [];
-      setCalendarBookings(confirmedBookings);
       setBookingsByCamera(groupBookingsByCamera(confirmedBookings));
 
       // Handle potential bookings

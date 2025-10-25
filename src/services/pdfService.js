@@ -44,7 +44,7 @@ async function fetchContractTemplate() {
     }
     return await templateResponse.arrayBuffer();
   } catch (error) {
-    throw new Error("Could not load the contract template. Please try again later.");
+    throw new Error("Could not load the contract template. Please try again later. ", error);
   }
 }
 

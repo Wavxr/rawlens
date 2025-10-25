@@ -25,12 +25,12 @@ export async function uploadFile(bucket, path, file) {
         upsert: true,
         cacheControl: '3600'
       });
-    if (error) {
-      throw error;
-    }
-
+    
+    if (error) throw new Error(`Upload failed: ${error.message}`);
+    
     return path;
   } catch (error) {
+    console.error("Upload error:", error);
     throw error;
   }
 }

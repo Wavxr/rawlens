@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { getUserRentals, getRentalsByStatus } from '../services/rentalService';
 
 // Add this to your rentalStore
-const useRentalStore = create((set, get) => ({
+const useRentalStore = create((set) => ({
   rentals: [],
   allRentals: [],
   loading: false,

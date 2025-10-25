@@ -212,7 +212,7 @@ export async function createUserRentalRequest(bookingData) {
     const finalCameraId = cameraId || await getAvailableUnitsOfModel(cameraModelName, startDate, endDate);
 
     // Price calculation
-    const { totalPrice, pricePerDay, rentalDays } = await calculateTotalPrice(finalCameraId, startDate, endDate);
+    const { totalPrice, pricePerDay } = await calculateTotalPrice(finalCameraId, startDate, endDate);
 
     // Insert rental
     const { data, error: insertError } = await supabase
@@ -863,7 +863,7 @@ export async function adminRedistributeConflictingRentals(cameraModelName) {
     for (const rental of pendingRentals) {
       try {
         // Find an available unit for this rental
-        const unitResult = await findAvailableCameraUnit(
+        const unitResult = await getAvailableUnitsOfModel(
           cameraModelName, 
           rental.start_date, 
           rental.end_date

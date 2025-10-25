@@ -106,8 +106,7 @@ export async function updateCameraInclusions(cameraId, inclusionDataWithQuantiti
       .eq("camera_id", cameraId);
 
     if (fetchError) throw fetchError;
-
-    const existingMap = new Map(existingLinks.map(link => [link.inclusion_item_id, true]));
+    
     const providedMap = new Map(inclusionDataWithQuantities.map(item => [item.inclusion_item_id, true]));
 
     const linksToUpsert = inclusionDataWithQuantities.map(item => ({

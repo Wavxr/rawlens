@@ -1,10 +1,9 @@
-// src/stores/cameraStore.js
 import { create } from 'zustand';
-import { devtools } from 'zustand/middleware'; // Optional, for Redux DevTools support
+import { devtools } from 'zustand/middleware';
 
 const useCameraStore = create(
   devtools(
-    (set, get) => ({
+    (set) => ({
       // --- Browsing State ---
       cameras: [],
       displayedCameras: [],
@@ -17,7 +16,7 @@ const useCameraStore = create(
 
       // --- Rental Flow State ---
       rentalFlowCamera: null,
-      rentalFlowCameraModelName: null, // New: stores the selected model name
+      rentalFlowCameraModelName: null, 
 
       // --- Browsing Actions ---
       setCameras: (cameras) => set({ cameras, displayedCameras: cameras }),

@@ -10,10 +10,9 @@ import { LogOut } from "lucide-react";
 
 export default function Profile() {
     // State Management
-  const { user, profile, role, loading: authLoading, logout } = useAuthStore();
-  const { settings, init: initSettings, update: updateSettings, loading: settingsLoading } = useSettingsStore();
+  const { user, profile, loading: authLoading } = useAuthStore();
+  const { settings, init: initSettings} = useSettingsStore();
   const userId = user?.id;
-  const userRole = role || 'user'; // Default to 'user' if role is not set yet
   const [form, setForm] = useState({});
   const [originalForm, setOriginalForm] = useState({});
   const [mediaUrls, setMediaUrls] = useState({});
@@ -102,14 +101,6 @@ export default function Profile() {
       verification_video_key: videoUrl,
     });
   }
-
-  // Toggle Handler
-  const handleToggle = async (key, value) => {
-    if (!userId) return;
-    
-    // Handle settings normally
-    await updateSettings(userId, { [key]: value });
-  };
 
   // Form Handlers
   function handleChange(e) {
@@ -209,16 +200,15 @@ export default function Profile() {
         const videoBlob = new Blob(recordedChunksRef.current, { type: "video/webm" });
         recordedBlobRef.current = videoBlob;
         const videoUrl = URL.createObjectURL(videoBlob);
-        if (videoRef.current) {
-          try { videoRef.current.srcObject = null; } catch (e) {}
-        }
-        if (stream) {
-          try { stream.getTracks().forEach(t => t.stop()); } catch (e) {}
-        }
+        
+        if (videoRef.current)  videoRef.current.srcObject = null;
+        
+        if (stream) stream.getTracks().forEach(t => t.stop()); 
+        
         setStream(null);
         setRecordedVideoUrl(videoUrl);
       };
-    } catch (err) {
+    } catch {
       alert("Unable to access camera/mic. Please check permissions.");
       setShowVideoModal(false);
     }
@@ -293,9 +283,8 @@ export default function Profile() {
       clearInterval(recordingIntervalRef.current);
       recordingIntervalRef.current = null;
     }
-    if (recordedVideoUrl) {
-      try { URL.revokeObjectURL(recordedVideoUrl); } catch (e) {}
-    }
+    if (recordedVideoUrl) URL.revokeObjectURL(recordedVideoUrl); 
+    
     setShowVideoModal(false);
     setIsRecording(false);
     setRecordedVideoUrl(null);
@@ -355,7 +344,6 @@ export default function Profile() {
   const isVerified = form.verification_status === 'verified';
   const isRejected = form.verification_status === 'rejected';
   const isPending = form.verification_status === 'pending';
-  const isUnverified = !form.verification_status || form.verification_status === 'unverified';
   const canSubmitDocuments = !isVerified;
   const isAppealing = form.is_appealing;
 
@@ -633,9 +621,8 @@ export default function Profile() {
                   <button
                     type="button"
                     onClick={() => {
-                      if (recordedVideoUrl) {
-                        try { URL.revokeObjectURL(recordedVideoUrl); } catch (e) {}
-                      }
+                      if (recordedVideoUrl) URL.revokeObjectURL(recordedVideoUrl);
+                      
                       setRecordedVideoUrl(null);
                       recordedBlobRef.current = null;
                       recordedChunksRef.current = [];

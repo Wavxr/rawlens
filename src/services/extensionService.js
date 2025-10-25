@@ -354,7 +354,7 @@ export async function checkExtensionEligibility(rentalId) {
 }
 
 // Admin approves a rental extension request.
-export async function adminApproveExtension(extensionId, adminId) {
+export async function adminApproveExtension(extensionId) {
   try {
     const { data: ext, error: fetchErr } = await supabase
       .from("rental_extensions")

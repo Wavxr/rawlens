@@ -1,10 +1,7 @@
-// src/services/realtimeService.js
-
 import { supabase } from '../lib/supabaseClient';
 import { getRentalById } from './rentalService';
 import { getUserById } from './userService';
 import { getPaymentById } from './paymentService';
-import { getExtensionById } from './extensionService';
 import useRentalStore from '../stores/rentalStore';
 import useUserStore from '../stores/userStore';
 import usePaymentStore from '../stores/paymentStore';
@@ -56,7 +53,7 @@ export function subscribeToUserRentals(userId) {
     table: 'rentals',
     event: '*',
     filter: `user_id=eq.${userId}`,
-    onPayload: async (eventType, record, payload) => {
+    onPayload: async (eventType, record) => {
       const { addOrUpdateRental, removeRental } = useRentalStore.getState();
 
       switch (eventType) {
@@ -91,7 +88,7 @@ export function subscribeToAllRentals() {
     channelName,
     table: 'rentals',
     event: '*',
-    onPayload: async (eventType, record, payload) => {
+    onPayload: async (eventType, record) => {
       const { addOrUpdateRental, removeRental } = useRentalStore.getState();
 
       switch (eventType) {

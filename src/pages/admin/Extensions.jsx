@@ -129,10 +129,10 @@ const Extensions = () => {
 
     try {
       setProcessingExtension(prev => ({ ...prev, [extensionId]: 'approving' }));
-      const result = await adminApproveExtension(extensionId, user.id);
+      const result = await adminApproveExtension(extensionId);
       
       if (result.success) {
-        toast.success('Extension approved successfully! 🎉');
+        toast.success('Extension approved successfully!');
       } else {
         toast.error(result.error || 'Failed to approve extension');
       }

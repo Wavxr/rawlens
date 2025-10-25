@@ -99,10 +99,10 @@ const ExtensionRequestSidebar = ({ isOpen, onClose, isDarkMode }) => {
     }
   };
 
-  const handleApproveExtension = async (extensionId, adminId) => {
+  const handleApproveExtension = async (extensionId) => {
     setActionLoading(prev => ({ ...prev, [extensionId]: 'approving' }));
     try {
-      const result = await adminApproveExtension(extensionId, adminId);
+      const result = await adminApproveExtension(extensionId);
       if (result.success) {
         addOrUpdateExtension(result.data);
       } else {

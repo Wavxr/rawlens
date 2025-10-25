@@ -1,12 +1,12 @@
-// src/services/pushService.js
 import { supabase } from "../lib/supabaseClient";
 import { messaging } from "../lib/firebaseClient";
 import { getToken } from "firebase/messaging";
 import { generateDeviceId, getBrowserType, getDeviceName } from "../utils/deviceFingerprint";
 
-/**
- * Check if push notifications are supported in this browser
- */
+const tokenSaveCache = new Map();
+const TOKEN_SAVE_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
+
+//Check if push notifications are supported in this browser
 export function isPushSupported() {
   return (
     "serviceWorker" in navigator &&
@@ -15,18 +15,13 @@ export function isPushSupported() {
   );
 }
 
-/**
- * Request notification permission from the user
- * Only requests if Notification.permission === 'default'
- * Returns true if granted, false otherwise
- */
+// Request notification permission from the user
 export async function requestNotificationPermission() {
   if (Notification.permission === "default") {
     const permission = await Notification.requestPermission();
-    if (permission === "granted") {
-      return true;
-    } else {
-      console.log("🔕 Notification permission denied by user");
+    if (permission === "granted") return true;
+    else {
+      console.log("Notification permission denied by user");
       return false;
     }
   }
@@ -34,10 +29,7 @@ export async function requestNotificationPermission() {
   return Notification.permission === "granted";
 }
 
-/**
- * Retrieve the FCM token for this device/browser
- * Uses the public VAPID key stored in .env
- */
+// Retrieve the FCM token for this device/browser
 export async function getFcmToken() {
   try {
     const token = await getToken(messaging, {
@@ -45,40 +37,23 @@ export async function getFcmToken() {
     });
     return token;
   } catch (err) {
-    console.error("❌ Error retrieving FCM token:", err);
+    console.error("Error retrieving FCM token:", err);
     return null;
   }
 }
 
-// Add caching to prevent redundant FCM token saves
-
-/**
- * Detect the platform based on user agent and environment
- */
+// Detect the platform based on user agent and environment
 function detectPlatform() {
   const userAgent = navigator.userAgent.toLowerCase();
+
+  if (/android/i.test(userAgent)) return 'android'; 
+  if (/iphone|ipad|ipod/i.test(userAgent)) return 'ios'; 
+  if (/mobile|tablet/i.test(userAgent)) return 'mobile_web';
   
-  // Check if it's a mobile device
-  if (/android/i.test(userAgent)) {
-    return 'android';
-  }
-  
-  if (/iphone|ipad|ipod/i.test(userAgent)) {
-    return 'ios';
-  }
-  
-  // Check if it's in a mobile browser (additional mobile indicators)
-  if (/mobile|tablet/i.test(userAgent)) {
-    return 'mobile_web';
-  }
-  
-  // Default to web for desktop browsers
   return 'web';
 }
 
-/**
- * Generate a human-readable device name from user agent (legacy function)
- */
+// Generate a human-readable device name from user agent (legacy function)
 function getLegacyDeviceName(userAgent, platform) {
   const ua = userAgent.toLowerCase();
   
@@ -116,15 +91,7 @@ function getLegacyDeviceName(userAgent, platform) {
   return `${browser} on ${os}`;
 }
 
-const tokenSaveCache = new Map();
-const TOKEN_SAVE_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
-
-/**
- * Save or update FCM token in user_fcm_tokens table with device deduplication
- * @param {string} userId - User ID
- * @param {string} token - FCM token
- * @returns {Promise<Object>} Saved token data
- */
+// Save or update FCM token in user_fcm_tokens table with device deduplication
 export async function saveUserFcmToken(userId, token) {
   if (!userId || !token) return;
 
@@ -222,12 +189,7 @@ export async function saveUserFcmToken(userId, token) {
   }
 }
 
-/**
- * Save or update FCM token in admin_fcm_tokens table
- * @param {string} userId - User ID
- * @param {string} token - FCM token
- * @returns {Promise<Object>} Saved token data
- */
+// Save or update FCM token in admin_fcm_tokens table
 export async function saveAdminFcmToken(userId, token) {
   if (!userId || !token) return;
 
@@ -325,11 +287,7 @@ export async function saveAdminFcmToken(userId, token) {
   }
 }
 
-/**
- * Get all FCM tokens for a user from user_fcm_tokens table
- * @param {string} userId - User ID
- * @returns {Promise<Array>} Array of user devices
- */
+// Get all FCM tokens for a user from user_fcm_tokens table
 export const getUserDevices = async (userId) => {
   try {
     const { data, error } = await supabase
@@ -391,11 +349,7 @@ export const getUserDevices = async (userId) => {
   }
 };
 
-/**
- * Get all FCM tokens for an admin from admin_fcm_tokens table
- * @param {string} userId - User ID
- * @returns {Promise<Array>} Array of admin devices
- */
+// Get all FCM tokens for an admin from admin_fcm_tokens table
 export const getAdminDevices = async (userId) => {
   try {
     const { data, error } = await supabase
@@ -457,13 +411,7 @@ export const getAdminDevices = async (userId) => {
   }
 };
 
-/**
- * Toggle device-specific push notifications for user context
- * @param {string} userId - User ID
- * @param {string} fcmToken - FCM token
- * @param {boolean} enabled - Enable or disable notifications
- * @returns {Promise<boolean>} Success status
- */
+// Toggle device-specific push notifications for user context
 export async function toggleUserDeviceNotifications(userId, fcmToken, enabled) {
   if (!userId || !fcmToken) return false;
 
@@ -490,13 +438,7 @@ export async function toggleUserDeviceNotifications(userId, fcmToken, enabled) {
   }
 }
 
-/**
- * Toggle device-specific push notifications for admin context
- * @param {string} userId - User ID
- * @param {string} fcmToken - FCM token
- * @param {boolean} enabled - Enable or disable notifications
- * @returns {Promise<boolean>} Success status
- */
+// Toggle device-specific push notifications for admin context
 export async function toggleAdminDeviceNotifications(userId, fcmToken, enabled) {
   if (!userId || !fcmToken) return false;
 
@@ -523,10 +465,7 @@ export async function toggleAdminDeviceNotifications(userId, fcmToken, enabled) 
   }
 }
 
-/**
- * Update last activity timestamp for current device in user context
- * @param {string} userId - User ID
- */
+// Update last activity timestamp for current device in user context
 export async function updateUserDeviceActivity(userId) {
   if (!userId) return;
 
@@ -553,10 +492,7 @@ export async function updateUserDeviceActivity(userId) {
   }
 }
 
-/**
- * Update last activity timestamp for current device in admin context
- * @param {string} userId - User ID
- */
+// Update last activity timestamp for current device in admin context
 export async function updateAdminDeviceActivity(userId) {
   if (!userId) return;
 
@@ -583,33 +519,7 @@ export async function updateAdminDeviceActivity(userId) {
   }
 }
 
-/**
- * Get relative time string (e.g., "2 hours ago", "Yesterday")
- */
-function getRelativeTime(timestamp) {
-  if (!timestamp) return 'Unknown';
-  
-  const now = new Date();
-  const date = new Date(timestamp);
-  const diffMs = now - date;
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffMinutes = Math.floor(diffMs / (1000 * 60));
-
-  if (diffMinutes < 1) return 'Just now';
-  if (diffMinutes < 60) return `${diffMinutes}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return `${diffDays}d ago`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
-  return `${Math.floor(diffDays / 30)}mo ago`;
-}
-
-/**
- * Deactivate FCM token in user_fcm_tokens table
- * @param {string} userId - User ID
- * @param {string} token - FCM token
- */
+// Deactivate FCM token in user_fcm_tokens table
 export async function deactivateUserFcmToken(userId, token) {
   if (!userId || !token) return;
 
@@ -632,11 +542,7 @@ export async function deactivateUserFcmToken(userId, token) {
   }
 }
 
-/**
- * Deactivate FCM token in admin_fcm_tokens table
- * @param {string} userId - User ID
- * @param {string} token - FCM token
- */
+// Deactivate FCM token in admin_fcm_tokens table
 export async function deactivateAdminFcmToken(userId, token) {
   if (!userId || !token) return;
 
@@ -659,25 +565,18 @@ export async function deactivateAdminFcmToken(userId, token) {
   }
 }
 
-/**
- * Get the current device's FCM token
- * This is used to identify which token belongs to the current device
- */
+// Get the current device's FCM token
 export async function getCurrentDeviceFcmToken() {
   try {
     const token = await getFcmToken();
     return token;
   } catch (error) {
-    console.error("❌ Error getting current device FCM token:", error);
+    console.error("Error getting current device FCM token:", error);
     return null;
   }
 }
 
-/**
- * Full flow for user: Check support, request permission, get token, send to user_fcm_tokens
- * @param {string} userId - User ID
- * @returns {Promise<boolean>} Success status
- */
+// Full flow for user: Check support, request permission, get token, send to user_fcm_tokens
 export async function registerUserPushNotifications(userId) {
   if (!isPushSupported()) {
     console.warn("Push notifications not supported in this browser");
@@ -696,11 +595,7 @@ export async function registerUserPushNotifications(userId) {
   return true;
 }
 
-/**
- * Full flow for admin: Check support, request permission, get token, send to admin_fcm_tokens
- * @param {string} userId - User ID
- * @returns {Promise<boolean>} Success status
- */
+// Full flow for admin: Check support, request permission, get token, send to admin_fcm_tokens
 export async function registerAdminPushNotifications(userId) {
   if (!isPushSupported()) {
     console.warn("Push notifications not supported in this browser");
@@ -719,13 +614,7 @@ export async function registerAdminPushNotifications(userId) {
   return true;
 }
 
-/**
- * Context-aware token saving based on current user role
- * @param {string} userId - User ID
- * @param {string} token - FCM token
- * @param {string} userRole - User role ('user' or 'admin')
- * @returns {Promise<Object>} Saved token data
- */
+// Context-aware token saving based on current user role
 export async function saveFcmTokenForCurrentContext(userId, token, userRole) {
   if (userRole === 'admin') {
     return await saveAdminFcmToken(userId, token);
@@ -734,12 +623,7 @@ export async function saveFcmTokenForCurrentContext(userId, token, userRole) {
   }
 }
 
-/**
- * Backward compatibility function for updateDeviceActivity
- * Context-aware device activity update based on user role
- * @param {string} userId - User ID
- * @param {string} userRole - User role ('user' or 'admin')
- */
+// Backward compatibility function for updateDeviceActivity
 export async function updateDeviceActivity(userId, userRole = 'user') {
   if (userRole === 'admin') {
     await updateAdminDeviceActivity(userId);
@@ -748,10 +632,7 @@ export async function updateDeviceActivity(userId, userRole = 'user') {
   }
 }
 
-/**
- * Clean up duplicate tokens for the same user device
- * @param {string} userId - User ID
- */
+// Clean up duplicate tokens for the same user device
 export async function deduplicateUserTokens(userId) {
   if (!userId) return;
 
@@ -792,10 +673,7 @@ export async function deduplicateUserTokens(userId) {
   }
 }
 
-/**
- * Clean up duplicate tokens for the same admin device
- * @param {string} userId - User ID
- */
+// Clean up duplicate tokens for the same admin device
 export async function deduplicateAdminTokens(userId) {
   if (!userId) return;
 

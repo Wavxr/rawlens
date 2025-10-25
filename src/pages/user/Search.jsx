@@ -13,20 +13,12 @@ export default function Search() {
   
   // Store state and actions
   const {
-    // Camera data
-    cameras,
-    displayedCameras,
-    loading,
     error,
     filterLoading,
-    // Date filter state
     startDate,
     endDate,
     isFilterActive,
-    // Actions
-    setCameras,
     setDisplayedCameras,
-    setLoading,
     setError,
     setFilterLoading,
     setIsFilterActive,
@@ -112,10 +104,6 @@ export default function Search() {
         preSelectedDates: { startDate, endDate }
       }
     });
-  };
-
-  const handleBackToBrowse = () => {
-    resetRentalFlowState();
   };
 
   const handleFavoriteClick = (cameraId) => {
