@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { X, Calendar, User, Phone, Mail, ChevronUp, ChevronDown, CheckCircle, Edit, Trash2, AlertTriangle } from 'lucide-react';
 import { checkBookingConflicts, convertPotentialToConfirmed, deletePotentialBooking } from '../../services/bookingService';
 
@@ -7,14 +7,7 @@ const MobilePotentialBookingCard = ({ booking, isSelected, onSelect, onUpdate, o
   const [hasConflicts, setHasConflicts] = useState(false);
   const [conflictChecked, setConflictChecked] = useState(false);
 
-  // Check for conflicts when card is rendered
-  useEffect(() => {
-    if (!conflictChecked) {
-      checkConflicts();
-    }
-  }, [booking.id, conflictChecked]);
-
-  const checkConflicts = async () => {
+  const checkConflicts = useCallback(async () => {
     try {
       const result = await checkBookingConflicts(
         booking.camera_id,
@@ -31,7 +24,14 @@ const MobilePotentialBookingCard = ({ booking, isSelected, onSelect, onUpdate, o
     } finally {
       setConflictChecked(true);
     }
-  };
+  }, [booking.id, booking.camera_id, booking.start_date, booking.end_date]);
+
+  // Check for conflicts when card is rendered
+  useEffect(() => {
+    if (!conflictChecked) {
+      checkConflicts();
+    }
+  }, [conflictChecked, checkConflicts]);
 
   const handleConvertToConfirmed = async () => {
     setLoading(true);
