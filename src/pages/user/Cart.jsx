@@ -61,13 +61,13 @@ const StatusPill = ({ status }) => {
   );
 };
 
-const Section = ({ title, count, children, icon: Icon }) => (
+const Section = ({ title, count, children, icon }) => (
   <div className="bg-gradient-to-br from-white to-gray-50/50 border border-gray-200/60 rounded-lg overflow-hidden shadow-sm">
     <div className="px-4 md:px-6 py-3 md:py-4 bg-gradient-to-r from-[#052844]/5 to-[#052844]/10 border-b border-gray-200/60">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 md:gap-3">
           <div className="w-6 h-6 md:w-8 md:h-8 rounded-lg bg-[#052844] flex items-center justify-center">
-            <Icon className="w-3 h-3 md:w-4 md:h-4 text-white" />
+            {icon}
           </div>
           <h3 className="text-sm md:text-lg font-medium md:font-semibold text-slate-800">{title}</h3>
         </div>
@@ -325,10 +325,10 @@ const RequestRow = ({ rental, onUploadComplete, onCancelComplete }) => {
   );
 };
 
-const EmptyState = ({ title, subtitle, icon: IconComponent }) => (
+const EmptyState = ({ title, subtitle, icon }) => (
   <div className="py-12 md:py-16 text-center">
     <div className="mx-auto w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl bg-gradient-to-br from-slate-100 to-gray-100 flex items-center justify-center mb-3 md:mb-4 shadow-sm">
-      <IconComponent className="w-6 h-6 md:w-8 md:h-8 text-slate-400" />
+      {icon}
     </div>
     <div className="max-w-sm mx-auto px-4">
       <h4 className="text-base md:text-lg font-medium md:font-semibold text-slate-800 mb-1 md:mb-2">{title}</h4>

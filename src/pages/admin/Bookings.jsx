@@ -61,7 +61,7 @@ const Bookings = () => {
   // Data state
   const [loading, setLoading] = useState(true);
   const [cameras, setCameras] = useState([]);
-  const [calendarBookings, setCalendarBookings] = useState([]);
+  const [setCalendarBookings] = useState([]);
   const [potentialBookings, setPotentialBookings] = useState([]);
   const [bookingsByCamera, setBookingsByCamera] = useState({});
   

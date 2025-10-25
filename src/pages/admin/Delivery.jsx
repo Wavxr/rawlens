@@ -189,7 +189,7 @@ export default function Delivery() {
     try {
       const userData = await getUserById(rental.user_id)
       setSelectedUser(userData)
-    } catch (error) {
+    } catch {
       toast.error("Failed to load user details. Please try again.");
       setSelectedUser(null)
     }

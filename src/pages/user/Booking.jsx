@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useMemo, useState, useRef } from "react"
 import { useNavigate } from "react-router-dom"
 import useAuthStore from "../../stores/useAuthStore"
 import useRentalStore from "../../stores/rentalStore"
@@ -131,8 +131,8 @@ export default function Rentals() {
             ...prev,
             [selectedRental.id]: !!existingFeedback
           }));
-        } catch {
-          console.error("Error checking feedback:", err);
+        } catch (error) {
+          console.error("Error checking feedback:", error);
         }
       }
     }
@@ -321,7 +321,7 @@ export default function Rentals() {
         toast.error(result.error || 'Failed to cancel rental');
       }
     } catch (error) {
-      toast.error('Failed to cancel rental');
+      toast.error('Failed to cancel rental', error);
     }
   };
 
@@ -563,6 +563,29 @@ export default function Rentals() {
 
   // Component: Main rental detail view
   function RentalDetailView({ rental }) {
+    const [imgBroken, setImgBroken] = useState(false)
+
+    const days = useMemo(() => {
+      if (!rental) return null;
+      const start = new Date(rental.start_date)
+      const end = new Date(rental.end_date)
+
+      start.setHours(0, 0, 0, 0)
+      end.setHours(0, 0, 0, 0)
+
+      end.setDate(end.getDate() + 1)
+
+      const diff = (end - start) / (1000 * 3600 * 24)
+      return isNaN(diff) ? null : Math.floor(diff)
+    }, [rental?.start_date, rental?.end_date])
+
+    const countdownToEndResult = useCountdown(rental?.end_date, {
+      dir: "down",
+      startDate: rental?.start_date,
+      endDate: rental?.end_date,
+    })
+    const countdownToStartResult = useCountdown(rental?.start_date, { dir: "down" })
+
     if (!rental) return null
     
     const cameraName = rental?.cameras?.name || "Camera"
@@ -747,7 +770,6 @@ export default function Rentals() {
     const canConfirmDelivered = rental.shipping_status === "in_transit_to_user"
     const canConfirmSentBack = rental.shipping_status === "return_scheduled"
 
-    const [imgBroken, setImgBroken] = useState(false)
     const showCountdownToEnd =
       rental.rental_status === "active" &&
       (rental.shipping_status === "delivered" ||
@@ -755,31 +777,11 @@ export default function Rentals() {
         !rental.shipping_status)
     const showCountdownToStart = rental.rental_status === "confirmed" && new Date(rental.start_date) > new Date()
 
-    const countdownToEndResult = useCountdown(rental.end_date, {
-      dir: "down",
-      startDate: rental.start_date,
-      endDate: rental.end_date,
-    })
-    const countdownToStartResult = useCountdown(rental.start_date, { dir: "down" })
-
     const countdownToEnd = showCountdownToEnd ? countdownToEndResult : null
     const countdownToStart = showCountdownToStart ? countdownToStartResult : null
 
     const soonEnd = showCountdownToEnd && daysUntil(rental.end_date) <= 3
     const soonStart = showCountdownToStart && daysUntil(rental.start_date) <= 2
-
-    const days = useMemo(() => {
-      const start = new Date(rental.start_date)
-      const end = new Date(rental.end_date)
-
-      start.setHours(0, 0, 0, 0)
-      end.setHours(0, 0, 0, 0)
-
-      end.setDate(end.getDate() + 1)
-
-      const diff = (end - start) / (1000 * 3600 * 24)
-      return isNaN(diff) ? null : Math.floor(diff)
-    }, [rental.start_date, rental.end_date])
 
     const steps = shippingSteps
     const currentStep = computeCurrentStep(rental)

@@ -76,22 +76,16 @@ export default function Signup() {
           }
         }
         mediaRecorderRef.current.onstop = () => {
-          const videoBlob = new Blob(recordedChunksRef.current, { type: "video/webm" })
-          recordedBlobRef.current = videoBlob
-          const videoUrl = URL.createObjectURL(videoBlob)
-          if (videoRef.current) {
-            try {
-              videoRef.current.srcObject = null
-            } catch {}
-          }
-          if (stream) {
-            try {
-              stream.getTracks().forEach((t) => t.stop())
-            } catch {}
-          }
-          setStream(null)
-          setRecordedVideoUrl(videoUrl)
-        }
+          const videoBlob = new Blob(recordedChunksRef.current, { type: "video/webm" });
+          recordedBlobRef.current = videoBlob;
+          const videoUrl = URL.createObjectURL(videoBlob);
+          
+          if (videoRef.current) videoRef.current.srcObject = null;
+          if (stream) stream.getTracks().forEach((t) => t.stop());
+          
+          setStream(null);
+          setRecordedVideoUrl(videoUrl);
+        };
       }
     } catch (err) {
       console.error("getUserMedia failed:", err)
@@ -365,17 +359,15 @@ export default function Signup() {
                     <button
                       type="button"
                       onClick={() => {
-                        if (recordedVideoUrl) {
-                          try {
-                            URL.revokeObjectURL(recordedVideoUrl)
-                          } catch {}
-                        }
+                        if (recordedVideoUrl) URL.revokeObjectURL(recordedVideoUrl)
+
                         setRecordedVideoUrl(null)
                         recordedBlobRef.current = null
                         recordedChunksRef.current = []
                         setPreCountdown(0)
                         setTimeLeft(0)
                         openCamera("verificationVideo")
+                        
                       }}
                       className="px-4 py-2 border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 rounded-lg transition-colors text-sm font-medium"
                     >

@@ -25,8 +25,6 @@ import {
   adminConfirmApplication,
   adminRejectApplication,
   adminStartRental,
-  adminCompleteRental,
-  adminCancelRental,
   adminForceDeleteRental,
   adminRemoveCancelledRental,
   adminConfirmApplicationWithConflictCheck,
@@ -37,6 +35,7 @@ import { adminVerifyRentalPayment, userUpdatePaymentStatus, getPaymentReceiptUrl
 import ConflictResolutionModal from "../../components/modals/ConflictResolutionModal";
 import { PaymentVerificationModal, PaymentStatusBadge } from "../../components/payment/PaymentVerificationComponents";
 import {
+  adminMarkDelivered,
   adminConfirmReceived,
   adminConfirmReturned,
 } from "../../services/bookingService";
@@ -385,25 +384,6 @@ export default function Rentals() {
     }
   };
 
-  const getShippingBadgeClasses = (status) => {
-    switch (status) {
-      case "ready_to_ship":
-        return "bg-amber-100 text-amber-800 border-amber-200";
-      case "in_transit_to_user":
-        return "bg-blue-100 text-blue-800 border-blue-200";
-      case "delivered":
-        return "bg-green-100 text-green-800 border-green-200";
-      case "return_scheduled":
-        return "bg-purple-100 text-purple-800 border-purple-200";
-      case "in_transit_to_owner":
-        return "bg-indigo-100 text-indigo-800 border-indigo-200";
-      case "returned":
-        return "bg-teal-100 text-teal-800 border-teal-200";
-      default:
-        return "bg-gray-100 text-gray-600 border-gray-200";
-    }
-  };
-
   const prettyShippingStatus = (status) => {
     if (!status) return "No Status";
     return status
@@ -447,31 +427,6 @@ export default function Rentals() {
     const utcEnd = Date.UTC(e.getFullYear(), e.getMonth(), e.getDate());
     const diff = Math.floor((utcEnd - utcStart) / (24 * 60 * 60 * 1000));
     return diff >= 0 ? diff + 1 : 0;
-  }
-
-  function computeNowKey(r) {
-    const rentalStatus = r?.rental_status;
-    const shippingStatus = r?.shipping_status;
-
-    if (rentalStatus === "completed" || shippingStatus === "returned")
-      return "completed";
-    if (shippingStatus === "in_transit_to_owner")
-      return "in_transit_to_owner";
-    if (shippingStatus === "return_scheduled") return "return_scheduled";
-    if (rentalStatus === "active") return "active";
-    if (shippingStatus === "delivered") return "delivered";
-    if (shippingStatus === "in_transit_to_user") return "in_transit_to_user";
-    if (shippingStatus === "ready_to_ship") return "ready_to_ship";
-    if (rentalStatus === "confirmed") return "confirmed";
-    return "pending";
-  }
-
-  function getNowNextLabels(r) {
-    const nowKey = computeNowKey(r);
-    const idx = Math.max(0, STEP_ORDER.indexOf(nowKey));
-    const now = STEP_LABELS[STEP_ORDER[idx]];
-    const next = STEP_LABELS[STEP_ORDER[idx + 1]];
-    return { now, next };
   }
 
   const formatDate = (dateString) => {
@@ -521,7 +476,7 @@ export default function Rentals() {
           setSelectedStatus("confirmed");
         }
       }
-    } catch {
+    } catch (error) {
       console.error("Error approving rental:", error);
       toast.error("Failed to approve rental");
     } finally {
@@ -564,46 +519,6 @@ export default function Rentals() {
       toast.success("Rental activated successfully!");
     } catch {
       toast.error("Failed to start rental");
-    } finally {
-      setActionLoading((prev) => {
-        const newLoading = { ...prev };
-        delete newLoading[rentalId];
-        return newLoading;
-      });
-    }
-  };
-
-  const handleCompleteRental = async (rentalId) => {
-    setActionLoading((prev) => ({ ...prev, [rentalId]: "complete" }));
-    try {
-      const result = await adminCompleteRental(rentalId);
-      if (result.error) {
-        toast.error(`Failed to complete rental: ${result.error}`);
-        return;
-      }
-      toast.success("Rental completed successfully!");
-    } catch {
-      toast.error("Failed to complete rental");
-    } finally {
-      setActionLoading((prev) => {
-        const newLoading = { ...prev };
-        delete newLoading[rentalId];
-        return newLoading;
-      });
-    }
-  };
-
-  const handleCancelRental = async (rentalId) => {
-    setActionLoading((prev) => ({ ...prev, [rentalId]: "cancel" }));
-    try {
-      const result = await adminCancelRental(rentalId);
-      if (result.error) {
-        toast.error(`Failed to cancel rental: ${result.error}`);
-        return;
-      }
-      toast.success("Rental cancelled successfully!");
-    } catch {
-      toast.error("Failed to cancel rental");
     } finally {
       setActionLoading((prev) => {
         const newLoading = { ...prev };
@@ -667,7 +582,7 @@ export default function Rentals() {
       setShowConflictModal(false);
       setConflictData(null);
       await loadAllRentals(); // Refresh data
-    } catch {
+    } catch (error) {
       console.error("Error confirming with current unit:", error);
       toast.error("Failed to confirm rental");
     } finally {
@@ -694,7 +609,7 @@ export default function Rentals() {
       setShowConflictModal(false);
       setConflictData(null);
       await loadAllRentals(); // Refresh data
-    } catch {
+    } catch (error) {
       console.error("Error transferring rental:", error);
       toast.error("Failed to transfer rental");
     } finally {
@@ -734,7 +649,7 @@ export default function Rentals() {
       setShowConflictModal(false);
       setConflictData(null);
       await loadAllRentals(); // Refresh data
-    } catch {
+    } catch (error) {
       console.error("Error rejecting conflicts:", error);
       toast.error("Failed to reject conflicting bookings");
     } finally {
@@ -784,7 +699,7 @@ export default function Rentals() {
 
   const handleRejectPayment = async (paymentId, reason) => {
     try {
-      const result = await userUpdatePaymentStatus(paymentId, 'rejected');
+      const result = await userUpdatePaymentStatus(paymentId, reason);
       if (result.success) {
         await loadAllRentals();
         toast.success("Payment rejected.");
