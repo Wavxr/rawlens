@@ -15,23 +15,6 @@ export default function UserNotificationSettings() {
   const [togglingGlobal, setTogglingGlobal] = useState(false);
   const [togglingDevice, setTogglingDevice] = useState(new Set());
 
-  useEffect(() => {
-    if (userId) {
-      loadNotificationSettings();
-      loadUserDevices();
-      updateUserDeviceActivity(userId);
-      
-      // Clean up any duplicate devices on component mount
-      deduplicateUserTokens(userId);
-    }
-  }, [userId, loadNotificationSettings, loadUserDevices]);
-
-  useEffect(() => {
-    if (settings) {
-      setGlobalEnabled(!!settings.push_notifications);
-    }
-  }, [settings]);
-
   const loadNotificationSettings = useCallback(async () => {
     if (!userId) return;
     
@@ -56,6 +39,17 @@ export default function UserNotificationSettings() {
       setLoadingDevices(false);
     }
   }, [userId]);
+
+  useEffect(() => {
+    if (userId) {
+      loadNotificationSettings();
+      loadUserDevices();
+      updateUserDeviceActivity(userId);
+      
+      // Clean up any duplicate devices on component mount
+      deduplicateUserTokens(userId);
+    }
+  }, [userId, loadNotificationSettings, loadUserDevices]);
 
   const handleGlobalToggle = async (enabled) => {
     if (!userId) return;

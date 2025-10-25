@@ -61,9 +61,9 @@ const MobileRentalFooter = ({
         }
       }
     }
-  }, [sourcePageType, preSelectedDates, startDate, endDate, isAvailabilityChecked, isAvailable]);
+  }, [sourcePageType, preSelectedDates, startDate, endDate, isAvailabilityChecked, isAvailable, footerState, isCheckingAvailability]);
 
-  // Update footer state based on availability results
+  // Update footer state when checking completes
   useEffect(() => {
     if (footerState === 'checking' && !isCheckingAvailability) {
       if (isAvailabilityChecked && isAvailable) {
@@ -72,13 +72,14 @@ const MobileRentalFooter = ({
         setFooterState('unavailable');
       }
     }
-    
-    if (footerState === 'unavailable' && !isCheckingAvailability && isAvailabilityChecked) {
-      if (isAvailable) {
-        setFooterState('available');
-      }
+  }, [footerState, isCheckingAvailability, isAvailabilityChecked, isAvailable]);
+
+  // Update footer state when availability becomes available again
+  useEffect(() => {
+    if (footerState === 'unavailable' && !isCheckingAvailability && isAvailabilityChecked && isAvailable) {
+      setFooterState('available');
     }
-  }, [isCheckingAvailability, isAvailabilityChecked, isAvailable, footerState]);
+  }, [footerState, isCheckingAvailability, isAvailabilityChecked, isAvailable]);
 
   const handleFooterButtonClick = async () => {
     if (sourcePageType === 'search') {

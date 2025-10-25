@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Loader2, Plus, Menu, Clock } from 'lucide-react';
 import { getAllCameras } from '../../services/cameraService';
 import { getCalendarBookings, getPotentialBookings } from '../../services/bookingService';
@@ -106,9 +106,9 @@ const Bookings = () => {
   // Load data when month changes
   useEffect(() => {
     loadBookingData();
-  }, [monthStartIso, monthEndIso]);
+  }, [monthStartIso, monthEndIso, loadBookingData]);
 
-  const loadBookingData = async () => {
+  const loadBookingData = useCallback(async () => {
     setLoading(true);
     setError('');
     
@@ -155,7 +155,7 @@ const Bookings = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [monthStartIso, monthEndIso]);
 
   // Handle date range selection for booking creation
   const handleDateRangeSelect = (camera, startDate, endDate) => {
