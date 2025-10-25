@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import useAuthStore from '../../stores/useAuthStore';
 import useSettingsStore from '../../stores/settingsStore';
 import { getUserDevices, toggleUserDeviceNotifications, updateUserDeviceActivity, deduplicateUserTokens } from '../../services/pushService';
@@ -24,7 +24,7 @@ export default function UserNotificationSettings() {
       // Clean up any duplicate devices on component mount
       deduplicateUserTokens(userId);
     }
-  }, [userId]);
+  }, [userId, loadNotificationSettings, loadUserDevices]);
 
   useEffect(() => {
     if (settings) {
@@ -32,7 +32,7 @@ export default function UserNotificationSettings() {
     }
   }, [settings]);
 
-  const loadNotificationSettings = async () => {
+  const loadNotificationSettings = useCallback(async () => {
     if (!userId) return;
     
     try {
@@ -41,9 +41,9 @@ export default function UserNotificationSettings() {
     } catch (error) {
       console.error('Error loading notification settings:', error);
     }
-  };
+  }, [userId]);
 
-  const loadUserDevices = async () => {
+  const loadUserDevices = useCallback(async () => {
     if (!userId) return;
     
     setLoadingDevices(true);
@@ -55,7 +55,7 @@ export default function UserNotificationSettings() {
     } finally {
       setLoadingDevices(false);
     }
-  };
+  }, [userId]);
 
   const handleGlobalToggle = async (enabled) => {
     if (!userId) return;

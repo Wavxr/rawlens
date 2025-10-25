@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   Calendar, 
   Clock, 
@@ -25,9 +25,9 @@ const RentalExtensionManager = ({ rental, userId, onRefresh }) => {
   // Load extension history on component mount
   useEffect(() => {
     loadExtensionHistory();
-  }, [rental.id]);
+  }, [rental.id, loadExtensionHistory]);
 
-  const loadExtensionHistory = async () => {
+  const loadExtensionHistory = useCallback(async () => {
     try {
       setHistoryLoading(true);
       const result = await userGetExtensionHistory(userId);
@@ -41,7 +41,7 @@ const RentalExtensionManager = ({ rental, userId, onRefresh }) => {
     } finally {
       setHistoryLoading(false);
     }
-  };
+  }, [userId, rental.id]);
 
   const handleRequestExtension = async (e) => {
     e.preventDefault();

@@ -97,7 +97,7 @@ export default function ContractGeneratorModal({ open, onClose, initialData = {}
     }
     run();
     return () => { cancelled = true; };
-  }, [open, initialData?.equipment, initialData?.startDate, initialData?.endDate]);
+  }, [open, initialData?.equipment, initialData?.startDate, initialData?.endDate, form]);
 
   const arrayBufferToBase64 = (bytes) => {
     let binary = '';

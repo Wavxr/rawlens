@@ -1,8 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { X, Bell, AlertCircle } from 'lucide-react';
 
 export const NotificationToast = ({ notification, onDismiss }) => {
   const [isVisible, setIsVisible] = useState(true);
+
+  const handleDismiss = useCallback(() => {
+    setIsVisible(false);
+    setTimeout(() => onDismiss(), 300); // Wait for animation
+  }, [onDismiss]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -10,12 +15,7 @@ export const NotificationToast = ({ notification, onDismiss }) => {
     }, 6000); // Auto dismiss after 6 seconds
 
     return () => clearTimeout(timer);
-  }, []);
-
-  const handleDismiss = () => {
-    setIsVisible(false);
-    setTimeout(() => onDismiss(), 300); // Wait for animation
-  };
+  }, [handleDismiss]);
 
   const handleClick = () => {
     if (notification.data?.click_action) {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import useAuthStore from '../../stores/useAuthStore';
 import useSettingsStore from '../../stores/settingsStore';
 import { getAdminDevices, toggleAdminDeviceNotifications, updateAdminDeviceActivity, deduplicateAdminTokens } from '../../services/pushService';
@@ -15,24 +15,7 @@ export default function AdminNotificationSettings() {
   const [togglingGlobal, setTogglingGlobal] = useState(false);
   const [togglingDevice, setTogglingDevice] = useState(new Set());
 
-  useEffect(() => {
-    if (userId) {
-      loadNotificationSettings();
-      loadAdminDevices();
-      updateAdminDeviceActivity(userId);
-      
-      // Clean up any duplicate devices on component mount
-      deduplicateAdminTokens(userId);
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    if (settings) {
-      setGlobalEnabled(!!settings.push_notifications);
-    }
-  }, [settings]);
-
-  const loadNotificationSettings = async () => {
+  const loadNotificationSettings = useCallback(async () => {
     if (!userId) return;
     
     try {
@@ -41,9 +24,9 @@ export default function AdminNotificationSettings() {
     } catch (error) {
       console.error('Error loading admin notification settings:', error);
     }
-  };
+  }, [userId]);
 
-  const loadAdminDevices = async () => {
+  const loadAdminDevices = useCallback(async () => {
     if (!userId) return;
     
     setLoadingDevices(true);
@@ -55,7 +38,18 @@ export default function AdminNotificationSettings() {
     } finally {
       setLoadingDevices(false);
     }
-  };
+  }, [userId]);
+
+  useEffect(() => {
+    if (userId) {
+      loadNotificationSettings();
+      loadAdminDevices();
+      updateAdminDeviceActivity(userId);
+      
+      // Clean up any duplicate devices on component mount
+      deduplicateAdminTokens(userId);
+    }
+  }, [userId, loadNotificationSettings, loadAdminDevices]);
 
   const handleGlobalToggle = async (enabled) => {
     if (!userId) return;

@@ -65,6 +65,11 @@ export default function InquiryForm({ cameraNames = [], cameras = [] }) {
   const handleSubmit = (e) => {
     e.preventDefault()
     e.stopPropagation()
+
+    if (!formData.startDate || !formData.endDate) {
+      alert("Please select both a start and end date before submitting.")
+      return
+    }
     setShowContractModal(true)
   }
 

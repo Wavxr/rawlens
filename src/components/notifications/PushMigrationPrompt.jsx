@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { usePushNotifications } from '../../hooks/usePushNotifications';
 import useAuthStore from '../../stores/useAuthStore';
 import { supabase } from '../../lib/supabaseClient';
@@ -18,18 +18,7 @@ const PushMigrationPrompt = () => {
   const [showInstructions, setShowInstructions] = useState(false);
   const [hasCheckedMigration, setHasCheckedMigration] = useState(false);
 
-  useEffect(() => {
-    // Only show migration prompt once per session
-    if (!userId || !isSupported || hasCheckedMigration) return;
-
-    // Don't show if migration already dismissed this session
-    if (sessionStorage.getItem('push_migration_dismissed')) return;
-
-    // Check if user has already been migrated (has FCM tokens)
-    checkMigrationStatus();
-  }, [userId, isSupported]);
-
-  const checkMigrationStatus = async () => {
+  const checkMigrationStatus = useCallback(async () => {
     try {
       setHasCheckedMigration(true);
       
@@ -60,7 +49,18 @@ const PushMigrationPrompt = () => {
     } catch (error) {
       console.error('Error checking migration status:', error);
     }
-  };
+  }, [userId, userRole]);
+
+  useEffect(() => {
+    // Only show migration prompt once per session
+    if (!userId || !isSupported || hasCheckedMigration) return;
+
+    // Don't show if migration already dismissed this session
+    if (sessionStorage.getItem('push_migration_dismissed')) return;
+
+    // Check if user has already been migrated (has FCM tokens)
+    checkMigrationStatus();
+  }, [userId, isSupported, hasCheckedMigration, checkMigrationStatus]);
 
   const handleEnableNotifications = async () => {
     try {
