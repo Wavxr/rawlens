@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { X, Clock, UserCheck, Users, ChevronUp, ChevronDown, CheckCircle, XCircle, Eye, Filter, Calendar, Camera, User, DollarSign } from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { X, Clock, UserCheck, Users, ChevronUp, ChevronDown, CheckCircle, XCircle, Eye} from 'lucide-react';
 import useExtensionStore from '../../stores/extensionStore';
 import { adminGetAllExtensions, adminApproveExtension, adminRejectExtension } from '../../services/extensionService';
-import { supabase } from '../../lib/supabaseClient';
+import { subscribeToAllExtensions, unsubscribeFromChannel } from '../../services/realtimeService';
 import useAuthStore from '../../stores/useAuthStore';
 
 const MobileExtensionRequestCard = ({ extension, onApprove, onReject, loading, isSelected, onSelect, isDarkMode }) => {
@@ -219,7 +219,6 @@ const MobileExtensionRequestSidebar = ({ isOpen, onClose, isDarkMode }) => {
     setError,
     setFilterStatus,
     setFilterRole,
-    getFilteredExtensions,
     addOrUpdateExtension
   } = useExtensionStore();
 
@@ -227,15 +226,7 @@ const MobileExtensionRequestSidebar = ({ isOpen, onClose, isDarkMode }) => {
   const [selectedExtension, setSelectedExtension] = useState(null);
   const [actionLoading, setActionLoading] = useState({});
 
-  // Load extensions on mount
-  useEffect(() => {
-    if (isOpen) {
-      loadExtensions();
-      setupRealtimeSubscription();
-    }
-  }, [isOpen]);
-
-  const loadExtensions = async () => {
+  const loadExtensions = useCallback(async () => {
     setLoading(true);
     try {
       const result = await adminGetAllExtensions();
@@ -249,56 +240,16 @@ const MobileExtensionRequestSidebar = ({ isOpen, onClose, isDarkMode }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [setLoading, setExtensions, setError]);
 
-  const setupRealtimeSubscription = () => {
-    const subscription = supabase
-      .channel('mobile-extension-requests')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'rental_extensions'
-        },
-        (payload) => {
-          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            fetchExtensionWithRelations(payload.new.id);
-          }
-        }
-      )
-      .subscribe();
+  // Load extensions on mount and setup realtime subscription
+  useEffect(() => {
+    if (!isOpen) return;
+    loadExtensions();
+    const channel = subscribeToAllExtensions();
 
-    return () => {
-      subscription.unsubscribe();
-    };
-  };
-
-  const fetchExtensionWithRelations = async (extensionId) => {
-    try {
-      const { data, error } = await supabase
-        .from('rental_extensions')
-        .select(`
-          *,
-          rentals (
-            id, 
-            start_date, 
-            end_date, 
-            camera_id, 
-            cameras (name),
-            users (id, first_name, last_name, email, contact_number)
-          )
-        `)
-        .eq('id', extensionId)
-        .single();
-
-      if (!error && data) {
-        addOrUpdateExtension(data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch extension with relations:', error);
-    }
-  };
+    return () => { if (channel) unsubscribeFromChannel(channel); };
+  }, [isOpen, loadExtensions]);
 
   const handleApproveExtension = async (extensionId) => {
     setActionLoading(prev => ({ ...prev, [extensionId]: 'approving' }));
@@ -332,7 +283,19 @@ const MobileExtensionRequestSidebar = ({ isOpen, onClose, isDarkMode }) => {
     }
   };
 
-  const filteredExtensions = useMemo(() => getFilteredExtensions(), [extensions, filterStatus, filterRole]);
+  const filteredExtensions = useMemo(() => {
+    let filtered = extensions;
+
+    if (filterStatus !== 'all') {
+      filtered = filtered.filter(e => e.extension_status === filterStatus);
+    }
+
+    if (filterRole !== 'all') {
+      filtered = filtered.filter(e => e.requested_by_role === filterRole);
+    }
+
+    return filtered;
+  }, [extensions, filterStatus, filterRole]);
 
   const extensionCounts = useMemo(() => {
     return {
