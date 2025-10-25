@@ -35,25 +35,25 @@ export default function BookingTrends() {
   const [timeRange, setTimeRange] = useState(30);
 
   useEffect(() => {
+    const fetchBookingTrends = async () => {
+      try {
+        setLoading(true);
+        const result = await getBookingTrends(timeRange);
+        
+        if (result.success) {
+          setData(result.data);
+        } else {
+          setError(result.error);
+        }
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchBookingTrends();
   }, [timeRange]);
-
-  const fetchBookingTrends = async () => {
-    try {
-      setLoading(true);
-      const result = await getBookingTrends(timeRange);
-      
-      if (result.success) {
-        setData(result.data);
-      } else {
-        setError(result.error);
-      }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);

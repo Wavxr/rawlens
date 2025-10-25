@@ -55,7 +55,7 @@ const Payments = () => {
         unsubscribeFromChannel(channelRef.current);
       }
     };
-  }, []); // Empty dependency array
+  }, [setPayments]); // Include setPayments in dependencies
 
   const toggleExpanded = (paymentId) => {
     const newExpanded = new Set(expandedPayments);

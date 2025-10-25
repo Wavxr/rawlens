@@ -344,7 +344,7 @@ export default function Rentals() {
     ) {
       setHighlightId(rentalIdFromParams);
     }
-  }, [selectedStatus, searchTerm, selectedMonth, allRentals, searchParams, highlightId]);
+  }, [selectedStatus, searchTerm, selectedMonth, allRentals, searchParams, highlightId, setSearchParams]);
 
   const getStatusColor = (status) => {
     switch (status) {

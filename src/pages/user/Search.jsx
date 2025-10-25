@@ -39,13 +39,11 @@ export default function Search() {
 
   // Clear search results when dates change
   useEffect(() => {
-    if (isFilterActive) {
-      setSearchResults([]);
-      setDisplayedCameras([]);
-      setIsFilterActive(false);
-      setError('');
-    }
-  }, [startDate, endDate]);
+    setSearchResults([]);
+    setDisplayedCameras([]);
+    setIsFilterActive(false);
+    setError('');
+  }, [startDate, endDate, setDisplayedCameras, setError, setIsFilterActive]);
 
   // Event handlers
   const handleDateChange = (e, type) => handleBrowseDateChange(e, type);
@@ -77,8 +75,8 @@ export default function Search() {
       setSearchResults(availableCameras || []);
       setDisplayedCameras(availableCameras || []);
       setIsFilterActive(true);
-    } catch (err) {
-      console.error('Error checking camera availability:', err);
+    } catch (error) {
+      console.error('Error checking camera availability:', error);
       setError('Failed to search cameras. Please try again.');
       setSearchResults([]);
       setDisplayedCameras([]);

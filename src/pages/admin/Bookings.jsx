@@ -103,11 +103,6 @@ const Bookings = () => {
   const monthStartIso = useMemo(() => formatISODate(startOfMonth(monthDate)), [monthDate]);
   const monthEndIso = useMemo(() => formatISODate(endOfMonth(monthDate)), [monthDate]);
 
-  // Load data when month changes
-  useEffect(() => {
-    loadBookingData();
-  }, [monthStartIso, monthEndIso, loadBookingData]);
-
   const loadBookingData = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -156,6 +151,11 @@ const Bookings = () => {
       setLoading(false);
     }
   }, [monthStartIso, monthEndIso]);
+
+  // Load data when month changes
+  useEffect(() => {
+    loadBookingData();
+  }, [monthStartIso, monthEndIso, loadBookingData]);
 
   // Handle date range selection for booking creation
   const handleDateRangeSelect = (camera, startDate, endDate) => {

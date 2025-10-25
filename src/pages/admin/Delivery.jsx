@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ToastContainer, toast } from 'react-toastify';
 import useRentalStore from "../../stores/rentalStore";
@@ -195,7 +195,7 @@ export default function Delivery() {
     }
   }
 
-  const calculateFilterCounts = (rentals) => {
+  const calculateFilterCounts = useCallback((rentals) => {
     const counts = {
       needs_action: 0,
       outbound: 0,
@@ -230,7 +230,7 @@ export default function Delivery() {
       }
     })
     return counts
-  }
+  }, [selectedMonth])
 
   useEffect(() => {
     if (allRentals.length > 0) {
@@ -281,7 +281,7 @@ export default function Delivery() {
     }
 
     setRentals(filtered)
-  }, [allRentals, selectedShippingFilter, searchTerm, selectedMonth])
+  }, [allRentals, selectedShippingFilter, searchTerm, selectedMonth, calculateFilterCounts])
 
   const setBusy = (id, action) => setActionLoading((prev) => ({ ...prev, [id]: action }))
   const clearBusy = (id) =>

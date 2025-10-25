@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { 
   Calendar, 
   Clock, 
@@ -41,7 +41,10 @@ const Extensions = () => {
 
   // Get filtered extensions from store (similar to payments)
   const allExtensions = storeReady ? extensions : [];
-  const pendingExtensions = storeReady ? getExtensionsByStatus('pending') : [];
+  const pendingExtensions = useMemo(() => 
+    storeReady ? getExtensionsByStatus('pending') : [], 
+    [storeReady, getExtensionsByStatus]
+  );
 
   useEffect(() => {
     const loadExtensions = async () => {
@@ -70,15 +73,17 @@ const Extensions = () => {
     });
 
     extensionSubscriptionRef.current = channel;
+    // Capture the ref value to avoid stale closure in cleanup
+    const currentCheckedConflictsRef = checkedConflictsRef.current;
 
     return () => {
       if (extensionSubscriptionRef.current) {
         unsubscribeFromChannel(extensionSubscriptionRef.current);
       }
-      // Clear checked conflicts on unmount
-      checkedConflictsRef.current.clear();
+      // Clear checked conflicts on unmount using captured ref
+      currentCheckedConflictsRef.clear();
     };
-  }, []); // Empty dependency array like payments
+  }, [setExtensions]); // Include setExtensions in dependencies
 
   const checkConflictForExtension = useCallback(async (extensionId, rentalId, newEndDate) => {
     try {
@@ -109,15 +114,18 @@ const Extensions = () => {
   useEffect(() => {
     // When extensions from the store change, check for conflicts (only for pending extensions)
     if (pendingExtensions.length > 0 && storeReady) {
+      // Capture the ref value to avoid stale closure issues in cleanup
+      const currentCheckedConflicts = checkedConflictsRef.current;
+      
       pendingExtensions.forEach(ext => {
         // Only check conflicts for pending extensions that haven't been checked yet
-        if (!checkedConflictsRef.current.has(ext.id)) {
-          checkedConflictsRef.current.add(ext.id);
+        if (!currentCheckedConflicts.has(ext.id)) {
+          currentCheckedConflicts.add(ext.id);
           checkConflictForExtension(ext.id, ext.rental_id, ext.requested_end_date);
         }
       });
     }
-  }, [pendingExtensions.length, storeReady, checkConflictForExtension]);
+  }, [pendingExtensions, storeReady, checkConflictForExtension]);
 
   const handleApproveExtension = async (extensionId) => {
     // Check for conflicts first

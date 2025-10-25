@@ -577,7 +577,7 @@ export default function Rentals() {
 
       const diff = (end - start) / (1000 * 3600 * 24)
       return isNaN(diff) ? null : Math.floor(diff)
-    }, [rental?.start_date, rental?.end_date])
+    }, [rental])
 
     const countdownToEndResult = useCountdown(rental?.end_date, {
       dir: "down",

@@ -112,7 +112,7 @@ export default function Cameras() {
     if (showForm && !allInclusionItems.length && !inclusionsLoading) {
       fetchInclusionItems()
     }
-  }, [showForm, inclusionsLoading])
+  }, [showForm, inclusionsLoading, allInclusionItems.length])
   async function fetchInclusionItems() {
     setInclusionsLoading(true)
     setInclusionsError("")
