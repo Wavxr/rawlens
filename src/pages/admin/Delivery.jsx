@@ -400,6 +400,18 @@ export default function Delivery() {
   const ShippingCard = ({ rental }) => {
     const shippingStatus = rental.shipping_status || "none"
     const rentalStatus = rental.rental_status
+    
+    // Check payment verification status
+    const initialPayment = rental.payments?.find(p => p.payment_type === 'rental' && !p.extension_id);
+    const paymentStatus = initialPayment?.payment_status;
+    const isPaymentVerified = paymentStatus === 'verified';
+    const isTemporaryBooking = rental.booking_type === 'temporary';
+    
+    // Determine payment state for warnings
+    const hasNotPaid = !paymentStatus || paymentStatus === 'pending';
+    const needsVerification = paymentStatus === 'submitted';
+    const paymentRejected = paymentStatus === 'rejected';
+    
     const STEP_ORDER = [
       "pending",
       "confirmed",
@@ -449,7 +461,6 @@ export default function Delivery() {
     const canTransitToUser = rentalStatus === "confirmed" && shippingStatus === "ready_to_ship"
     const canConfirmReturned = shippingStatus === "in_transit_to_owner"
     
-    const isTemporaryBooking = rental.booking_type === 'temporary';
     const customerName = rental.customer_name || 
                         (rental.users ? `${rental.users.first_name} ${rental.users.last_name}`.trim() : '') ||
                         'Unknown Customer';
@@ -532,6 +543,73 @@ export default function Delivery() {
               </div>
             </div>
           </div>
+          
+          {/* Payment Status Alerts - Non-blocking warnings */}
+          {!isTemporaryBooking && !isPaymentVerified && (canReadyToShip || canTransitToUser) && (
+            <>
+              {/* Awaiting Payment - User hasn't paid yet */}
+              {hasNotPaid && (
+                <div className="mb-4 bg-gray-700/50 border-2 border-gray-600 rounded-lg p-4">
+                  <div className="flex items-start space-x-3">
+                    <Clock className="h-5 w-5 text-gray-400 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <h4 className="text-gray-200 font-semibold mb-1">Awaiting Customer Payment</h4>
+                      <p className="text-gray-300 text-sm">
+                        The customer has not submitted their payment receipt yet. You can proceed with shipping if you've received payment through other means.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Payment Verification Required - User paid, needs admin approval */}
+              {needsVerification && (
+                <div className="mb-4 bg-blue-900/20 border-2 border-blue-600 rounded-lg p-4">
+                  <div className="flex items-start space-x-3">
+                    <AlertCircle className="h-5 w-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <h4 className="text-blue-200 font-semibold mb-1">Payment Verification Recommended</h4>
+                      <p className="text-blue-100 text-sm mb-3">
+                        The customer has submitted their payment receipt. Please verify the payment before shipping, or proceed if you've already confirmed payment.
+                      </p>
+                      <button
+                        onClick={() => navigate(`/admin/payments?highlightId=${rental.id}`)}
+                        className="inline-flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                      >
+                        <DollarSign className="h-4 w-4" />
+                        <span>Review Payment</span>
+                        <ArrowRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Payment Rejected - Receipt was rejected */}
+              {paymentRejected && (
+                <div className="mb-4 bg-red-900/20 border-2 border-red-600 rounded-lg p-4">
+                  <div className="flex items-start space-x-3">
+                    <X className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <h4 className="text-red-200 font-semibold mb-1">Payment Receipt Rejected</h4>
+                      <p className="text-red-100 text-sm mb-3">
+                        The payment receipt was rejected. The customer needs to resubmit. You can still proceed with shipping if you've received payment confirmation.
+                      </p>
+                      <button
+                        onClick={() => navigate(`/admin/payments?highlightId=${rental.id}`)}
+                        className="inline-flex items-center space-x-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                      >
+                        <DollarSign className="h-4 w-4" />
+                        <span>Review Payment</span>
+                        <ArrowRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+          
           <div className="flex flex-wrap gap-2 md:gap-3 items-center">
             {canReadyToShip && (
               <button
@@ -958,6 +1036,102 @@ export default function Delivery() {
                   </div>
                   <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-white">Rental & Equipment</h3>
+                  
+                  {/* Payment Status Section */}
+                  {(() => {
+                    const initialPayment = selectedRental?.payments?.find(p => p.payment_type === 'rental' && !p.extension_id);
+                    const paymentStatus = initialPayment?.payment_status;
+                    const isTemporaryBooking = selectedRental?.booking_type === 'temporary';
+                    
+                    if (!isTemporaryBooking) {
+                      let bgColor, borderColor, textColor, iconColor, btnBg, btnHover;
+                      let statusText = 'Unknown';
+                      let statusIcon = AlertCircle;
+                      
+                      switch (paymentStatus) {
+                        case 'verified':
+                          bgColor = 'bg-green-900/20';
+                          borderColor = 'border-green-600';
+                          textColor = 'text-green-200';
+                          iconColor = 'text-green-400';
+                          statusText = 'Verified ✓';
+                          statusIcon = CheckCircle;
+                          break;
+                        case 'submitted':
+                          bgColor = 'bg-blue-900/20';
+                          borderColor = 'border-blue-600';
+                          textColor = 'text-blue-200';
+                          iconColor = 'text-blue-400';
+                          btnBg = 'bg-blue-600';
+                          btnHover = 'hover:bg-blue-700';
+                          statusText = 'Under Review';
+                          statusIcon = Clock;
+                          break;
+                        case 'pending':
+                          bgColor = 'bg-amber-900/20';
+                          borderColor = 'border-amber-600';
+                          textColor = 'text-amber-200';
+                          iconColor = 'text-amber-400';
+                          btnBg = 'bg-amber-600';
+                          btnHover = 'hover:bg-amber-700';
+                          statusText = 'Pending';
+                          statusIcon = Clock;
+                          break;
+                        case 'rejected':
+                          bgColor = 'bg-red-900/20';
+                          borderColor = 'border-red-600';
+                          textColor = 'text-red-200';
+                          iconColor = 'text-red-400';
+                          btnBg = 'bg-red-600';
+                          btnHover = 'hover:bg-red-700';
+                          statusText = 'Rejected';
+                          statusIcon = X;
+                          break;
+                        default:
+                          bgColor = 'bg-gray-700/20';
+                          borderColor = 'border-gray-600';
+                          textColor = 'text-gray-200';
+                          iconColor = 'text-gray-400';
+                          btnBg = 'bg-gray-600';
+                          btnHover = 'hover:bg-gray-700';
+                          statusText = 'No Payment';
+                          statusIcon = AlertCircle;
+                      }
+                      
+                      const StatusIcon = statusIcon;
+                      
+                      return (
+                        <div className={`${bgColor} border-2 ${borderColor} rounded-lg p-4 mb-4`}>
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-start space-x-3">
+                              <StatusIcon className={`h-5 w-5 ${iconColor} flex-shrink-0 mt-0.5`} />
+                              <div>
+                                <h4 className={`${textColor} font-semibold mb-1`}>
+                                  Payment Status: {statusText}
+                                </h4>
+                                {paymentStatus !== 'verified' && (
+                                  <p className={`${textColor} text-sm opacity-90`}>
+                                    Delivery cannot proceed until payment is verified.
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            {paymentStatus !== 'verified' && (
+                              <button
+                                onClick={() => navigate(`/admin/payments?highlightId=${selectedRental.id}`)}
+                                className={`inline-flex items-center space-x-1 ${btnBg} ${btnHover} text-white px-3 py-1.5 rounded-md text-sm font-medium transition-colors`}
+                              >
+                                <DollarSign className="h-4 w-4" />
+                                <span>Review</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                  
                   <div className="bg-gray-700 rounded-lg p-4 space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="flex justify-between">
