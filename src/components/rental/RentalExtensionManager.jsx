@@ -22,11 +22,6 @@ const RentalExtensionManager = ({ rental, userId, onRefresh }) => {
   const [uploadingPayment, setUploadingPayment] = useState({});
   const [showHistory, setShowHistory] = useState(false);
 
-  // Load extension history on component mount
-  useEffect(() => {
-    loadExtensionHistory();
-  }, [rental.id, loadExtensionHistory]);
-
   const loadExtensionHistory = useCallback(async () => {
     try {
       setHistoryLoading(true);
@@ -42,6 +37,11 @@ const RentalExtensionManager = ({ rental, userId, onRefresh }) => {
       setHistoryLoading(false);
     }
   }, [userId, rental.id]);
+
+  // Load extension history on component mount
+  useEffect(() => {
+    loadExtensionHistory();
+  }, [rental.id, loadExtensionHistory]);
 
   const handleRequestExtension = async (e) => {
     e.preventDefault();
