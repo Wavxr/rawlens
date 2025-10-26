@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react"
 import { Outlet, useNavigate, useLocation } from "react-router-dom"
 import useAuthStore from "../../stores/useAuthStore"
-import useThemeStore from '../../stores/useThemeStore'
 import {
   Camera,
   Users,
@@ -22,8 +21,6 @@ import {
   Map,
   Layers,
   PhilippinePeso,
-  Sun,
-  Moon,
   UserStar,
   CalendarPlus,
   CreditCard,
@@ -55,27 +52,36 @@ export default function AdminDashboard() {
 
   const navigationSections = [
     {
-      title: "Statistics & Metrics",
+      title: "Overview",
       items: [
         { name: "Dashboard", path: "/admin", icon: LayoutDashboard, exact: true },
-        { name: "Booking Trends", path: "/admin/booking-trends", icon: TrendingUp },
-        { name: "Monthly Heatmap", path: "/admin/monthly-heatmap", icon: Map },
-        { name: "Revenue", path: "/admin/revenue", icon: PhilippinePeso },
-        { name: "Feedbacks", path: "/admin/feedbacks", icon: UserStar }
       ]
     },
     {
-      title: "Management",
+      title: "Rental Workflow",
+      items: [
+        { name: "Bookings", path: "/admin/bookings", icon: Calendar },
+        { name: "Rentals", path: "/admin/rentals", icon: Package },
+        { name: "Delivery", path: "/admin/delivery", icon: Truck },
+        { name: "Payments", path: "/admin/payments", icon: CreditCard },
+        { name: "Extensions", path: "/admin/extensions", icon: CalendarPlus },
+      ]
+    },
+    {
+      title: "Inventory & Users",
       items: [
         { name: "Cameras", path: "/admin/cameras", icon: Camera },
         { name: "Inclusions", path: "/admin/inclusions", icon: Layers },
         { name: "Users", path: "/admin/users", icon: Users },
-        { name: "Bookings", path: "/admin/bookings", icon: Calendar },
-        { name: "Rentals", path: "/admin/rentals", icon: Package },
-        { name: "Extensions", path: "/admin/extensions", icon: CalendarPlus },
-        { name: "Payments", path: "/admin/payments", icon: CreditCard },
-        { name: "Delivery", path: "/admin/delivery", icon: Truck },
-        { name: "Settings", path: "/admin/settings", icon: Settings }
+      ]
+    },
+    {
+      title: "Analytics & Insights",
+      items: [
+        { name: "Revenue", path: "/admin/revenue", icon: PhilippinePeso },
+        { name: "Booking Trends", path: "/admin/booking-trends", icon: TrendingUp },
+        { name: "Monthly Heatmap", path: "/admin/monthly-heatmap", icon: Map },
+        { name: "Feedbacks", path: "/admin/feedbacks", icon: UserStar }
       ]
     }
   ];
@@ -84,10 +90,11 @@ export default function AdminDashboard() {
 
   const mobileNavigationItems = [
     { name: "Home", path: "/admin", icon: Home, exact: true },
-    { name: "Cameras", path: "/admin/cameras", icon: Camera },
     { name: "Bookings", path: "/admin/bookings", icon: Calendar },
     { name: "Rentals", path: "/admin/rentals", icon: Package },
-    { name: "Delivery", path: "/admin/delivery", icon: Truck }
+    { name: "Delivery", path: "/admin/delivery", icon: Truck },
+    { name: "Payments", path: "/admin/payments", icon: CreditCard },
+    { name: "Extensions", path: "/admin/extensions", icon: CalendarPlus }
   ];
 
   const isActiveRoute = (path, exact = false) => {
@@ -102,10 +109,13 @@ export default function AdminDashboard() {
       if (sidebarOpen && !event.target.closest(".sidebar-container") && !event.target.closest(".menu-button")) {
         setSidebarOpen(false)
       }
+      if (userMenuOpen && !event.target.closest(".user-menu-container")) {
+        setUserMenuOpen(false)
+      }
     }
     document.addEventListener("mousedown", handleClickOutside)
     return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [sidebarOpen])
+  }, [sidebarOpen, userMenuOpen])
 
   useEffect(() => {
     const handleResize = () => {
@@ -119,8 +129,6 @@ export default function AdminDashboard() {
     window.addEventListener("resize", handleResize)
     return () => window.removeEventListener("resize", handleResize)
   }, [])
-
-  const { darkMode, toggleTheme } = useThemeStore()
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100">
@@ -208,31 +216,9 @@ export default function AdminDashboard() {
               ))}
             </nav>
 
-            {/* Theme Toggle Section */}
-            <div className={`border-t border-gray-800 ${sidebarCollapsed ? "px-2 py-3" : "px-3 py-3"}`}>
-              <button
-                onClick={toggleTheme}
-                className={`w-full flex items-center text-left rounded-lg hover:bg-gray-800/50 transition-colors ${
-                  sidebarCollapsed ? "px-2 py-2.5 justify-center" : "px-3 py-2"
-                }`}
-                title={sidebarCollapsed ? (darkMode ? "Switch to Light Mode" : "Switch to Dark Mode") : ""}
-              >
-                {darkMode ? (
-                  <Sun className="h-4 w-4 text-yellow-400" />
-                ) : (
-                  <Moon className="h-4 w-4 text-blue-400" />
-                )}
-                {!sidebarCollapsed && (
-                  <span className="ml-3 text-sm font-medium text-gray-400">
-                    {darkMode ? "Light Mode" : "Dark Mode"}
-                  </span>
-                )}
-              </button>
-            </div>
-
             {/* User Profile */}
             <div className={`border-t border-gray-800 ${sidebarCollapsed ? "px-2 py-3" : "px-3 py-3"}`}>
-              <div className="relative">
+              <div className="relative user-menu-container">
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
                   className={`w-full flex items-center text-left rounded-lg hover:bg-gray-800/50 transition-colors ${
@@ -262,6 +248,17 @@ export default function AdminDashboard() {
                 </button>
                 {userMenuOpen && !sidebarCollapsed && (
                   <div className="absolute bottom-full left-0 right-0 mb-1 bg-gray-800/90 backdrop-blur-xl border border-gray-700 rounded-lg shadow-lg overflow-hidden">
+                    <button
+                      onClick={() => {
+                        navigate('/admin/settings');
+                        setUserMenuOpen(false);
+                      }}
+                      className="w-full flex items-center px-3 py-2 text-left text-gray-300 hover:bg-gray-700/50 transition-colors"
+                    >
+                      <Settings className="h-3.5 w-3.5 mr-2" />
+                      <span className="text-sm">Settings</span>
+                    </button>
+                    <div className="border-t border-gray-700"></div>
                     <button
                       onClick={handleLogout}
                       className="w-full flex items-center px-3 py-2 text-left text-red-400 hover:bg-red-500/10 transition-colors"
