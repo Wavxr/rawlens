@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef } from "react"
+import { useEffect, useMemo, useState, useRef, useCallback } from "react"
 import { useNavigate } from "react-router-dom"
 import useAuthStore from "../../stores/useAuthStore"
 import useRentalStore from "../../stores/rentalStore"
@@ -59,6 +59,9 @@ export default function Rentals() {
   const [feedbackSubmitted, setFeedbackSubmitted] = useState({});
   const [showCancellationModal, setShowCancellationModal] = useState(false);
   const [rentalToCancel, setRentalToCancel] = useState(null);
+  const handleFilterClick = useCallback((filter) => {
+    setActiveFilter(filter);
+  }, []);
 
   // Time Management: Update time every minute
   useEffect(() => {
@@ -148,11 +151,13 @@ export default function Rentals() {
   // Data Processing: Filter rentals based on active tab
   const displayedRentals = useMemo(() => {
     if (activeFilter === "awaiting") {
-      // Only show confirmed rentals that have verified payment
-      return rentals.filter(
-        (r) => r.rental_status === "confirmed" && r.payment_status === "verified" || 
-               ["ready_to_ship", "in_transit_to_user"].includes(r.shipping_status)
-      )
+      // Show rentals that are paid and in delivery process (confirmed or active status)
+      return rentals.filter((r) => {
+        const initialPayment = r.payments?.find(p => p.payment_type === 'rental' && !p.extension_id);
+        const paymentStatus = initialPayment?.payment_status;
+        return paymentStatus === "verified" &&
+               (r.shipping_status === "ready_to_ship" || r.shipping_status === "in_transit_to_user");
+      })
     }
     if (activeFilter === "payment_pending") {
       // Show confirmed rentals that need payment (exclude verified)
@@ -165,9 +170,18 @@ export default function Rentals() {
       });
     }
     if (activeFilter === "active") {
-      return rentals.filter(
-        (r) => r.rental_status === "active" && (!r.shipping_status || r.shipping_status === "delivered" || r.shipping_status === "return_scheduled"),
-      )
+      return rentals.filter((r) => {
+        // Include active rentals
+        if (r.rental_status === "active" && 
+            (!r.shipping_status || r.shipping_status === "delivered" || r.shipping_status === "return_scheduled")) {
+          return true;
+        }
+        // Include delivered but not yet started rentals (confirmed + delivered)
+        if (r.rental_status === "confirmed" && r.shipping_status === "delivered") {
+          return true;
+        }
+        return false;
+      })
     }
     if (activeFilter === "returning") {
       return rentals.filter((r) => ["return_scheduled", "in_transit_to_owner", "returned"].includes(r.shipping_status))
@@ -506,6 +520,9 @@ export default function Rentals() {
     }
 
     // Regular card for paid rentals
+    // Check if it's in "Ready" state (delivered but not yet started)
+    const isReady = rental.rental_status === "confirmed" && rental.shipping_status === "delivered";
+    
     return (
       <div
         onClick={onClick}
@@ -542,11 +559,18 @@ export default function Rentals() {
               {days && <span className="text-xs text-gray-600">{days} days</span>}
             </div>
             
-            <span
-              className={`inline-block px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md text-xs font-medium mt-1 sm:mt-2 ${getStatusBadgeClasses(rental.rental_status)}`}
-            >
-              {rental.rental_status.charAt(0).toUpperCase() + rental.rental_status.slice(1)}
-            </span>
+            {isReady ? (
+              <span className="inline-flex items-center px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md text-xs font-medium mt-1 sm:mt-2 bg-green-100 text-green-800">
+                <CheckCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1" />
+                Ready - Starts Soon
+              </span>
+            ) : (
+              <span
+                className={`inline-block px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md text-xs font-medium mt-1 sm:mt-2 ${getStatusBadgeClasses(rental.rental_status)}`}
+              >
+                {rental.rental_status.charAt(0).toUpperCase() + rental.rental_status.slice(1)}
+              </span>
+            )}
             
             <div className="text-xs text-gray-500 mt-0.5 sm:mt-1">
               {formatDate(rental.start_date)} — {formatDate(rental.end_date)}
@@ -911,8 +935,39 @@ export default function Rentals() {
             </div>
           </div>
 
+          {/* Ready Status - Delivered but not yet started */}
+          {rental.rental_status === "confirmed" && rental.shipping_status === "delivered" && (
+            <div className="rounded-lg p-3 sm:p-4 bg-gradient-to-br from-green-50 to-blue-50 border-2 border-green-200">
+              <div className="flex items-start space-x-3">
+                <div className="flex-shrink-0">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-green-500 flex items-center justify-center">
+                    <CheckCircle className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-green-900 text-sm sm:text-base mb-1">
+                    📦 Equipment Ready - Starts Soon!
+                  </h4>
+                  <p className="text-green-800 text-xs sm:text-sm mb-2">
+                    Great news! Your equipment has been delivered and is ready to use. Your rental period will begin on {formatDate(rental.start_date)}.
+                  </p>
+                  {countdownToStartResult && (
+                    <div className="bg-white/60 rounded-md px-3 py-2 inline-block">
+                      <div className="flex items-center space-x-2">
+                        <Timer className="h-4 w-4 text-green-700" />
+                        <span className="text-sm font-semibold text-green-900">
+                          Starts in: {countdownToStartResult.days}d {countdownToStartResult.hours}h {countdownToStartResult.minutes}m
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Countdown Section */}
-          {(showCountdownToEnd || showCountdownToStart) && (
+          {(showCountdownToEnd || showCountdownToStart) && !(rental.rental_status === "confirmed" && rental.shipping_status === "delivered") && (
             <div
               className={`rounded-lg p-3 sm:p-4 ${
                 soonEnd || soonStart
@@ -1163,7 +1218,8 @@ export default function Rentals() {
             ].map((f) => (
               <button
                 key={f.key}
-                onClick={() => setActiveFilter(f.key)}
+                type="button"
+                onClick={() => handleFilterClick(f.key)}
                 className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-md transition-all duration-150 whitespace-nowrap ${
                   activeFilter === f.key
                     ? "bg-[#052844] text-white shadow-sm"
