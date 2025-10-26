@@ -56,6 +56,37 @@ const SuccessView = ({
           <FileText className="mr-2 h-5 w-5 text-neutral-600" />
           Your Rental Agreement
         </h4>
+        
+        {/* Document Upload Status Indicator */}
+        {!submittedRentalData.contract_pdf_url && !pdfViewError && (
+          <div className="mb-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-xl">
+            <div className="flex items-center justify-center space-x-3">
+              <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
+              <div className="text-left">
+                <p className="text-sm font-semibold text-blue-900">Preparing Your Contract...</p>
+                <p className="text-xs text-blue-700 mt-1">
+                  Your rental agreement is being generated and uploaded. This usually takes a few seconds.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Document Ready Indicator */}
+        {submittedRentalData.contract_pdf_url && !pdfSignedUrl && !isGeneratingPdfUrl && (
+          <div className="mb-4 p-4 bg-green-50 border-2 border-green-200 rounded-xl">
+            <div className="flex items-center justify-center space-x-3">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+              <div className="text-left">
+                <p className="text-sm font-semibold text-green-900">Contract Ready!</p>
+                <p className="text-xs text-green-700 mt-1">
+                  Your rental agreement is ready to view. Click the button below to open it.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        
         {pdfViewError && (
           <div className="mb-3 p-3 bg-red-50 text-red-700 rounded-xl border border-red-200 text-sm">{pdfViewError}</div>
         )}
@@ -80,7 +111,7 @@ const SuccessView = ({
               Open in New Tab
             </button>
           </div>
-        ) : (
+        ) : submittedRentalData.contract_pdf_url ? (
           <button
             onClick={() => onViewPdf(submittedRentalData.contract_pdf_url)}
             disabled={isGeneratingPdfUrl}
@@ -102,7 +133,7 @@ const SuccessView = ({
               </>
             )}
           </button>
-        )}
+        ) : null}
       </div>
 
       <p className="text-neutral-600 mb-6 text-sm">You will be notified once the admin confirms your booking.</p>
