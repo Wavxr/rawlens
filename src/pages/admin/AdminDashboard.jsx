@@ -89,7 +89,7 @@ export default function AdminDashboard() {
   const navigationItems = navigationSections.flatMap(section => section.items);
 
   const mobileNavigationItems = [
-    { name: "Home", path: "/admin", icon: Home, exact: true },
+    // { name: "Home", path: "/admin", icon: Home, exact: true },
     { name: "Bookings", path: "/admin/bookings", icon: Calendar },
     { name: "Rentals", path: "/admin/rentals", icon: Package },
     { name: "Delivery", path: "/admin/delivery", icon: Truck },
@@ -277,9 +277,9 @@ export default function AdminDashboard() {
         {sidebarOpen && (
           <div className="lg:hidden fixed inset-0 z-40">
             <div className="fixed inset-0 bg-black/50" onClick={() => setSidebarOpen(false)}></div>
-            <div className="sidebar-container fixed inset-y-0 left-0 w-64 bg-gray-900/95 backdrop-blur-xl border-r border-gray-800">
+            <div className="sidebar-container fixed top-0 bottom-0 left-0 w-64 bg-gray-900/95 backdrop-blur-xl border-r border-gray-800 h-screen">
               <div className="flex flex-col h-full">
-                <div className="flex items-center px-4 py-4 border-b border-gray-800">
+                <div className="flex items-center px-4 py-4 border-b border-gray-800 flex-shrink-0">
                   <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
                     <Camera className="h-4 w-4 text-white" />
                   </div>
@@ -294,35 +294,60 @@ export default function AdminDashboard() {
                     <X className="h-4 w-4 text-gray-400" />
                   </button>
                 </div>
-                <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-                  {navigationItems.map((item) => {
-                    const isActive = isActiveRoute(item.path, item.exact)
-                    return (
-                      <button
-                        key={item.path}
-                        onClick={() => {
-                          navigate(item.path)
-                          setSidebarOpen(false)
-                        }}
-                        className={`w-full flex items-center px-3 py-2 text-left rounded-lg transition-colors ${
-                          isActive
-                            ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
-                            : "text-gray-400 hover:bg-gray-800/60 hover:text-gray-200"
-                        }`}
-                      >
-                        <item.icon className="h-4 w-4" />
-                        <span className="ml-3 text-sm font-medium">{item.name}</span>
-                      </button>
-                    )
-                  })}
+                <nav className="flex-1 px-3 py-4 overflow-y-auto flex-shrink min-h-0">
+                  {navigationSections.map((section, sectionIndex) => (
+                    <div key={sectionIndex} className="mb-5">
+                      <div className="px-3 mb-2">
+                        <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                          {section.title}
+                        </span>
+                      </div>
+                      <div className="space-y-0.5">
+                        {section.items.map((item) => {
+                          const isActive = isActiveRoute(item.path, item.exact)
+                          return (
+                            <button
+                              key={item.path}
+                              onClick={() => {
+                                navigate(item.path)
+                                setSidebarOpen(false)
+                              }}
+                              className={`w-full flex items-center px-3 py-2 mx-1 text-left rounded-lg transition-colors ${
+                                isActive
+                                  ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                                  : "text-gray-400 hover:bg-gray-800/60 hover:text-gray-200"
+                              }`}
+                            >
+                              <item.icon className="h-4 w-4" />
+                              <span className="ml-3 text-sm font-medium">{item.name}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </nav>
-                <div className="px-3 py-3 border-t border-gray-800">
+                <div className="px-3 py-3 border-t border-gray-800 flex-shrink-0 space-y-0.5">
+                  <button
+                    onClick={() => {
+                      navigate('/admin/settings');
+                      setSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center px-3 py-2 mx-1 text-left rounded-lg transition-colors ${
+                      isActiveRoute('/admin/settings')
+                        ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                        : "text-gray-400 hover:bg-gray-800/60 hover:text-gray-200"
+                    }`}
+                  >
+                    <Settings className="h-4 w-4" />
+                    <span className="ml-3 text-sm font-medium">Settings</span>
+                  </button>
                   <button
                     onClick={handleLogout}
-                    className="w-full flex items-center px-3 py-2 text-left text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                    className="w-full flex items-center px-3 py-2 mx-1 text-left text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
                   >
-                    <LogOut className="h-4 w-4 mr-2" />
-                    <span className="text-sm">Logout</span>
+                    <LogOut className="h-4 w-4" />
+                    <span className="ml-3 text-sm">Logout</span>
                   </button>
                 </div>
               </div>
