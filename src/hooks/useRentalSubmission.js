@@ -2,8 +2,10 @@ import { useState, useRef } from 'react';
 import { createUserRentalRequest, updateRentalContractUrl } from '../services/rentalService';
 import { generateSignedContractPdf, uploadContractPdf, getSignedContractUrl } from '../services/pdfService';
 import { isUserVerified } from '../services/verificationService';
+import useAuthStore from '../stores/useAuthStore';
 
 const useRentalSubmission = (user) => {
+  const profile = useAuthStore((state) => state.profile);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [requestError, setRequestError] = useState('');
   const [requestSuccess, setRequestSuccess] = useState(false);
@@ -55,8 +57,8 @@ const useRentalSubmission = (user) => {
         endDate,
         contractPdfUrl: null,
         customerInfo: {
-          name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
-          contact: user.contact_number || '',
+          name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || user.email,
+          contact: profile.contact_number || '',
           email: user.email,
         },
         total_price: calculatedPrice.total,
@@ -74,7 +76,7 @@ const useRentalSubmission = (user) => {
             cameraName: cameraModelName,
             startDate: new Date(startDate).toLocaleDateString(),
             endDate: new Date(endDate).toLocaleDateString(),
-            customerName: user.first_name || user.email || "User",
+            customerName: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || user.email || "User",
           };
 
           const pdfBytes = await generateSignedContractPdf(signatureDataUrl, rentalDetails);
