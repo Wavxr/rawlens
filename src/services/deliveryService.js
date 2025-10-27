@@ -131,43 +131,6 @@ export async function userConfirmDelivered(rentalId, userId) {
   }
 }
 
-
-
-// System: schedule return after end date has passed
-export async function scheduleAutomaticReturn(rentalId) {
-  try {
-    const { rental, error: fetchError } = await fetchRentalById(rentalId);
-    if (fetchError || !rental) {
-      throw new Error("Rental not found.");
-    }
-
-    const now = new Date();
-    const endDate = new Date(rental.end_date);
-    const isActive = rental.rental_status === "active";
-    const endDatePassed = !isNaN(endDate.getTime()) && endDate < now;
-
-    if (isActive && endDatePassed && rental.shipping_status !== "return_scheduled") {
-      const { data, error } = await supabase
-        .from("rentals")
-        .update({
-          shipping_status: "return_scheduled",
-        })
-        .eq("id", rentalId)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return { success: true, updatedRental: data };
-    }
-
-    // Nothing to update; return success for idempotency/logging
-    return { success: true, updatedRental: null };
-  } catch (error) {
-    console.error("Error in scheduleAutomaticReturn:", error);
-    return { success: false, error: error.message || "Failed to schedule automatic return." };
-  }
-}
-
 // User: confirms they sent the item back
 export async function userConfirmSentBack(rentalId, userId) {
   try {
@@ -220,5 +183,3 @@ export async function adminConfirmReturned(rentalId, adminId) {
     return { success: false, error: error.message || "Failed to confirm returned." };
   }
 }
-
-
