@@ -86,8 +86,6 @@ export default function AdminDashboard() {
     }
   ];
 
-  const navigationItems = navigationSections.flatMap(section => section.items);
-
   const mobileNavigationItems = [
     // { name: "Home", path: "/admin", icon: Home, exact: true },
     { name: "Bookings", path: "/admin/bookings", icon: Calendar },
