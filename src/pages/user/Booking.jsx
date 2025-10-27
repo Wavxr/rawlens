@@ -1068,8 +1068,9 @@ export default function Rentals() {
             </div>
           ) : null}
 
-          {/* Rental Extension Manager - Only show for confirmed and active rentals */}
-          {['confirmed', 'active'].includes(rental.rental_status) && (
+          {/* Rental Extension Manager - Only show for confirmed and active rentals that have been delivered */}
+          {['confirmed', 'active'].includes(rental.rental_status) && 
+           rental.shipping_status === 'delivered' && (
             <RentalExtensionManager 
               rental={rental} 
               userId={user.id} 
