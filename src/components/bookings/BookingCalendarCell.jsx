@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
-// Helper function to format date for input without timezone issues
 const formatDateForInput = (date) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -17,13 +17,25 @@ const BookingCalendarCell = ({
   onDayClick,
   onBookingContextMenu,
   isDarkMode,
-  hasConflicts // Add this prop to indicate conflicts
+  hasConflicts
 }) => {
   const [isSelecting, setIsSelecting] = useState(false);
   const [dragStart, setDragStart] = useState(null);
   const [showTooltip, setShowTooltip] = useState(false);
   const [longPressTimer, setLongPressTimer] = useState(null);
   const [isLongPressing, setIsLongPressing] = useState(false);
+  const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
+  const buttonRef = useRef(null);
+
+  useEffect(() => {
+    if (showTooltip && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setTooltipPosition({
+        top: rect.top + window.scrollY,
+        left: rect.left + window.scrollX + rect.width / 2,
+      });
+    }
+  }, [showTooltip]);
 
   if (!date) {
     // Empty cell for padding
@@ -66,7 +78,7 @@ const BookingCalendarCell = ({
 
   // Handle mouse down for drag selection
   const handleMouseDown = (e) => {
-    if (hasBookings) return; // Don't start selection on booked dates
+    if (hasBookings) return; 
     
     e.preventDefault();
     setIsSelecting(true);
@@ -239,6 +251,7 @@ const BookingCalendarCell = ({
 
   return (
     <button
+      ref={buttonRef}
       className={`relative h-12 sm:h-14 md:h-16 rounded-md sm:rounded-lg border flex flex-col items-center justify-between p-0.5 sm:p-1 transition ${cellClass}`}
       onMouseDown={handleMouseDown}
       onMouseEnter={() => {
@@ -302,17 +315,23 @@ const BookingCalendarCell = ({
         )}
       </div>
 
-      {/* Hover Tooltip */}
-      {showTooltip && hasBookings && (
-        <div className={`
-          absolute z-50 bottom-full mb-2 left-1/2 transform -translate-x-1/2
-          px-3 py-2 rounded-lg shadow-lg border min-w-48 max-w-64
-          ${isDarkMode 
-            ? 'bg-gray-800 border-gray-600 text-white' 
-            : 'bg-white border-gray-200 text-gray-800'
-          }
-          ${getTooltipContent() ? 'block' : 'hidden'}
-        `}>
+      {/* Hover Tooltip - Rendered via Portal */}
+      {showTooltip && hasBookings && createPortal(
+        <div 
+          className={`
+            fixed z-[9999] px-3 py-2 rounded-lg shadow-lg border min-w-48 max-w-64
+            ${isDarkMode 
+              ? 'bg-gray-800 border-gray-600 text-white' 
+              : 'bg-white border-gray-200 text-gray-800'
+            }
+            pointer-events-none
+          `}
+          style={{
+            top: `${tooltipPosition.top - 10}px`,
+            left: `${tooltipPosition.left}px`,
+            transform: 'translate(-50%, -100%)',
+          }}
+        >
           {getTooltipContent()}
           {/* Tooltip arrow */}
           <div className={`
@@ -320,7 +339,8 @@ const BookingCalendarCell = ({
             border-4 border-transparent
             ${isDarkMode ? 'border-t-gray-800' : 'border-t-white'}
           `} />
-        </div>
+        </div>,
+        document.body
       )}
     </button>
   );
