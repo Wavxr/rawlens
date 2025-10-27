@@ -27,7 +27,6 @@ const RentalExtensionManager = ({ rental, userId, onRefresh }) => {
       setHistoryLoading(true);
       const result = await userGetExtensionHistory(userId);
       if (result.success) {
-        // Filter extensions for current rental
         const rentalExtensions = result.data.filter(ext => ext.rental_id === rental.id);
         setExtensionHistory(rentalExtensions);
       }
@@ -38,7 +37,6 @@ const RentalExtensionManager = ({ rental, userId, onRefresh }) => {
     }
   }, [userId, rental.id]);
 
-  // Load extension history on component mount
   useEffect(() => {
     loadExtensionHistory();
   }, [rental.id, loadExtensionHistory]);
@@ -81,7 +79,6 @@ const RentalExtensionManager = ({ rental, userId, onRefresh }) => {
   const handleUploadPaymentReceipt = async (extensionPaymentId, file) => {
     setUploadingPayment(prev => ({ ...prev, [extensionPaymentId]: true }));
     try {
-
       const result = await uploadPaymentReceipt({ 
         paymentId: extensionPaymentId, 
         rentalId: rental.id, 
@@ -117,7 +114,7 @@ const RentalExtensionManager = ({ rental, userId, onRefresh }) => {
         return {
           color: 'bg-green-100 text-green-800 border-green-200',
           icon: CheckCircle2,
-          title: 'Extension Approved! 🎉',
+          title: 'Extension Approved!',
           description: 'Great news! Your extension has been approved. Please make the payment to confirm the new dates.'
         };
       case 'rejected':
@@ -161,8 +158,8 @@ const RentalExtensionManager = ({ rental, userId, onRefresh }) => {
         return {
           color: 'bg-green-100 text-green-800',
           icon: CheckCircle2,
-          title: 'Payment Verified ✅',
-          description: 'Payment confirmed! Your rental has been extended successfully.',
+          title: 'Payment Verified',
+          description: 'Your rental has been extended successfully.',
           canUpload: false
         };
       case 'rejected':
@@ -198,7 +195,6 @@ const RentalExtensionManager = ({ rental, userId, onRefresh }) => {
     return !hasActivePendingRequest && ['confirmed', 'active'].includes(rental.rental_status);
   };
 
-  // Calculate minimum date (current end date + 1 day)
   const getMinExtensionDate = () => {
     const currentEnd = new Date(rental.end_date);
     currentEnd.setDate(currentEnd.getDate() + 1);
@@ -341,18 +337,23 @@ const RentalExtensionManager = ({ rental, userId, onRefresh }) => {
             const extensionPayment = extension.payments?.[0]; // Extension payments are linked via extension_id
             const paymentInfo = getPaymentStatusInfo(extensionPayment);
             
+            // Only hide extension status if it's approved AND payment is verified (extension completed)
+            const hideExtensionStatus = extension.extension_status === 'approved' && extensionPayment?.payment_status === 'verified';
+            
             return (
               <div key={extension.id} className="bg-white border border-gray-200 rounded-lg p-3 sm:p-4 space-y-3">
-                {/* Extension Status - Compact */}
-                <div className={`border rounded-lg p-3 ${statusInfo.color}`}>
-                  <div className="flex items-center gap-2">
-                    <StatusIcon className="w-4 h-4 flex-shrink-0" />
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-sm">{statusInfo.title}</h4>
-                      <p className="text-xs opacity-90 mt-0.5">{statusInfo.description}</p>
+                {/* Extension Status - Show for pending, rejected, or approved with unverified payment */}
+                {!hideExtensionStatus && (
+                  <div className={`border rounded-lg p-3 ${statusInfo.color}`}>
+                    <div className="flex items-center gap-2">
+                      <StatusIcon className="w-4 h-4 flex-shrink-0" />
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-sm">{statusInfo.title}</h4>
+                        <p className="text-xs opacity-90 mt-0.5">{statusInfo.description}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 {/* Extension Details - Compact */}
                 <div className="grid grid-cols-3 gap-2">
