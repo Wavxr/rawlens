@@ -432,6 +432,27 @@ export async function adminGetSubmittedPayments() {
   }
 }
 
+// reactivates rental after extension payment verification
+export async function adminReactivateRentalAfterExtensionPayment(rentalId) {
+  try {
+    const { data, error } = await supabase
+      .from("rentals")
+      .update({
+        shipping_status: "delivered",
+        rental_status: "active",
+      })
+      .eq("id", rentalId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return { success: true, updatedRental: data };
+  } catch (error) {
+    console.error("Error in adminReactivateRentalAfterExtensionPayment:", error);
+    return { success: false, error: error.message || "Failed to reactivate rental after extension payment." };
+  }
+}
+
 // ------------------------------------------
 //   --  User Functions --
 // ------------------------------------------

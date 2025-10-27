@@ -4,6 +4,7 @@ import {
   adminGetSubmittedPayments, 
   adminVerifyRentalPayment, 
   adminVerifyExtensionPayment,
+  adminReactivateRentalAfterExtensionPayment,
   getPaymentReceiptUrl
 } from '../../services/paymentService';
 import { subscribeToAllPayments, unsubscribeFromChannel } from '../../services/realtimeService';
@@ -87,10 +88,16 @@ const Payments = () => {
         if (!extensionId) {
           throw new Error('Extension payment must have an associated extension');
         }
-        
-        // Check extension status from the payment data
-        // Note: We need to ensure the extension is approved
+
         result = await adminVerifyExtensionPayment(paymentId);
+
+        if (result.success) {
+          const rentalId = payment.rental_id;
+          const reactivationResult = await adminReactivateRentalAfterExtensionPayment(rentalId);
+          if (!reactivationResult.success) {
+            console.warn('Extension payment verified but failed to reactivate rental:');
+          }
+        }
       }
 
       if (result.success) {
