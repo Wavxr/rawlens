@@ -92,8 +92,9 @@ const CameraDetails = ({ camera, isMobile = false, calculatedPrice = null }) => 
 
   if (isMobile) {
     return (
-      <div className="mb-5">
-        <div className="flex border-b border-neutral-200 mb-4">
+      <div className="mb-6">
+        {/* Modern Pill Tab Switcher */}
+        <div className="flex gap-2 mb-5 bg-neutral-100 p-1.5 rounded-2xl">
           <button
             onClick={() => {
               if (!isAnimating) {
@@ -104,9 +105,9 @@ const CameraDetails = ({ camera, isMobile = false, calculatedPrice = null }) => 
                 }, 150)
               }
             }}
-            className={`flex-1 py-3 text-center text-sm font-semibold transition-all duration-200 ${
+            className={`flex-1 py-2.5 text-center text-sm font-semibold rounded-xl transition-all duration-300 ${
               activeTab === "description"
-                ? "text-neutral-900 border-b-2 border-neutral-900"
+                ? "bg-white text-neutral-900 shadow-sm"
                 : "text-neutral-500 hover:text-neutral-700"
             }`}
             aria-selected={activeTab === "description"}
@@ -123,9 +124,9 @@ const CameraDetails = ({ camera, isMobile = false, calculatedPrice = null }) => 
                 }, 150)
               }
             }}
-            className={`flex-1 py-3 text-center text-sm font-semibold transition-all duration-200 ${
+            className={`flex-1 py-2.5 text-center text-sm font-semibold rounded-xl transition-all duration-300 ${
               activeTab === "inclusions"
-                ? "text-neutral-900 border-b-2 border-neutral-900"
+                ? "bg-white text-neutral-900 shadow-sm"
                 : "text-neutral-500 hover:text-neutral-700"
             }`}
             aria-selected={activeTab === "inclusions"}
@@ -151,10 +152,10 @@ const CameraDetails = ({ camera, isMobile = false, calculatedPrice = null }) => 
           >
             {/* Description Tab */}
             {activeTab === "description" && (
-              <div>
-                <p className="text-gray-600 text-sm leading-relaxed">
+              <div className="bg-neutral-50 rounded-2xl p-4 border border-neutral-200">
+                <p className="text-neutral-700 text-sm leading-relaxed">
                   {camera?.description || (
-                    <span className="text-gray-400">No description available</span>
+                    <span className="text-neutral-400 italic">No description available</span>
                   )}
                 </p>
               </div>
@@ -162,26 +163,30 @@ const CameraDetails = ({ camera, isMobile = false, calculatedPrice = null }) => 
 
             {/* Inclusions Tab */}
             {activeTab === "inclusions" && (
-              <div>
+              <div className="bg-neutral-50 rounded-2xl p-4 border border-neutral-200">
                 {loadingInclusions ? (
-                  <div className="flex items-center text-gray-500 text-sm">
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  <div className="flex items-center justify-center py-8 text-neutral-500 text-sm">
+                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
                     Loading inclusions...
                   </div>
                 ) : inclusions.length > 0 ? (
-                  <div className="grid grid-cols-2 md:grid-cols-1 gap-2">
+                  <div className="space-y-3">
                     {inclusions.map((inclusion, index) => (
-                        <div key={index} className="flex items-center space-x-2">
-                        <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></div>
-                        <span className="text-gray-700 text-sm">
-                            {inclusion.inclusion_items?.name}
-                            {inclusion.quantity > 1 ? ` (x${inclusion.quantity})` : ""}
-                          </span>
-                        </div>
+                      <div key={index} className="flex items-start space-x-3">
+                        <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+                        <span className="text-neutral-800 text-sm leading-relaxed">
+                          {inclusion.inclusion_items?.name}
+                          {inclusion.quantity > 1 && (
+                            <span className="text-neutral-500 ml-1">×{inclusion.quantity}</span>
+                          )}
+                        </span>
+                      </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-gray-500 text-sm">No specific inclusions listed</p>
+                  <p className="text-neutral-500 text-sm text-center py-4 italic">
+                    No specific inclusions listed
+                  </p>
                 )}
               </div>
             )}

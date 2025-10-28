@@ -158,52 +158,52 @@ const ContractSigningModal = ({
   const isSubmitDisabled = isSubmitting || isGeneratingContract;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4 overflow-y-auto">
-      <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-3 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+        <div className="p-4 sm:p-6">
 
           {/* --- HEADER SECTION --- */}
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">Rental Agreement</h2>
+          <div className="flex justify-between items-center mb-3 sm:mb-4">
+            <h2 className="text-lg sm:text-2xl font-bold text-gray-800">Rental Agreement</h2>
             <button
               onClick={onClose}
               disabled={isSubmitDisabled} // Disable close button during submission
               className="text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <X className="h-6 w-6" />
+              <X className="h-5 w-5 sm:h-6 sm:w-6" />
             </button>
           </div>
 
           {/* --- RENTAL SUMMARY SECTION --- */}
-          <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <h3 className="font-semibold text-blue-800 mb-2">Rental Summary</h3>
-            <div className="grid grid-cols-2 gap-2 text-sm">
+          <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <h3 className="font-semibold text-blue-800 mb-2 text-sm sm:text-base">Rental Summary</h3>
+            <div className="grid grid-cols-2 gap-1.5 sm:gap-2 text-xs sm:text-sm">
               <span className="font-medium">Camera:</span>
-              <span>{camera?.name}</span>
+              <span className="break-words">{camera?.name}</span>
               <span className="font-medium">Rental Period:</span>
-              <span>{new Date(startDate).toLocaleDateString()} to {new Date(endDate).toLocaleDateString()}</span>
+              <span className="break-words">{new Date(startDate).toLocaleDateString()} to {new Date(endDate).toLocaleDateString()}</span>
               <span className="font-medium">Duration:</span>
               <span>{calculatedPrice?.days} days</span>
               <span className="font-medium">Total Price:</span>
-              <span className="font-bold text-lg">₱{calculatedPrice?.total?.toFixed(2)}</span>
+              <span className="font-bold text-base sm:text-lg">₱{calculatedPrice?.total?.toFixed(2)}</span>
             </div>
           </div>
 
           {/* --- TERMS & CONDITIONS SECTION --- */}
-          <div className="mb-6">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="font-semibold text-gray-800">Terms & Conditions</h3>
+          <div className="mb-4 sm:mb-6">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-2 gap-1 sm:gap-0">
+              <h3 className="font-semibold text-gray-800 text-sm sm:text-base">Terms & Conditions</h3>
               <a
                 href="/RawLens Camera Agreement.pdf"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center text-sm text-blue-600 hover:text-blue-800"
+                className="flex items-center text-xs sm:text-sm text-blue-600 hover:text-blue-800"
               >
-                <Download className="mr-1 h-4 w-4" />
+                <Download className="mr-1 h-3 w-3 sm:h-4 sm:w-4" />
                 View Full Agreement (PDF)
               </a>
             </div>
-            <div className="border border-gray-300 rounded-lg p-4 h-96 overflow-y-auto text-sm text-gray-700 bg-gray-50">
+            <div className="border border-gray-300 rounded-lg p-3 sm:p-4 h-64 sm:h-96 overflow-y-auto text-xs sm:text-sm text-gray-700 bg-gray-50">
               <p className="mb-3">
                 This Camera Rental Agreement is made and entered into by the undersigned renter
                 <span className="font-semibold"> _____________________________________________ </span>
@@ -276,11 +276,11 @@ const ContractSigningModal = ({
           {/* --- SIGNATURE SECTION --- */}
           {!signatureDataUrl ? (
             <>
-              <div className="mb-6">
-                <h3 className="font-semibold text-gray-800 mb-2">Sign Below:</h3>
+              <div className="mb-4 sm:mb-6">
+                <h3 className="font-semibold text-gray-800 mb-2 text-sm sm:text-base">Sign Below:</h3>
                 <div
                   ref={canvasWrapperRef}
-                  className="border-2 border-dashed border-gray-300 rounded-lg p-2 bg-white w-full h-48"
+                  className="border-2 border-dashed border-gray-300 rounded-lg p-1.5 sm:p-2 bg-white w-full h-36 sm:h-48"
                 >
                   <SignatureCanvas
                     ref={sigCanvasRef}
@@ -293,7 +293,7 @@ const ContractSigningModal = ({
                 <button
                   onClick={clearSignature}
                   disabled={isSubmitDisabled} // Disable clear during submission
-                  className="mt-2 px-3 py-1 text-sm bg-gray-200 hover:bg-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="mt-2 px-3 py-1 text-xs sm:text-sm bg-gray-200 hover:bg-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Clear
                 </button>
@@ -303,18 +303,18 @@ const ContractSigningModal = ({
                   </p>
                 )}
               </div>
-              <div className="flex justify-end space-x-3">
+              <div className="flex justify-end space-x-2 sm:space-x-3">
                 <button
                   onClick={onClose}
                   disabled={isSubmitDisabled} // Disable cancel during submission
-                  className="px-5 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 sm:px-5 py-2 text-sm sm:text-base border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={saveSignature}
                   disabled={isSubmitDisabled} // Disable save during submission
-                  className={`px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 flex items-center disabled:opacity-50 disabled:cursor-not-allowed`}
+                  className={`px-3 sm:px-5 py-2 text-sm sm:text-base bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 flex items-center disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   Save Signature
                 </button>
@@ -322,19 +322,19 @@ const ContractSigningModal = ({
             </>
           ) : (
             <div className="flex flex-col items-center">
-              <p className="mb-4 text-green-600 font-medium">Signature captured!</p>
+              <p className="mb-3 sm:mb-4 text-green-600 font-medium text-sm sm:text-base">Signature captured!</p>
               {/* Show either the processing message or the submit button */}
               {isGeneratingContract ? ( // Use the prop passed down for PDF generation
-                <div className="flex items-center">
+                <div className="flex items-center text-sm sm:text-base">
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   <span>Processing contract and submitting request...</span>
                 </div>
               ) : (
-                <div className="flex space-x-3">
+                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 w-full sm:w-auto">
                   <button
                     onClick={() => setSignatureDataUrl(null)}
                     disabled={isSubmitDisabled} // Disable resign during submission
-                    className="px-5 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 sm:px-5 py-2 text-sm sm:text-base border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Resign
                   </button>
@@ -342,7 +342,7 @@ const ContractSigningModal = ({
                   <button
                     onClick={handleSubmitClick}
                     disabled={isSubmitDisabled} // Main disable condition
-                    className="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 sm:px-5 py-2 text-sm sm:text-base bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isSubmitting ? ( // Show spinner if parent is submitting
                       <>
