@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import useAuthStore from '../../stores/useAuthStore';
 import useRentalStore from '../../stores/rentalStore';
 import { 
@@ -6,351 +6,81 @@ import {
   subscribeToUserPayments, 
   unsubscribeFromChannel 
 } from '../../services/realtimeService';
-import { userCancelRentalRequest, userCancelConfirmedRental } from '../../services/rentalService';
-import { Loader2, Calendar, Camera as CameraIcon, AlertCircle, Clock, CheckCircle2, XCircle, Trash2 } from 'lucide-react';
-import PaymentUploadSection from '../../components/payment/PaymentUploadSection';
-import PaymentDetails from '../../components/payment/PaymentDetails';
-import CancellationModal from '../../components/modals/CancellationModal';
-import { toast, ToastContainer } from 'react-toastify';
+import { Loader2, Camera as CameraIcon, AlertCircle, Clock, CheckCircle2, XCircle, CreditCard } from 'lucide-react';
+import FilterTabs from '../../components/rental/shared/FilterTabs';
+import RequestCard from '../../components/rental/shared/RequestCard';
+import RequestDetailView from '../../components/rental/shared/RequestDetailView';
+import MobileRequestOverlay from '../../components/rental/layouts/MobileRequestOverlay';
+import useIsMobile from '../../hooks/useIsMobile';
+import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-function formatDate(dateStr) {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-}
 
-const StatusPill = ({ status }) => {
-  const statusConfig = {
-    pending: {
-      bg: 'bg-gradient-to-r from-amber-50 to-yellow-50',
-      text: 'text-amber-800',
-      border: 'border-amber-200',
+/**
+ * EmptyState Component - Shows when no rentals in filter
+ */
+const EmptyState = ({ activeFilter }) => {
+  const config = {
+    to_approve: {
       icon: Clock,
-      glow: 'shadow-amber-100'
+      iconColor: 'text-amber-600',
+      bgColor: 'bg-amber-100',
+      title: 'No pending requests',
+      subtitle: 'Once you submit a rental request, it will appear here while awaiting admin review.'
     },
-    confirmed: {
-      bg: 'bg-gradient-to-r from-emerald-50 to-green-50',
-      text: 'text-emerald-800',
-      border: 'border-emerald-200',
-      icon: CheckCircle2,
-      glow: 'shadow-emerald-100'
+    to_pay: {
+      icon: CreditCard,
+      iconColor: 'text-blue-600',
+      bgColor: 'bg-blue-100',
+      title: 'No payment required',
+      subtitle: 'Confirmed rentals requiring payment will appear here. Check other tabs for your rentals.'
     },
-    rejected: {
-      bg: 'bg-gradient-to-r from-red-50 to-rose-50',
-      text: 'text-red-800',
-      border: 'border-red-200',
+    declined: {
       icon: XCircle,
-      glow: 'shadow-red-100'
+      iconColor: 'text-red-600',
+      bgColor: 'bg-red-100',
+      title: 'No declined requests',
+      subtitle: 'If a rental request is declined by an admin, it will appear here with the rejection reason.'
     }
   };
 
-  const config = statusConfig[status] || {
-    bg: 'bg-gradient-to-r from-slate-50 to-gray-50/50',
-    text: 'text-slate-700',
-    border: 'border-slate-200',
-    icon: AlertCircle,
-    glow: 'shadow-slate-100'
-  };
+  const currentConfig = config[activeFilter] || config.to_approve;
+  const Icon = currentConfig.icon;
 
   return (
-    <div className={`inline-flex items-center gap-1 md:gap-1.5 px-2.5 md:px-3 py-1 md:py-1.5 text-xs font-medium border rounded-md ${config.bg} ${config.text} ${config.border} shadow-sm ${config.glow}`}>
-      <config.icon className="w-2.5 h-2.5 md:w-3 md:h-3" />
-      <span className="capitalize text-xs md:text-xs">{status}</span>
+    <div className="bg-white border border-gray-200 rounded-xl p-8 sm:p-12 text-center">
+      <div className={`w-16 h-16 rounded-2xl ${currentConfig.bgColor} flex items-center justify-center mx-auto mb-4`}>
+        <Icon className={`h-8 w-8 ${currentConfig.iconColor}`} />
+      </div>
+      <h3 className="text-lg font-semibold text-gray-900 mb-2">{currentConfig.title}</h3>
+      <p className="text-sm text-gray-600 leading-relaxed max-w-md mx-auto">{currentConfig.subtitle}</p>
     </div>
   );
 };
 
-const Section = ({ title, count, children }) => (
-  <div className="bg-gradient-to-br from-white to-gray-50/50 border border-gray-200/60 rounded-lg overflow-hidden shadow-sm">
-    <div className="px-4 md:px-6 py-3 md:py-4 bg-gradient-to-r from-[#052844]/5 to-[#052844]/10 border-b border-gray-200/60">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 md:gap-3">
-          <h3 className="text-sm md:text-lg font-medium md:font-semibold text-slate-800">{title}</h3>
-        </div>
-        <div className="flex items-center gap-1 md:gap-2">
-          <div className="px-2 md:px-3 py-0.5 md:py-1 bg-white/80 border border-slate-200 rounded-md">
-            <span className="text-xs md:text-sm font-medium text-slate-600">{count}</span>
-          </div>
-          <span className="text-xs text-slate-500 hidden md:inline">item{count === 1 ? '' : 's'}</span>
-        </div>
-      </div>
-    </div>
-    <div className="divide-y divide-gray-100">{children}</div>
-  </div>
-);
-
-const RequestRow = ({ rental, onUploadComplete, onCancelComplete }) => {
-  const [isCancelling, setIsCancelling] = useState(false);
-  const [showCancellationModal, setShowCancellationModal] = useState(false);
-  const camera = rental.cameras || {};
-  const dateRange = `${formatDate(rental.start_date)} — ${formatDate(rental.end_date)}`;
-
-  const handleCancelRequest = async () => {
-    if (!confirm('Are you sure you want to cancel this rental request? This action cannot be undone.')) {
-      return;
-    }
-
-    setIsCancelling(true);
-    try {
-      const result = await userCancelRentalRequest(rental.id);
-      if (result.success) {
-        toast.success('Rental request cancelled successfully');
-        if (onCancelComplete) {
-          onCancelComplete();
-        }
-      } else {
-        toast.error(result.error || 'Failed to cancel rental request');
-      }
-    } catch {
-      toast.error('Failed to cancel rental request');
-    } finally {
-      setIsCancelling(false);
-    }
-  };
-
-  const handleCancelConfirmedRental = async (rentalId, reason) => {
-    try {
-      const result = await userCancelConfirmedRental(rentalId, reason);
-      if (result.success) {
-        toast.success('Rental cancelled successfully');
-        setShowCancellationModal(false);
-        if (onCancelComplete) {
-          onCancelComplete();
-        }
-      } else {
-        toast.error(result.error || 'Failed to cancel rental');
-      }
-    } catch {
-      toast.error('Failed to cancel rental');
-    }
-  };
-
-  const canCancelConfirmed = () => {
-    // Check if the rental is confirmed and not yet shipped or in customer's hands
-    if (rental.rental_status !== 'confirmed') return false;
-    
-    // Allow cancellation if shipping hasn't started or only in ready_to_ship status
-    const prohibitedShippingStatuses = [
-      'in_transit_to_user',
-      'delivered', 
-      'active',
-      'return_scheduled',
-      'in_transit_to_owner'
-    ];
-    
-    return !rental.shipping_status || 
-           rental.shipping_status === 'ready_to_ship' || 
-           !prohibitedShippingStatuses.includes(rental.shipping_status);
-  };
-  
-  return (
-    <div className="px-3 md:px-6 py-3 md:py-5 hover:bg-gradient-to-r hover:from-slate-50/50 hover:to-gray-50/30 transition-all duration-200 group">
-      <div className="flex items-start gap-3 md:gap-5">
-        {/* Camera Image */}
-        <div className="relative flex-shrink-0">
-          <div className="w-10 h-10 md:w-16 md:h-16 rounded-lg md:rounded-xl overflow-hidden bg-gradient-to-br from-slate-100 to-gray-100 flex items-center justify-center border border-gray-200 group-hover:shadow-md transition-shadow">
-            {camera.image_url ? (
-              <img
-                src={camera.image_url}
-                alt={camera.name}
-                className="w-full h-full object-cover"
-                onError={(e) => { e.currentTarget.style.display = 'none'; }}
-              />
-            ) : (
-              <CameraIcon className="w-4 h-4 md:w-7 md:h-7 text-slate-400" />
-            )}
-          </div>
-          {/* Status indicator dot */}
-          <div className={`absolute -top-0.5 -right-0.5 md:-top-1 md:-right-1 w-2 h-2 md:w-3 md:h-3 rounded-full border border-white md:border-2 shadow-sm ${
-            rental.rental_status === 'confirmed' ? 'bg-emerald-400' :
-            rental.rental_status === 'pending' ? 'bg-amber-400' : 'bg-red-400'
-          }`} />
-        </div>
-
-        {/* Main Content */}
-        <div className="flex-1 min-w-0 space-y-2 md:space-y-3">
-          {/* Header */}
-          <div className="flex items-start justify-between gap-2 md:gap-4">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 md:gap-3 mb-1 md:mb-2">
-                <h4 className="text-sm md:text-base font-medium md:font-semibold text-slate-800 truncate group-hover:text-slate-900 transition-colors">
-                  {camera.name || 'Camera'}
-                </h4>
-                <StatusPill status={rental.rental_status} />
-                {/* Cancel button for pending requests */}
-                {rental.rental_status === 'pending' && (
-                  <button
-                    onClick={handleCancelRequest}
-                    disabled={isCancelling}
-                    className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 hover:border-red-300 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Cancel rental request"
-                  >
-                    {isCancelling ? (
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                    ) : (
-                      <Trash2 className="w-3 h-3" />
-                    )}
-                    <span className="hidden md:inline">Cancel</span>
-                  </button>
-                )}
-                {/* Cancel button for confirmed requests (only before shipping) */}
-                {canCancelConfirmed() && (
-                  <button
-                    onClick={() => setShowCancellationModal(true)}
-                    className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200 rounded-md hover:bg-amber-100 hover:border-amber-300 transition-colors duration-150"
-                    title="Cancel confirmed rental"
-                  >
-                    <XCircle className="w-3 h-3" />
-                    <span className="hidden md:inline">Cancel</span>
-                  </button>
-                )}
-              </div>
-              
-              {/* Date Range */}
-              <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-slate-600">
-                <div className="w-4 h-4 md:w-5 md:h-5 rounded-md bg-slate-100 flex items-center justify-center flex-shrink-0">
-                  <Calendar className="w-2.5 h-2.5 md:w-3 md:h-3 text-slate-500" />
-                </div>
-                <span className="font-medium">{dateRange}</span>
-              </div>
-            </div>
-
-            {/* Submission Date */}
-            <div className="text-right flex-shrink-0">
-              <div className="text-xs text-slate-500 uppercase tracking-wide font-medium mb-0.5 md:mb-1 hidden md:block">Submitted</div>
-              <div className="text-xs md:text-sm font-medium md:font-semibold text-slate-700 bg-slate-100 px-1.5 md:px-2 py-0.5 md:py-1 rounded-md">
-                {formatDate(rental.created_at)}
-              </div>
-            </div>
-          </div>
-
-          {/* Rejection Reason */}
-          {rental.rental_status === 'rejected' && rental.rejection_reason && (
-            <div className="bg-gradient-to-r from-red-50 to-rose-50 border border-red-200 rounded-lg md:rounded-xl p-2 md:p-4">
-              <div className="flex items-start gap-2 md:gap-3">
-                <div className="w-4 h-4 md:w-6 md:h-6 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <XCircle className="w-2.5 h-2.5 md:w-4 md:h-4 text-red-600" />
-                </div>
-                <div className="flex-1">
-                  <div className="text-xs md:text-sm font-medium text-red-800 mb-0.5 md:mb-1">Rejection Reason</div>
-                  <div className="text-xs md:text-sm text-red-700 leading-relaxed">{rental.rejection_reason}</div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Payment Upload Section */}
-          {rental.rental_status === 'confirmed' && (() => {
-            // Always use the initial payment record for status
-            const initialPayment = rental.payments?.find(payment => 
-              payment.payment_type === 'rental' && !payment.extension_id
-            );
-            const paymentStatus = initialPayment?.payment_status;
-
-            // No payment record yet (should not happen after admin approves, but handle gracefully)
-            if (!initialPayment) {
-              return (
-                <div className="bg-gradient-to-r from-gray-50 to-slate-50 border border-gray-200 rounded-lg md:rounded-xl p-2 md:p-4 text-gray-500 text-sm">
-                  Waiting for admin to generate payment instructions...
-                </div>
-              );
-            }
-
-            // Payment verified: show only verified message
-            if (paymentStatus === 'verified') {
-              return (
-                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg md:rounded-xl p-2 md:p-4">
-                  <div className="flex items-center gap-2 text-green-700">
-                    <CheckCircle2 className="w-5 h-5" />
-                    <span className="text-sm font-semibold">Payment Verified ✓</span>
-                  </div>
-                  <div className="text-sm text-green-600 mt-1">
-                    Your payment has been verified. Your rental is now confirmed and will be prepared for delivery.
-                  </div>
-                </div>
-              );
-            }
-
-            // Payment submitted: show under review message
-            if (paymentStatus === 'submitted') {
-              return (
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg md:rounded-xl p-2 md:p-4">
-                  <div className="flex items-center gap-2 text-blue-700">
-                    <Clock className="w-5 h-5" />
-                    <span className="text-sm font-semibold">Payment Receipt Submitted</span>
-                  </div>
-                  <div className="text-sm text-blue-600 mt-1">
-                    Your payment receipt has been uploaded and is currently being reviewed by our admin team. You'll be notified once verification is complete (usually within 24 hours).
-                  </div>
-                </div>
-              );
-            }
-
-            // Payment pending or rejected: show payment details and upload
-            if (paymentStatus === 'pending' || paymentStatus === 'rejected') {
-              return (
-                <div className="space-y-3">
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg md:rounded-xl p-2 md:p-4">
-                    <PaymentDetails rental={rental} />
-                  </div>
-                  <div className={`border rounded-lg md:rounded-xl p-2 md:p-4 ${
-                    paymentStatus === 'rejected'
-                      ? 'bg-gradient-to-r from-red-50 to-rose-50 border-red-200'
-                      : 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200'
-                  }`}>
-                    <PaymentUploadSection rental={rental} onUploadComplete={onUploadComplete} />
-                  </div>
-                </div>
-              );
-            }
-
-            // Fallback (should not happen)
-            return null;
-          })()}
-        </div>
-      </div>
-
-      {/* Cancellation Modal */}
-      <CancellationModal
-        isOpen={showCancellationModal}
-        onClose={() => setShowCancellationModal(false)}
-        onConfirm={handleCancelConfirmedRental}
-        rental={rental}
-      />
-    </div>
-  );
-};
-
-const EmptyState = ({ title, subtitle }) => (
-  <div className="py-12 md:py-16 text-center">
-    <div className="max-w-sm mx-auto px-4">
-      <h4 className="text-base md:text-lg font-medium md:font-semibold text-slate-800 mb-1 md:mb-2">{title}</h4>
-      <p className="text-xs md:text-sm text-slate-500 leading-relaxed">{subtitle}</p>
-    </div>
-  </div>
-);
-
+/**
+ * Main Requests Component
+ */
 const Requests = () => {
   const { user, loading: authLoading } = useAuthStore();
   const { rentals, loading, error, loadRentals } = useRentalStore();
   const rentalSubscriptionRef = useRef(null);
   const paymentSubscriptionRef = useRef(null);
+  const isMobile = useIsMobile();
 
-  const handleUploadComplete = () => {
-    // Refresh rentals data after successful upload
+  // State
+  const [activeFilter, setActiveFilter] = useState('to_approve');
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [isMobileDetailOpen, setIsMobileDetailOpen] = useState(false);
+
+  // Refresh handler
+  const handleRefresh = useCallback(() => {
     if (user?.id) {
       loadRentals(user.id);
     }
-  };
+  }, [user?.id, loadRentals]);
 
-  const handleCancelComplete = () => {
-    // Refresh rentals data after successful cancellation
-    if (user?.id) {
-      loadRentals(user.id);
-    }
-  };
-
+  // Real-time subscriptions
   useEffect(() => {
     if (user?.id) {
       loadRentals(user.id);
@@ -382,39 +112,110 @@ const Requests = () => {
     };
   }, [user?.id, loadRentals]);
 
-  const { pending, confirmedUpcoming, rejected } = useMemo(() => {
-    const groups = { pending: [], confirmedUpcoming: [], rejected: [] };
-    for (const r of rentals) {
-      if (r.rental_status === 'pending') groups.pending.push(r);
-      else if (r.rental_status === 'rejected') groups.rejected.push(r);
-      else if (r.rental_status === 'confirmed') groups.confirmedUpcoming.push(r);
-    }
+  // Filter rentals into groups
+  const filterGroups = useMemo(() => {
+    const groups = { to_approve: [], to_pay: [], declined: [] };
     
-    // Sort confirmed upcoming rentals - those without payment come first
-    groups.confirmedUpcoming.sort((a, b) => {
-      // Check if payment exists or verified
-      const aHasPayment = (a.payments && a.payments.length > 0) || a.payment_status === 'verified';
-      const bHasPayment = (b.payments && b.payments.length > 0) || b.payment_status === 'verified';
+    for (const r of rentals) {
+      if (r.rental_status === 'pending') {
+        groups.to_approve.push(r);
+      } else if (r.rental_status === 'rejected') {
+        groups.declined.push(r);
+      } else if (r.rental_status === 'confirmed') {
+        // Check if payment is needed
+        const initialPayment = r.payments?.find(
+          p => p.payment_type === 'rental' && !p.extension_id
+        );
+        const paymentStatus = initialPayment?.payment_status;
+        
+        // Add to "To Pay" if payment is not verified
+        if (!initialPayment || ['pending', 'submitted', 'rejected'].includes(paymentStatus)) {
+          groups.to_pay.push(r);
+        }
+      }
+    }
+
+    // Sort "To Pay" - pending/rejected payment first
+    groups.to_pay.sort((a, b) => {
+      const aPayment = a.payments?.find(p => p.payment_type === 'rental' && !p.extension_id);
+      const bPayment = b.payments?.find(p => p.payment_type === 'rental' && !p.extension_id);
+      const aStatus = aPayment?.payment_status;
+      const bStatus = bPayment?.payment_status;
       
-      // If one has payment and other doesn't, prioritize the one without payment
-      if (!aHasPayment && bHasPayment) return -1;
-      if (aHasPayment && !bHasPayment) return 1;
+      // Pending/rejected come first
+      if (aStatus === 'pending' || aStatus === 'rejected') return -1;
+      if (bStatus === 'pending' || bStatus === 'rejected') return 1;
       
-      // If both have same payment status, sort by start date (earliest first)
+      // Then by start date
       return new Date(a.start_date) - new Date(b.start_date);
     });
-    
+
     return groups;
   }, [rentals]);
 
+  // Get displayed rentals based on active filter
+  const displayedRentals = filterGroups[activeFilter] || [];
+
+  // Auto-select first rental when filter changes or data loads
+  useEffect(() => {
+    if (displayedRentals.length > 0) {
+      // If no selection or current selection not in list, select first
+      if (!selectedRequest || !displayedRentals.find(r => r.id === selectedRequest.id)) {
+        setSelectedRequest(displayedRentals[0]);
+      }
+    } else {
+      setSelectedRequest(null);
+    }
+  }, [displayedRentals, selectedRequest]);
+
+  // Handle request card click
+  const handleRequestClick = useCallback((rental) => {
+    setSelectedRequest(rental);
+    if (isMobile) {
+      setIsMobileDetailOpen(true);
+    }
+  }, [isMobile]);
+
+  // Handle mobile overlay close
+  const handleMobileClose = useCallback(() => {
+    setIsMobileDetailOpen(false);
+  }, []);
+
+  // Filter configuration
+  const filters = useMemo(() => [
+    {
+      key: 'to_approve',
+      label: 'To Approve',
+      shortLabel: 'To Approve',
+      icon: Clock,
+      count: filterGroups.to_approve.length
+    },
+    {
+      key: 'to_pay',
+      label: 'To Pay',
+      shortLabel: 'To Pay',
+      icon: CreditCard,
+      count: filterGroups.to_pay.length
+    },
+    {
+      key: 'declined',
+      label: 'Declined',
+      shortLabel: 'Declined',
+      icon: XCircle,
+      count: filterGroups.declined.length
+    }
+  ], [filterGroups]);
+
+
+  // Loading states
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 rounded-xl bg-white shadow-lg flex items-center justify-center mb-4">
-            <Loader2 className="w-6 h-6 text-slate-600 animate-spin" />
+          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-white shadow-lg flex items-center justify-center mb-4">
+            <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 text-neutral-600 animate-spin" />
           </div>
-          <p className="text-slate-600 font-medium">Checking your session...</p>
+          <p className="text-sm sm:text-base text-neutral-600 font-medium">Checking your session...</p>
         </div>
       </div>
     );
@@ -422,101 +223,123 @@ const Requests = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4 sm:p-6">
         <div className="max-w-md mx-auto text-center">
-          <div className="w-20 h-20 rounded-2xl bg-white shadow-lg flex items-center justify-center mb-6">
-            <AlertCircle className="w-10 h-10 text-slate-400" />
+          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white shadow-lg flex items-center justify-center mb-4 sm:mb-6 mx-auto">
+            <AlertCircle className="w-8 h-8 sm:w-10 sm:h-10 text-neutral-400" />
           </div>
-          <h2 className="text-xl font-semibold text-slate-800 mb-3">Authentication Required</h2>
-          <p className="text-slate-600 leading-relaxed">Please log in to view your rental requests and track their status.</p>
+          <h2 className="text-lg sm:text-xl font-semibold text-neutral-800 mb-2 sm:mb-3">Authentication Required</h2>
+          <p className="text-sm sm:text-base text-neutral-600 leading-relaxed">
+            Please log in to view your rental requests and track their status.
+          </p>
         </div>
       </div>
     );
   }
 
+  // Main render
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100">
-      <div className="max-w-6xl mx-auto px-3 md:px-6 py-4 md:py-8">
-        {/* Header */}
-        <div className="mb-6 md:mb-8">
-          <div className="flex items-center gap-2 md:gap-4 mb-2 md:mb-3">
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-[#052844] flex items-center justify-center">
-              <Calendar className="w-4 h-4 md:w-5 md:h-5 text-white" />
-            </div>
-            <h1 className="text-xl md:text-3xl font-semibold md:font-bold text-slate-800">My Requests</h1>
-          </div>
-          <p className="text-xs md:text-base text-slate-600 leading-relaxed max-w-2xl px-1 md:px-0">
-            Track your rental applications and manage upcoming confirmed rentals. Stay updated with real-time status changes.
-          </p>
-        </div>
-
+    <div className="min-h-screen bg-neutral-50">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
+        
         {/* Error State */}
         {error && (
-          <div className="mb-6 p-4 bg-gradient-to-r from-red-50 to-rose-50 border border-red-200 rounded-xl">
-            <div className="flex items-center gap-3">
-              <XCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-              <p className="text-red-700 font-medium">{error}</p>
+          <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-xl">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <XCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 flex-shrink-0" />
+              <p className="text-sm sm:text-base text-red-700 font-medium">{error}</p>
             </div>
           </div>
         )}
 
         {/* Loading State */}
         {loading ? (
-          <div className="flex items-center justify-center py-24">
+          <div className="flex items-center justify-center py-16 sm:py-24">
             <div className="text-center">
-              <div className="w-12 h-12 rounded-xl bg-white shadow-lg flex items-center justify-center mb-4">
-                <Loader2 className="w-6 h-6 text-slate-600 animate-spin" />
+              <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-white shadow-lg flex items-center justify-center mb-4 mx-auto">
+                <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 text-neutral-600 animate-spin" />
               </div>
-              <p className="text-slate-600 font-medium">Loading your requests...</p>
+              <p className="text-sm sm:text-base text-neutral-600 font-medium">Loading your requests...</p>
             </div>
           </div>
         ) : (
-          /* Main Content */
-          <div className="space-y-4 md:space-y-8">
-            <Section title="Pending Review" count={pending.length} icon={Clock}>
-              {pending.length === 0 ? (
-                <EmptyState 
-                  title="No pending requests" 
-                  subtitle="Once you submit a rental request, it will appear here while awaiting admin review."
-                  icon={Clock}
-                />
-              ) : (
-                pending.map(r => (
-                  <RequestRow key={r.id} rental={r} onUploadComplete={handleUploadComplete} onCancelComplete={handleCancelComplete} />
-                ))
+          <>
+            {/* Filter Tabs - wrap mobile content for swipe detection */}
+            <FilterTabs
+              filters={filters}
+              activeFilter={activeFilter}
+              onFilterChange={setActiveFilter}
+              isMobile={isMobile}
+            >
+              {/* Mobile swipeable content */}
+              {isMobile && displayedRentals.length > 0 && (
+                <div className="space-y-3 mt-4">
+                  {displayedRentals.map((rental) => (
+                    <RequestCard
+                      key={rental.id}
+                      rental={rental}
+                      variant="mobile"
+                      onClick={() => handleRequestClick(rental)}
+                    />
+                  ))}
+                </div>
               )}
-            </Section>
+            </FilterTabs>
 
-            <Section title="Confirmed & Upcoming" count={confirmedUpcoming.length} icon={CheckCircle2}>
-              {confirmedUpcoming.length === 0 ? (
-                <EmptyState 
-                  title="No upcoming rentals" 
-                  subtitle="Confirmed rentals that haven't started yet will appear here with payment upload options."
-                  icon={CheckCircle2}
+            {displayedRentals.length === 0 ? (
+              /* Empty State */
+              <EmptyState activeFilter={activeFilter} />
+            ) : isMobile ? (
+              /* Mobile Overlay */
+              <MobileRequestOverlay
+                isOpen={isMobileDetailOpen}
+                onClose={handleMobileClose}
+                title={selectedRequest?.cameras?.name || 'Request Details'}
+              >
+                <RequestDetailView
+                  rental={selectedRequest}
+                  onRefresh={handleRefresh}
+                  onBack={handleMobileClose}
+                  isMobile={true}
                 />
-              ) : (
-                confirmedUpcoming.map(r => (
-                  <RequestRow key={r.id} rental={r} onUploadComplete={handleUploadComplete} onCancelComplete={handleCancelComplete} />
-                ))
-              )}
-            </Section>
+              </MobileRequestOverlay>
+            ) : (
+              /* Desktop Layout */
+              <>
+                <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 lg:gap-6">
+                  {/* Sidebar - Request Cards */}
+                  <div className="xl:col-span-1">
+                    <h3 className="font-semibold text-gray-900 mb-3 sm:mb-4 text-sm sm:text-base">
+                      Your Requests
+                    </h3>
+                    <div className="space-y-2 sm:space-y-3 max-h-[400px] xl:max-h-[calc(100vh-200px)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                      {displayedRentals.map((rental) => (
+                        <RequestCard
+                          key={rental.id}
+                          rental={rental}
+                          variant="sidebar"
+                          isSelected={selectedRequest?.id === rental.id}
+                          onClick={() => handleRequestClick(rental)}
+                        />
+                      ))}
+                    </div>
+                  </div>
 
-            <Section title="Rejected Requests" count={rejected.length} icon={XCircle}>
-              {rejected.length === 0 ? (
-                <EmptyState 
-                  title="No rejected requests" 
-                  subtitle="If a rental request is declined by an admin, it will appear here with the rejection reason."
-                  icon={XCircle}
-                />
-              ) : (
-                rejected.map(r => (
-                  <RequestRow key={r.id} rental={r} onUploadComplete={handleUploadComplete} onCancelComplete={handleCancelComplete} />
-                ))
-              )}
-            </Section>
-          </div>
+                  {/* Detail Panel */}
+                  <div className="xl:col-span-3">
+                    <RequestDetailView
+                      rental={selectedRequest}
+                      onRefresh={handleRefresh}
+                      isMobile={false}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+          </>
         )}
 
+        {/* Toast Container */}
         <ToastContainer
           position="bottom-right"
           autoClose={3000}
