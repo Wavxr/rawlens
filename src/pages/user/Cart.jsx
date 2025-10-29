@@ -154,7 +154,7 @@ const Requests = () => {
   }, [rentals]);
 
   // Get displayed rentals based on active filter
-  const displayedRentals = filterGroups[activeFilter] || [];
+  const displayedRentals = useMemo(() => filterGroups[activeFilter] || [], [filterGroups, activeFilter]);
 
   // Auto-select first rental when filter changes or data loads
   useEffect(() => {
@@ -187,21 +187,21 @@ const Requests = () => {
       key: 'to_approve',
       label: 'To Approve',
       shortLabel: 'To Approve',
-      icon: Clock,
+      // icon: Clock,
       count: filterGroups.to_approve.length
     },
     {
       key: 'to_pay',
-      label: 'To Pay',
+      label: 'To Pay',  
       shortLabel: 'To Pay',
-      icon: CreditCard,
+      // icon: CreditCard,
       count: filterGroups.to_pay.length
     },
     {
       key: 'declined',
       label: 'Declined',
       shortLabel: 'Declined',
-      icon: XCircle,
+      // icon: XCircle,
       count: filterGroups.declined.length
     }
   ], [filterGroups]);
@@ -239,7 +239,7 @@ const Requests = () => {
 
   // Main render
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="bg-neutral-50">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
         
         {/* Error State */}

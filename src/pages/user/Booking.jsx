@@ -6,32 +6,17 @@ import { userConfirmDelivered, userConfirmSentBack } from "../../services/delive
 import { userCancelConfirmedRental } from "../../services/rentalService"
 import { getSignedContractUrl } from "../../services/pdfService"
 import { subscribeToUserRentals, subscribeToUserExtensions, subscribeToUserPayments, unsubscribeFromChannel } from "../../services/realtimeService"
-import {
-  Package,
-  Truck,
-  CheckCircle,
-  Clock,
-  FileText,
-  Loader2,
-  AlertCircle,
-  CameraIcon,
-  Calendar,
-  Timer,
-  PhilippinePeso,
-  ArrowRight,
-  CreditCard,
-  ExternalLink,
-  XCircle,
-  Upload,
-} from "lucide-react"
-import FeedbackForm from "../../components/forms/FeedbackForm";
-import CancellationModal from "../../components/modals/CancellationModal";
-import PaymentDetails from "../../components/payment/PaymentDetails";
-import RentalExtensionManager from "../../components/rental/RentalExtensionManager";
-import { getRentalFeedback } from "../../services/feedbackService";
-import { AnimatePresence } from "framer-motion";
-import { toast, ToastContainer } from "react-toastify";
+import { getRentalFeedback } from "../../services/feedbackService"
+import { Loader2, AlertCircle } from "lucide-react"
+import FilterTabs from "../../components/rental/shared/FilterTabs"
+import BookingCard from "../../components/rental/shared/BookingCard"
+import BookingDetailView from "../../components/rental/shared/BookingDetailView"
+import MobileRequestOverlay from "../../components/rental/layouts/MobileRequestOverlay"
+import CancellationModal from "../../components/modals/CancellationModal"
+import useIsMobile from "../../hooks/useIsMobile"
+import { toast, ToastContainer } from "react-toastify"
 import 'react-toastify/dist/ReactToastify.css';
+import { Package, Truck, CheckCircle, Clock, CreditCard, Zap, RotateCcw } from "lucide-react"
 
 // Main Component
 export default function Rentals() {
@@ -59,8 +44,13 @@ export default function Rentals() {
   const [feedbackSubmitted, setFeedbackSubmitted] = useState({});
   const [showCancellationModal, setShowCancellationModal] = useState(false);
   const [rentalToCancel, setRentalToCancel] = useState(null);
-  const handleFilterClick = useCallback((filter) => {
-    setActiveFilter(filter);
+  
+  // Mobile state
+  const isMobile = useIsMobile();
+  const [isMobileDetailOpen, setIsMobileDetailOpen] = useState(false);
+  
+  const handleMobileClose = useCallback(() => {
+    setIsMobileDetailOpen(false);
   }, []);
 
   // Time Management: Update time every minute
@@ -148,46 +138,50 @@ export default function Rentals() {
     [allRentals]
   );
 
+  // Data Processing: Group rentals into filter categories
+  const filterGroups = useMemo(() => {
+    const groups = { payment_pending: [], awaiting: [], active: [], returning: [] };
+    
+    for (const r of rentals) {
+      // Always use the initial payment record for payment status
+      const initialPayment = r.payments?.find(p => p.payment_type === 'rental' && !p.extension_id);
+      const paymentStatus = initialPayment?.payment_status;
+      
+      // Payment pending: confirmed but payment not verified
+      if (r.rental_status === "confirmed" && 
+          paymentStatus !== "verified" &&
+          (paymentStatus === "pending" || paymentStatus === "submitted" || paymentStatus === "rejected" || !paymentStatus)) {
+        groups.payment_pending.push(r);
+      }
+      // Awaiting delivery: paid and waiting for shipment/delivery
+      else if (paymentStatus === "verified" &&
+               (r.shipping_status === "ready_to_ship" || r.shipping_status === "in_transit_to_user")) {
+        groups.awaiting.push(r);
+      }
+      // Active rentals: currently in use
+      else if ((r.rental_status === "active" && 
+                (!r.shipping_status || r.shipping_status === "delivered" || r.shipping_status === "return_scheduled")) ||
+               (r.rental_status === "confirmed" && r.shipping_status === "delivered")) {
+        groups.active.push(r);
+      }
+      // Returning: in return process
+      else if (["return_scheduled", "in_transit_to_owner", "returned"].includes(r.shipping_status)) {
+        groups.returning.push(r);
+      }
+    }
+
+    // Sort each group by start date
+    Object.keys(groups).forEach(key => {
+      groups[key].sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+    });
+
+    return groups;
+  }, [rentals]);
+
   // Data Processing: Filter rentals based on active tab
   const displayedRentals = useMemo(() => {
-    if (activeFilter === "awaiting") {
-      // Show rentals that are paid and in delivery process (confirmed or active status)
-      return rentals.filter((r) => {
-        const initialPayment = r.payments?.find(p => p.payment_type === 'rental' && !p.extension_id);
-        const paymentStatus = initialPayment?.payment_status;
-        return paymentStatus === "verified" &&
-               (r.shipping_status === "ready_to_ship" || r.shipping_status === "in_transit_to_user");
-      })
-    }
-    if (activeFilter === "payment_pending") {
-      // Show confirmed rentals that need payment (exclude verified)
-      return rentals.filter((r) => {
-        const initialPayment = r.payments?.find(p => p.payment_type === 'rental' && !p.extension_id);
-        const paymentStatus = initialPayment?.payment_status;
-        return r.rental_status === "confirmed" && 
-               paymentStatus !== "verified" &&
-               (paymentStatus === "pending" || paymentStatus === "submitted" || paymentStatus === "rejected" || !paymentStatus);
-      });
-    }
-    if (activeFilter === "active") {
-      return rentals.filter((r) => {
-        // Include active rentals
-        if (r.rental_status === "active" && 
-            (!r.shipping_status || r.shipping_status === "delivered" || r.shipping_status === "return_scheduled")) {
-          return true;
-        }
-        // Include delivered but not yet started rentals (confirmed + delivered)
-        if (r.rental_status === "confirmed" && r.shipping_status === "delivered") {
-          return true;
-        }
-        return false;
-      })
-    }
-    if (activeFilter === "returning") {
-      return rentals.filter((r) => ["return_scheduled", "in_transit_to_owner", "returned"].includes(r.shipping_status))
-    }
-    return []
-  }, [activeFilter, rentals])
+    return filterGroups[activeFilter] || [];
+  }, [activeFilter, filterGroups]);
 
   // Helper Functions: Date formatting
   function formatDate(dateStr) {
@@ -361,6 +355,34 @@ export default function Rentals() {
            rental.shipping_status === 'ready_to_ship' || 
            !prohibitedShippingStatuses.includes(rental.shipping_status);
   };
+
+  // Filter configuration with icons and counts
+  const filters = useMemo(() => [
+    {
+      key: 'payment_pending',
+      label: 'Payment Required',
+      shortLabel: 'Payment',
+      count: filterGroups.payment_pending.length
+    },
+    {
+      key: 'awaiting',
+      label: 'Awaiting Delivery',
+      shortLabel: 'Awaiting',
+      count: filterGroups.awaiting.length
+    },
+    {
+      key: 'active',
+      label: 'Active',
+      shortLabel: 'Active',
+      count: filterGroups.active.length
+    },
+    {
+      key: 'returning',
+      label: 'Returning',
+      shortLabel: 'Returning',
+      count: filterGroups.returning.length
+    }
+  ], [filterGroups]);
 
   // Helper Functions: Countdown timer
   function useCountdown(targetIso, { dir = "down", startDate = null, endDate = null } = {}) {
@@ -1206,34 +1228,34 @@ export default function Rentals() {
 
   // Main Render: Main component UI
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="bg-gray-50">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
         {/* Filter Tabs */}
-        <div className="mb-4 sm:mb-6">
-          <div className="flex rounded-lg border border-gray-200 bg-white p-1 overflow-x-auto">
-            {[
-              { key: "payment_pending", label: "Payment Required", shortLabel: "Payment" },
-              { key: "awaiting", label: "Awaiting Delivery", shortLabel: "Awaiting" },
-              { key: "active", label: "Active", shortLabel: "Active" },
-              { key: "returning", label: "Returning", shortLabel: "Returning" },
-            ].map((f) => (
-              <button
-                key={f.key}
-                type="button"
-                onClick={() => handleFilterClick(f.key)}
-                className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-md transition-all duration-150 whitespace-nowrap ${
-                  activeFilter === f.key
-                    ? "bg-[#052844] text-white shadow-sm"
-                    : "text-gray-700 hover:bg-gray-50"
-                }`}
-              >
-                {f.key === "payment_pending" && <CreditCard className="w-3 h-3 sm:w-4 sm:h-4 mr-1 inline" />}
-                <span className="sm:hidden">{f.shortLabel}</span>
-                <span className="hidden sm:inline">{f.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+        <FilterTabs
+          filters={filters}
+          activeFilter={activeFilter}
+          onFilterChange={setActiveFilter}
+          isMobile={isMobile}
+        >
+          {isMobile && displayedRentals.length > 0 && (
+            <div className="space-y-3 px-3 py-4">
+              {displayedRentals.map((rental) => (
+                <BookingCard
+                  key={rental.id}
+                  booking={rental}
+                  isSelected={selectedRental?.id === rental.id}
+                  onClick={() => {
+                    setSelectedRental(rental);
+                    setIsMobileDetailOpen(true);
+                  }}
+                  variant="mobile"
+                  onCancel={() => handleOpenCancellation(rental)}
+                  canCancel={canCancelConfirmed(rental)}
+                />
+              ))}
+            </div>
+          )}
+        </FilterTabs>
 
         {/* Error Message */}
         {error && (
@@ -1252,60 +1274,108 @@ export default function Rentals() {
         )}
 
         {/* Main Content */}
-        {displayedRentals.length === 0 ? (
-          <div className="bg-white border border-gray-200 rounded-lg p-6 sm:p-8 lg:p-12 text-center">
-            <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-lg flex items-center justify-center mx-auto mb-3 sm:mb-4 ${
-              activeFilter === "payment_pending" ? "bg-amber-100" : "bg-gray-100"
-            }`}>
-              {activeFilter === "payment_pending" ? (
-                <CreditCard className="h-6 w-6 sm:h-8 sm:w-8 text-amber-600" />
-              ) : (
-                <CameraIcon className="h-6 w-6 sm:h-8 sm:w-8 text-gray-400" />
-              )}
-            </div>
-            <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
-              {activeFilter === "payment_pending" 
-                ? "No payment required" 
-                : activeFilter === "awaiting"
-                ? "No rentals awaiting delivery"
-                : activeFilter === "active"
-                ? "No active rentals"
-                : "No returning rentals"
-              }
-            </h3>
-            <p className="text-gray-600 text-sm sm:text-base">
-              {activeFilter === "payment_pending" 
-                ? "All your confirmed rentals have been paid for. Check other tabs for your rentals." 
-                : activeFilter === "awaiting"
-                ? "Once your payment is verified, rentals will appear here when they're being prepared for delivery."
-                : activeFilter === "active"
-                ? "Active rentals will show here when they're delivered and in use."
-                : "Rentals being returned will appear here."
-              }
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 lg:gap-6">
-            {/* Sidebar */}
-            <div className="xl:col-span-1">
-              <h3 className="font-semibold text-gray-900 mb-3 sm:mb-4 text-sm sm:text-base">Your Rentals</h3>
-              <div className="space-y-2 sm:space-y-3 max-h-[200px] sm:max-h-[400px] xl:max-h-[calc(100vh-200px)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                {displayedRentals.map((rental) => (
-                  <RentalSidebarCard
-                    key={rental.id}
-                    rental={rental}
-                    isSelected={selectedRental?.id === rental.id}
-                    onClick={() => setSelectedRental(rental)}
-                  />
-                ))}
+        {!isMobile && (
+          <>
+            {displayedRentals.length === 0 ? (
+              <div className="bg-white border border-gray-200 rounded-lg p-6 sm:p-8 lg:p-12 text-center">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
+                  {activeFilter === "payment_pending" 
+                    ? "No payment required" 
+                    : activeFilter === "awaiting"
+                    ? "No rentals awaiting delivery"
+                    : activeFilter === "active"
+                    ? "No active rentals"
+                    : "No returning rentals"
+                  }
+                </h3>
+                <p className="text-gray-600 text-sm sm:text-base">
+                  {activeFilter === "payment_pending" 
+                    ? "All your confirmed rentals have been paid for." 
+                    : activeFilter === "awaiting"
+                    ? "Once your payment is verified, rentals will appear here."
+                    : activeFilter === "active"
+                    ? "Active rentals will show here when they're delivered."
+                    : "Rentals being returned will appear here."
+                  }
+                </p>
               </div>
-            </div>
+            ) : (
+              <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 lg:gap-6">
+                {/* Sidebar */}
+                <div className="xl:col-span-1">
+                  <h3 className="font-semibold text-gray-900 mb-3 sm:mb-4 text-sm sm:text-base">Your Rentals</h3>
+                  <div className="space-y-2 sm:space-y-3 max-h-[400px] xl:max-h-[calc(100vh-200px)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                    {displayedRentals.map((rental) => (
+                      <BookingCard
+                        key={rental.id}
+                        booking={rental}
+                        isSelected={selectedRental?.id === rental.id}
+                        onClick={() => setSelectedRental(rental)}
+                        variant="sidebar"
+                        onCancel={() => handleOpenCancellation(rental)}
+                        canCancel={canCancelConfirmed(rental)}
+                      />
+                    ))}
+                  </div>
+                </div>
 
-            {/* Detail View */}
-            <div className="xl:col-span-3">
-              <RentalDetailView rental={selectedRental} />
-            </div>
-          </div>
+                {/* Detail View */}
+                <div className="xl:col-span-3">
+                  {selectedRental && (
+                    <BookingDetailView
+                      booking={selectedRental}
+                      onRefresh={refresh}
+                      isMobile={false}
+                      actionLoading={actionLoading}
+                      contractViewLoading={contractViewLoading}
+                      contractViewError={contractViewError}
+                      onConfirmDelivered={handleConfirmDelivered}
+                      onConfirmSentBack={handleConfirmSentBack}
+                      onViewContract={viewContract}
+                      onCancelRental={handleCancelConfirmedRental}
+                      canCancelRental={canCancelConfirmed}
+                      feedbackSubmitted={feedbackSubmitted}
+                      onFeedbackSubmit={handleFeedbackSubmit}
+                      onShowFeedbackForm={() => setShowFeedbackForm(true)}
+                      showFeedbackForm={showFeedbackForm}
+                      userId={user.id}
+                      useCountdown={useCountdown}
+                    />
+                  )}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Mobile Overlay */}
+        {isMobile && selectedRental && (
+          <MobileRequestOverlay
+            isOpen={isMobileDetailOpen}
+            onClose={handleMobileClose}
+            title={selectedRental.cameras?.name || "Rental Details"}
+          >
+            <BookingDetailView
+              booking={selectedRental}
+              onRefresh={refresh}
+              onBack={handleMobileClose}
+              isMobile={true}
+              actionLoading={actionLoading}
+              contractViewLoading={contractViewLoading}
+              contractViewError={contractViewError}
+              onConfirmDelivered={handleConfirmDelivered}
+              onConfirmSentBack={handleConfirmSentBack}
+              onViewContract={viewContract}
+              onCancelRental={handleCancelConfirmedRental}
+              canCancelRental={canCancelConfirmed}
+              feedbackSubmitted={feedbackSubmitted}
+              onFeedbackSubmit={handleFeedbackSubmit}
+              onShowFeedbackForm={() => setShowFeedbackForm(true)}
+              showFeedbackForm={showFeedbackForm}
+              userId={user.id}
+              useCountdown={useCountdown}
+            />
+          </MobileRequestOverlay>
         )}
 
         {/* Cancellation Modal */}
