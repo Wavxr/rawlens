@@ -1,18 +1,14 @@
 import { useState } from 'react';
 import { Calendar, Camera as CameraIcon, ArrowRight, Clock, CheckCircle2, XCircle } from 'lucide-react';
 
-/**
- * Format date string to readable format
- */
+// Format date string to readable format
 function formatDate(dateStr) {
   if (!dateStr) return '';
   const d = new Date(dateStr);
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-/**
- * StatusPill Component - Visual status indicator
- */
+// StatusPill Component - Visual status indicator
 const StatusPill = ({ status }) => {
   const statusConfig = {
     pending: {
@@ -86,12 +82,12 @@ const RequestCard = ({ rental, isSelected = false, onClick, variant = 'sidebar' 
     return (
       <div
         onClick={onClick}
-        className="bg-white border border-neutral-200 rounded-lg p-4 hover:shadow-md active:scale-[0.98] transition-all duration-200 group cursor-pointer"
+        className="bg-white border border-neutral-200 rounded-lg p-3 shadow-sm hover:shadow-md active:scale-[0.99] transition-all duration-150 cursor-pointer"
       >
-        <div className="flex items-start gap-4">
+        <div className="flex items-start gap-2">
           {/* Camera Image */}
           <div className="relative flex-shrink-0">
-            <div className="w-20 h-20 rounded-xl overflow-hidden bg-neutral-100 flex items-center justify-center border border-neutral-200 group-hover:border-[#052844] transition-colors duration-200">
+            <div className="w-16 h-16 rounded-md overflow-hidden bg-neutral-100 flex items-center justify-center border border-neutral-200">
               {!imgBroken && cameraImage ? (
                 <img
                   src={cameraImage}
@@ -100,12 +96,12 @@ const RequestCard = ({ rental, isSelected = false, onClick, variant = 'sidebar' 
                   onError={() => setImgBroken(true)}
                 />
               ) : (
-                <CameraIcon className="w-8 h-8 text-neutral-400" />
+                <CameraIcon className="w-6 h-6 text-neutral-400" />
               )}
             </div>
-            {/* Status dot with pulse animation */}
+            {/* Status dot */}
             <div
-              className={`absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full border-2 border-white shadow-md ${
+              className={`absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white shadow-md ${
                 rental.rental_status === 'confirmed'
                   ? 'bg-emerald-400'
                   : rental.rental_status === 'pending'
@@ -117,25 +113,25 @@ const RequestCard = ({ rental, isSelected = false, onClick, variant = 'sidebar' 
 
           {/* Content */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2 mb-1.5">
-              <h3 className="font-semibold text-base text-neutral-900 truncate group-hover:text-[#052844] transition-colors">
+            <div className="flex items-start justify-between mb-1">
+              <h3 className="font-semibold text-sm text-neutral-900 truncate">
                 {cameraName}
               </h3>
-              <ArrowRight className="w-5 h-5 text-neutral-400 flex-shrink-0 group-hover:text-[#052844] group-hover:translate-x-1 transition-all duration-200" />
+              <ArrowRight className="w-4 h-4 text-neutral-400 flex-shrink-0" />
             </div>
 
-            <div className="flex items-center gap-2 text-xs text-neutral-600 mb-2">
-              <Calendar className="w-3.5 h-3.5 text-neutral-400" />
+            <div className="flex items-center gap-1 text-[11px] text-neutral-600 mb-1">
+              <Calendar className="w-3 h-3 text-neutral-400" />
               <span className="truncate">{dateRange}</span>
             </div>
 
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-[10px] text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded-md">
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-1.5">
+                <span className="font-mono text-[10px] text-neutral-500 bg-neutral-100 px-1.5 py-[2px] rounded-md">
                   #{referenceId}
                 </span>
                 {days && (
-                  <span className="text-xs font-semibold text-neutral-700">
+                  <span className="text-[11px] font-medium text-neutral-700">
                     {days} {days === 1 ? 'day' : 'days'}
                   </span>
                 )}
@@ -144,8 +140,11 @@ const RequestCard = ({ rental, isSelected = false, onClick, variant = 'sidebar' 
             </div>
 
             {typeof rental.total_price === 'number' && (
-              <div className="text-base font-semibold text-[#052844]">
-                ₱{Number(rental.total_price).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              <div className="text-sm font-semibold text-[#052844]">
+                ₱{Number(rental.total_price).toLocaleString('en-PH', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
               </div>
             )}
           </div>

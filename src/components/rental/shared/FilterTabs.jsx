@@ -46,8 +46,8 @@ const FilterTabs = ({ filters, activeFilter, onFilterChange, isMobile = false, c
   if (isMobile) {
     return (
       <div className="mb-4 sm:mb-5">
-        {/* Mobile Pill Container */}
-        <div className="flex rounded-2xl border-2 border-neutral-200 bg-white p-1 shadow-sm">
+        {/* Mobile Pill Container - Updated border to match desktop */}
+        <div className="flex rounded-lg border border-gray-200 bg-white p-1 shadow-sm">
           {filters.map((filter) => {
             const Icon = filter.icon;
             const isActive = activeFilter === filter.key;
@@ -64,7 +64,7 @@ const FilterTabs = ({ filters, activeFilter, onFilterChange, isMobile = false, c
                     }, 150);
                   }
                 }}
-                className={`flex items-center justify-center gap-1.5 px-2.5 py-2.5 text-xs font-bold rounded-xl transition-all duration-300 whitespace-nowrap flex-1 active:scale-95 ${
+                className={`flex items-center justify-center gap-1.5 px-2.5 py-2.5 text-xs font-bold rounded-md transition-all duration-300 whitespace-nowrap flex-1 active:scale-95 ${
                   isActive
                     ? 'bg-[#052844] text-white shadow-md scale-105'
                     : 'text-neutral-600 hover:bg-neutral-50 active:bg-neutral-100'
@@ -74,7 +74,7 @@ const FilterTabs = ({ filters, activeFilter, onFilterChange, isMobile = false, c
                 <span className="tracking-tight">{filter.shortLabel || filter.label}</span>
                 {filter.count !== undefined && (
                   <span
-                    className={`px-1.5 py-0.5 rounded-lg text-[10px] font-black ${
+                    className={`px-1.5 py-0.5 rounded-md text-[10px] font-black ${
                       isActive
                         ? 'bg-white/25 text-white'
                         : 'bg-neutral-200 text-neutral-700'

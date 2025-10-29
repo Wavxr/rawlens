@@ -166,7 +166,7 @@ const RequestDetailView = ({ rental, onRefresh, onBack, isMobile = false }) => {
   return (
     <div className="space-y-3 sm:space-y-6">
       {/* Camera Image & Info */}
-      <div className="bg-white rounded-2xl border-2 border-neutral-200 overflow-hidden shadow-sm">
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
         {/* Camera Image */}
         <div className="aspect-video sm:aspect-[21/9] bg-neutral-100 flex items-center justify-center">
           {!imgBroken && cameraImage ? (
@@ -250,7 +250,7 @@ const RequestDetailView = ({ rental, onRefresh, onBack, isMobile = false }) => {
             </div>
 
             <div className="sm:col-span-2">
-              <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl border-2 border-neutral-200">
+              <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
                 <div>
                   <div className="text-[10px] sm:text-xs font-bold text-neutral-500 uppercase tracking-wide mb-0.5 sm:mb-1">
                     Reference ID
@@ -275,7 +275,7 @@ const RequestDetailView = ({ rental, onRefresh, onBack, isMobile = false }) => {
 
       {/* Rejection Reason */}
       {rental.rental_status === 'rejected' && rental.rejection_reason && (
-        <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-3 sm:p-5">
+        <div className="bg-white border border-gray-200 rounded-lg p-3 sm:p-5 shadow-sm">
           <div className="flex items-start gap-2.5 sm:gap-3">
             <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0">
               <XCircle className="w-5 h-5 text-red-600" />
@@ -293,7 +293,7 @@ const RequestDetailView = ({ rental, onRefresh, onBack, isMobile = false }) => {
         <div className="space-y-4">
           {/* Payment verified */}
           {paymentStatus === 'verified' && (
-            <div className="bg-green-50 border border-green-200 rounded-2xl p-4 sm:p-5">
+            <div className="bg-white border border-gray-200 rounded-lg p-4 sm:p-5 shadow-sm">
               <div className="flex items-center gap-3 text-green-700">
                 <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
                   <CheckCircle2 className="w-5 h-5" />
@@ -310,7 +310,7 @@ const RequestDetailView = ({ rental, onRefresh, onBack, isMobile = false }) => {
 
           {/* Payment submitted */}
           {paymentStatus === 'submitted' && (
-            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 sm:p-5">
+            <div className="bg-white border border-gray-200 rounded-lg p-4 sm:p-5 shadow-sm">
               <div className="flex items-center gap-3 text-blue-700">
                 <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
                   <Clock className="w-5 h-5" />
@@ -328,7 +328,7 @@ const RequestDetailView = ({ rental, onRefresh, onBack, isMobile = false }) => {
           {/* Payment needed */}
           {needsPayment && (
             <>
-              <div className="bg-white border border-neutral-200 rounded-2xl p-4 sm:p-5 shadow-sm">
+              <div className="bg-white border border-gray-200 rounded-lg p-4 sm:p-5 shadow-sm">
                 <div className="flex items-start gap-3 mb-4">
                   <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
                     <AlertCircle className="w-5 h-5 text-amber-600" />
@@ -343,7 +343,7 @@ const RequestDetailView = ({ rental, onRefresh, onBack, isMobile = false }) => {
                 <PaymentDetails rental={rental} />
               </div>
               
-              <div className="bg-white border border-neutral-200 rounded-2xl p-4 sm:p-5 shadow-sm">
+              <div className="bg-white border border-gray-200 rounded-lg p-4 sm:p-5 shadow-sm">
                 <PaymentUploadSection rental={rental} onUploadComplete={handleUploadComplete} />
               </div>
             </>
