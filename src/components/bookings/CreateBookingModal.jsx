@@ -3,6 +3,7 @@ import { X, Camera, Calendar, User, Phone, Mail, DollarSign, AlertTriangle } fro
 import DateFilterInput from '../forms/DateFilterInput';
 import { createQuickBooking, calculateQuickBookingPrice } from '../../services/bookingService';
 import FileUploadZone from './FileUploadZone';
+import useBackHandler from '../../hooks/useBackHandler';
 
 const CreateBookingModal = ({
   open,
@@ -33,6 +34,13 @@ const CreateBookingModal = ({
   const [submissionWarnings, setSubmissionWarnings] = useState([]);
   const [submitted, setSubmitted] = useState(false);
   const [bookingTypeTouched, setBookingTypeTouched] = useState(false);
+
+  // Handle mobile back button - close modal when back is pressed
+  useBackHandler(open, () => {
+    if (!loading) {
+      onClose();
+    }
+  }, 100);
 
   useEffect(() => {
     if (open) {

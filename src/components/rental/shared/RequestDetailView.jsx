@@ -14,6 +14,7 @@ import PaymentUploadSection from '../../payment/PaymentUploadSection';
 import CancellationModal from '../../modals/CancellationModal';
 import { userCancelRentalRequest, userCancelConfirmedRental } from '../../../services/rentalService';
 import { toast } from 'react-toastify';
+import useBackHandler from '../../../hooks/useBackHandler';
 
 /**
  * Format date string to readable format
@@ -75,6 +76,9 @@ const RequestDetailView = ({ rental, onRefresh, onBack, isMobile = false }) => {
   const [isCancelling, setIsCancelling] = useState(false);
   const [showCancellationModal, setShowCancellationModal] = useState(false);
   const [imgBroken, setImgBroken] = useState(false);
+
+  // Handle mobile back button - navigate back when back is pressed
+  useBackHandler(!!rental, onBack, 100);
 
   if (!rental) {
     return (

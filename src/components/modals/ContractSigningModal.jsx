@@ -2,6 +2,7 @@
 import { useState, useRef, useLayoutEffect } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import { X, FileText, Loader2, Download } from 'lucide-react';
+import useBackHandler from '../../hooks/useBackHandler';
 
 const ContractSigningModal = ({
   isOpen,
@@ -11,13 +12,20 @@ const ContractSigningModal = ({
   endDate,
   calculatedPrice,
   onSubmitRequest,
-  isSubmitting, // This prop indicates if the parent is processing the request
-  isGeneratingContract, // This prop indicates if the PDF is being generated
+  isSubmitting, 
+  isGeneratingContract, 
 }) => {
   const [signatureDataUrl, setSignatureDataUrl] = useState(null);
   const [showSignatureWarning, setShowSignatureWarning] = useState(false);
   const canvasWrapperRef = useRef(null);
   const sigCanvasRef = useRef();
+
+  // Handle mobile back button - close modal when back is pressed
+  useBackHandler(isOpen, () => {
+    if (!isSubmitting && !isGeneratingContract) {
+      onClose();
+    }
+  }, 100);
 
   const clearSignature = () => {
     if (sigCanvasRef.current) {

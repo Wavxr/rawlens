@@ -21,6 +21,7 @@ import PaymentDetails from '../../payment/PaymentDetails';
 import RentalExtensionManager from '../RentalExtensionManager';
 import { AnimatePresence } from 'framer-motion';
 import FeedbackForm from '../../forms/FeedbackForm';
+import useBackHandler from '../../../hooks/useBackHandler';
 
 /**
  * Format date string to readable format
@@ -63,6 +64,7 @@ function formatDate(dateStr) {
 const BookingDetailView = ({ 
   booking, 
   onRefresh, 
+  onBack,
   isMobile = false,
   actionLoading = {},
   contractViewLoading = {},
@@ -107,6 +109,9 @@ const BookingDetailView = ({
     // eslint-disable-next-line react-hooks/rules-of-hooks
     countdownToStartResult = useCountdown(booking ? booking.start_date : new Date(), { dir: 'down' });
   }
+
+  // Handle mobile back button - navigate back when back is pressed
+  useBackHandler(!!booking, onBack, 100);
 
   if (!booking) {
     return (

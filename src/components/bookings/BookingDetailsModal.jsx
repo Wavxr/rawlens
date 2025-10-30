@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { checkExtensionEligibility } from '../../services/extensionService';
 import useExtensionStore from '../../stores/extensionStore';
 import DocumentUploadModal from './DocumentUploadModal';
+import useBackHandler from '../../hooks/useBackHandler';
 
 const StatusBadge = ({ status, isDarkMode }) => {
   const getStatusStyles = () => {
@@ -60,6 +61,10 @@ const BookingDetailsModal = ({
   const [documentModal, setDocumentModal] = useState({ open: false, type: 'contract' });
   
   const { getExtensionsByRentalId } = useExtensionStore();
+
+  // Handle mobile back button - close modal when back is pressed
+  // Only if document modal is not open (document modal has higher priority)
+  useBackHandler(open && !documentModal.open, onClose, 100);
 
   const checkExtensionEligibilityForBooking = useCallback(async () => {
     if (!booking?.id) return;
