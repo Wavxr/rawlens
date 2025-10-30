@@ -8,7 +8,7 @@ import { toast } from 'react-toastify';
 import useBackHandler from '../../hooks/useBackHandler';
 
 // Contract Generator Modal (identical content to page version, adapted for modal)
-export default function ContractGeneratorModal({ open, onClose, initialData = {} }) {
+export default function ContractGeneratorModal({ open, onClose, initialData = {}, onSuccess }) {
   const [form] = useState({
     customerName: initialData?.name || '',
     cameraName: initialData?.equipment || '',
@@ -16,7 +16,6 @@ export default function ContractGeneratorModal({ open, onClose, initialData = {}
     endDate: initialData?.endDate || ''
   });
   const [errors, setErrors] = useState({});
-  const [signatureDataUrl, setSignatureDataUrl] = useState(null);
   const [sendingEmail, setSendingEmail] = useState(false);
   const sigCanvasRef = useRef(null);
   const canvasWrapperRef = useRef(null);
@@ -37,24 +36,12 @@ export default function ContractGeneratorModal({ open, onClose, initialData = {}
 
   const clearSignature = () => {
     sigCanvasRef.current?.clear();
-    setSignatureDataUrl(null);
-  };
-
-  const saveSignature = () => {
-    if (!sigCanvasRef.current) return;
-    if (sigCanvasRef.current.isEmpty()) {
-      setErrors(prev => ({ ...prev, signature: 'Please provide a signature.' }));
-      return;
-    }
-    const data = sigCanvasRef.current.toDataURL();
-    setSignatureDataUrl(data);
-    setErrors(prev => ({ ...prev, signature: '' }));
   };
 
   const validate = () => {
     const next = {};
     // Name, device, dates come from parent form; only require signature here
-    if (!signatureDataUrl) next.signature = 'Signature required';
+    if (!sigCanvasRef.current || sigCanvasRef.current.isEmpty()) next.signature = 'Signature required';
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -74,7 +61,7 @@ export default function ContractGeneratorModal({ open, onClose, initialData = {}
     canvas.style.height = rect.height + 'px';
     const ctx = canvas.getContext('2d');
     ctx.scale(dpr, dpr);
-  }, [open, signatureDataUrl]);
+  }, [open]);
 
   // No reset UX in modal
 
@@ -135,6 +122,9 @@ export default function ContractGeneratorModal({ open, onClose, initialData = {}
     if (!validate()) return;
     setSendingEmail(true);
     try {
+      // Get signature data directly
+      const signatureDataUrl = sigCanvasRef.current.toDataURL();
+
       // Generate PDF bytes for attachment
       const rentalDetails = {
         cameraName: initialData?.equipment || form.cameraName,
@@ -174,6 +164,7 @@ export default function ContractGeneratorModal({ open, onClose, initialData = {}
       });
       if (error) throw error;
       toast.success('Inquiry sent with contract attached. We\'ll get back to you soon.');
+      onSuccess?.();
       onClose?.();
     } catch (e) {
       console.error('Send email failed', e);
@@ -321,29 +312,17 @@ export default function ContractGeneratorModal({ open, onClose, initialData = {}
 
             <section className="space-y-4 mt-6">
               <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Signature</h2>
-              {!signatureDataUrl ? (
-                <>
-                  <div ref={canvasWrapperRef} className="border-2 border-dashed border-slate-300 rounded-lg bg-white h-40 sm:h-48 p-2">
-                    <SignatureCanvas
-                      ref={sigCanvasRef}
-                      penColor="black"
-                      canvasProps={{ className: 'w-full h-full rounded' }}
-                    />
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <button onClick={clearSignature} type="button" className="px-3 py-2 text-xs rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700">Clear</button>
-                    <button onClick={saveSignature} type="button" className="px-4 py-2 text-xs rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium">Save Signature</button>
-                  </div>
-                  {errors.signature && <p className="text-xs text-red-600">{errors.signature}</p>}
-                </>
-              ) : (
-                <div className="space-y-3">
-                  <p className="text-green-600 text-sm font-medium">Signature captured.</p>
-                  <div className="flex gap-3">
-                    <button type="button" onClick={() => setSignatureDataUrl(null)} className="px-3 py-2 text-xs rounded-lg border border-slate-300 hover:bg-slate-50">Resign</button>
-                  </div>
-                </div>
-              )}
+              <div ref={canvasWrapperRef} className="border-2 border-dashed border-slate-300 rounded-lg bg-white h-40 sm:h-48 p-2">
+                <SignatureCanvas
+                  ref={sigCanvasRef}
+                  penColor="black"
+                  canvasProps={{ className: 'w-full h-full rounded' }}
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <button onClick={clearSignature} type="button" className="px-3 py-2 text-xs rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700">Clear</button>
+              </div>
+              {errors.signature && <p className="text-xs text-red-600">{errors.signature}</p>}
             </section>
 
             <section className="space-y-4 mt-6">

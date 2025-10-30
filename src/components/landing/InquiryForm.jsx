@@ -20,6 +20,21 @@ export default function InquiryForm({ cameraNames = [], cameras = [] }) {
   const [showContractModal, setShowContractModal] = useState(false)
   const [isSubmitting] = useState(false)
 
+  const handleClearForm = () => {
+    setFormData({
+      name: "",
+      email: "",
+      phone: "",
+      social: "",
+      equipment: "",
+      startDate: "",
+      endDate: "",
+      additionalDetails: "",
+    })
+    setLiveEstimate(null)
+    setLiveRateTier(null)
+  }
+
   const currentCamera = cameras.find((camera) => camera.name === formData.equipment)
 
   const handleInputChange = (e) => {
@@ -295,6 +310,7 @@ export default function InquiryForm({ cameraNames = [], cameras = [] }) {
         <ContractGeneratorModal
           open={showContractModal}
           onClose={() => setShowContractModal(false)}
+          onSuccess={handleClearForm}
           initialData={{
             name: formData.name,
             email: formData.email,
