@@ -4,6 +4,7 @@ import { useEffect, Suspense, lazy } from 'react';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import RedirectRoute from './components/auth/RedirectRoute';
 import AuthErrorBoundary from './components/auth/AuthErrorBoundary';
+import BackHandlerProvider from './components/auth/BackHandlerProvider';
 import useThemeStore from './stores/useThemeStore';
 import NotificationToastManager from './components/notifications/NotificationToastManager';
 import LoadingScreen from './components/auth/LoadingScreen';
@@ -43,6 +44,8 @@ const Rental = lazy(() => import('./pages/user/Rental'));
 const UserEducational = lazy(() => import('./pages/user/Educational'));
 const UserProfile = lazy(() => import('./pages/user/Profile'));
 
+import BackHandlerTest from './pages/BackHandlerTest';
+
 function App() {
   const { darkMode } = useThemeStore();
 
@@ -52,77 +55,80 @@ function App() {
   }, [darkMode]);
 
   return (
-    <div className="App">
-      <AuthErrorBoundary>
-        <Routes>
-          {/* Public Page */}
-          <Route path="/" element={<Landing />} />
-          <Route path="/contract-generator" element={<ContractGenerator />} />
+    <BackHandlerProvider>
+      <div className="App">
+        <AuthErrorBoundary>
+          <Routes>
+            {/* Public Page */}
+            <Route path="/" element={<Landing />} />
+            <Route path="/contract-generator" element={<ContractGenerator />} />
+            <Route path="/back-handler-test" element={<BackHandlerTest />} />
 
-          {/* Redirect logged-in users away from login/signup */}
-          <Route element={<RedirectRoute />}>
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-          </Route>
-
-          {/* Admin Routes (only accessible to logged-in admin) */}
-          <Route element={<ProtectedRoute requiredRole="admin" />}>
-            <Route
-              path="/admin"
-              element={
-                <Suspense fallback={<LoadingScreen />}>
-                  <AdminDashboard />
-                </Suspense>
-              }
-            >
-              <Route index element={<Suspense fallback={<LoadingScreen />}><AdminStatsDashboard /></Suspense>} />
-              <Route path="cameras" element={<Suspense fallback={<LoadingScreen />}><AdminCameras /></Suspense>} />
-              <Route path="users" element={<Suspense fallback={<LoadingScreen />}><AdminUsers /></Suspense>} />
-              <Route path="inclusions" element={<Suspense fallback={<LoadingScreen />}><AdminInclusions/></Suspense>} />
-              <Route path="bookings" element={<Suspense fallback={<LoadingScreen />}><AdminBookings /></Suspense>} />
-              <Route path="rentals" element={<Suspense fallback={<LoadingScreen />}><AdminRentals /></Suspense>} />
-              <Route path="extensions" element={<Suspense fallback={<LoadingScreen />}><AdminExtensions /></Suspense>} />
-              <Route path="payments" element={<Suspense fallback={<LoadingScreen />}><AdminPayments /></Suspense>} />
-              <Route path="delivery" element={<Suspense fallback={<LoadingScreen />}><AdminDelivery /></Suspense>} />
-              <Route path="feedbacks" element={<Suspense fallback={<LoadingScreen />}><AdminFeedbacks /></Suspense>} />
-              <Route path="booking-trends" element={<Suspense fallback={<LoadingScreen />}><BookingTrends /></Suspense>} />
-              <Route path="monthly-heatmap" element={<Suspense fallback={<LoadingScreen />}><MonthlyHeatmap /></Suspense>} />
-              <Route path="revenue" element={<Suspense fallback={<LoadingScreen />}><Revenue /></Suspense>} />
-              <Route path="settings" element={<Suspense fallback={<LoadingScreen />}><Settings /></Suspense>} />
+            {/* Redirect logged-in users away from login/signup */}
+            <Route element={<RedirectRoute />}>
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
             </Route>
-          </Route>
 
-          {/* User Routes (only accessible to logged-in user) */}
-          <Route element={<ProtectedRoute requiredRole="user" />}>
-            <Route
-              path="/user"
-              element={
-                <Suspense fallback={<LoadingScreen />}>
-                  <UserDashboard />
-                </Suspense>
-              }
-            >
-              <Route index element={<Suspense fallback={<LoadingScreen />}><Home /></Suspense>} />
-              <Route path="home" element={<Suspense fallback={<LoadingScreen />}><Home /></Suspense>} />
-              <Route path="search" element={<Suspense fallback={<LoadingScreen />}><Search /></Suspense>} />
-              <Route path="cart" element={<Suspense fallback={<LoadingScreen />}><Cart /></Suspense>} />
-              <Route path="booking" element={<Suspense fallback={<LoadingScreen />}><Booking /></Suspense>} />
-              <Route path="educational" element={<Suspense fallback={<LoadingScreen />}><UserEducational /></Suspense>} />
-              <Route path="profile" element={<Suspense fallback={<LoadingScreen />}><UserProfile /></Suspense>} />
+            {/* Admin Routes (only accessible to logged-in admin) */}
+            <Route element={<ProtectedRoute requiredRole="admin" />}>
+              <Route
+                path="/admin"
+                element={
+                  <Suspense fallback={<LoadingScreen />}>
+                    <AdminDashboard />
+                  </Suspense>
+                }
+              >
+                <Route index element={<Suspense fallback={<LoadingScreen />}><AdminStatsDashboard /></Suspense>} />
+                <Route path="cameras" element={<Suspense fallback={<LoadingScreen />}><AdminCameras /></Suspense>} />
+                <Route path="users" element={<Suspense fallback={<LoadingScreen />}><AdminUsers /></Suspense>} />
+                <Route path="inclusions" element={<Suspense fallback={<LoadingScreen />}><AdminInclusions/></Suspense>} />
+                <Route path="bookings" element={<Suspense fallback={<LoadingScreen />}><AdminBookings /></Suspense>} />
+                <Route path="rentals" element={<Suspense fallback={<LoadingScreen />}><AdminRentals /></Suspense>} />
+                <Route path="extensions" element={<Suspense fallback={<LoadingScreen />}><AdminExtensions /></Suspense>} />
+                <Route path="payments" element={<Suspense fallback={<LoadingScreen />}><AdminPayments /></Suspense>} />
+                <Route path="delivery" element={<Suspense fallback={<LoadingScreen />}><AdminDelivery /></Suspense>} />
+                <Route path="feedbacks" element={<Suspense fallback={<LoadingScreen />}><AdminFeedbacks /></Suspense>} />
+                <Route path="booking-trends" element={<Suspense fallback={<LoadingScreen />}><BookingTrends /></Suspense>} />
+                <Route path="monthly-heatmap" element={<Suspense fallback={<LoadingScreen />}><MonthlyHeatmap /></Suspense>} />
+                <Route path="revenue" element={<Suspense fallback={<LoadingScreen />}><Revenue /></Suspense>} />
+                <Route path="settings" element={<Suspense fallback={<LoadingScreen />}><Settings /></Suspense>} />
+              </Route>
             </Route>
-            {/* Rental page outside UserDashboard navigation */}
-            <Route path="/user/rental" element={<Suspense fallback={<LoadingScreen />}><Rental /></Suspense>} />
-          </Route>
 
-          {/* Catch-all for 404 Not Found */}
-          <Route path="*" element={<NotFound />} />
+            {/* User Routes (only accessible to logged-in user) */}
+            <Route element={<ProtectedRoute requiredRole="user" />}>
+              <Route
+                path="/user"
+                element={
+                  <Suspense fallback={<LoadingScreen />}>
+                    <UserDashboard />
+                  </Suspense>
+                }
+              >
+                <Route index element={<Suspense fallback={<LoadingScreen />}><Home /></Suspense>} />
+                <Route path="home" element={<Suspense fallback={<LoadingScreen />}><Home /></Suspense>} />
+                <Route path="search" element={<Suspense fallback={<LoadingScreen />}><Search /></Suspense>} />
+                <Route path="cart" element={<Suspense fallback={<LoadingScreen />}><Cart /></Suspense>} />
+                <Route path="booking" element={<Suspense fallback={<LoadingScreen />}><Booking /></Suspense>} />
+                <Route path="educational" element={<Suspense fallback={<LoadingScreen />}><UserEducational /></Suspense>} />
+                <Route path="profile" element={<Suspense fallback={<LoadingScreen />}><UserProfile /></Suspense>} />
+              </Route>
+              {/* Rental page outside UserDashboard navigation */}
+              <Route path="/user/rental" element={<Suspense fallback={<LoadingScreen />}><Rental /></Suspense>} />
+            </Route>
 
-        </Routes>
+            {/* Catch-all for 404 Not Found */}
+            <Route path="*" element={<NotFound />} />
 
-        {/* Add the toast manager */}
-        <NotificationToastManager />
-      </AuthErrorBoundary>
-    </div>
+          </Routes>
+
+          {/* Add the toast manager */}
+          <NotificationToastManager />
+        </AuthErrorBoundary>
+      </div>
+    </BackHandlerProvider>
   );
 }
 
