@@ -5,6 +5,7 @@ import { generateSignedContractPdf } from '../../services/pdfService';
 import { getPublicCameraByName, calculateRentalQuote } from '../../services/publicService';
 import { supabase } from '../../lib/supabaseClient';
 import { toast } from 'react-toastify';
+import useBackHandler from '../../hooks/useBackHandler';
 
 // Contract Generator Modal (identical content to page version, adapted for modal)
 export default function ContractGeneratorModal({ open, onClose, initialData = {} }) {
@@ -22,6 +23,13 @@ export default function ContractGeneratorModal({ open, onClose, initialData = {}
   const [selectedCameraPricing, setSelectedCameraPricing] = useState({ price_1to3: null, price_4plus: null });
   const [estimate, setEstimate] = useState(null);
   const pricingType = estimate?.days && estimate.days > 3 ? 'Discounted' : 'Standard';
+
+  // Handle mobile back button - close modal when back is pressed
+  useBackHandler(open, () => {
+    if (!sendingEmail) {
+      onClose();
+    }
+  }, 100);
 
   // No field inputs shown; we only display summary from initialData
 
