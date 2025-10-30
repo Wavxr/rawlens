@@ -44,8 +44,6 @@ const Rental = lazy(() => import('./pages/user/Rental'));
 const UserEducational = lazy(() => import('./pages/user/Educational'));
 const UserProfile = lazy(() => import('./pages/user/Profile'));
 
-import BackHandlerTest from './pages/BackHandlerTest';
-
 function App() {
   const { darkMode } = useThemeStore();
 
@@ -62,7 +60,6 @@ function App() {
             {/* Public Page */}
             <Route path="/" element={<Landing />} />
             <Route path="/contract-generator" element={<ContractGenerator />} />
-            <Route path="/back-handler-test" element={<BackHandlerTest />} />
 
             {/* Redirect logged-in users away from login/signup */}
             <Route element={<RedirectRoute />}>
