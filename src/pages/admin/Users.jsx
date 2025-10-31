@@ -1,597 +1,781 @@
-import { useEffect, useState, useRef } from "react"
-import { getSignedUrl } from "../../services/storageService"
-import { getUsers } from "../../services/userService"
-import { subscribeToAllUsers, unsubscribeFromChannel } from "../../services/realtimeService";
-import useUserStore from "../../stores/userStore";
-import { adminUpdateVerificationStatus } from "../../services/verificationService"
+import { useState, useEffect, useMemo } from "react"
 import {
-  Users, Eye, X, Search, Filter, MoreVertical, Shield, Mail, User, Calendar,
-  ImageIcon, AlertCircle, CheckCircle, Clock, Download, AlertTriangle
-} from 'lucide-react'
+  Search,
+  User,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Filter,
+  AlertTriangle,
+  Eye,
+  X,
+  FileText,
+  Video,
+  Image as ImageIcon,
+  Calendar,
+  Mail,
+  Phone,
+  MapPin,
+  Shield,
+  Loader2,
+} from "lucide-react"
+import { getUsers } from "../../services/userService"
+import { adminUpdateVerificationStatus } from "../../services/verificationService"
+import { getSignedUrl } from "../../services/storageService"
+import { subscribeToAllUsers, unsubscribeFromChannel } from "../../services/realtimeService"
+import useIsMobile from "../../hooks/useIsMobile"
+import useBackHandler from "../../hooks/useBackHandler"
 
-function AppealBadge() {
-  return (
-    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 ml-2">
-      <AlertTriangle className="h-3 w-3 mr-1" />
-      Appealing
-    </span>
-  )
-}
+export default function Users() {
+  const isMobile = useIsMobile(768)
 
-const UserRowSkeleton = () => (
-  <tr className="border-t border-gray-800">
-    <td className="p-4">
-      <div className="flex items-center space-x-3">
-        <div className="w-10 h-10 bg-gray-800 rounded-full animate-pulse"></div>
-        <div className="space-y-2">
-          <div className="h-4 bg-gray-800 rounded w-32 animate-pulse"></div>
-          <div className="h-3 bg-gray-800 rounded w-24 animate-pulse"></div>
-        </div>
-      </div>
-    </td>
-    <td className="p-4">
-      <div className="h-4 bg-gray-800 rounded w-48 animate-pulse"></div>
-    </td>
-    <td className="p-4">
-      <div className="h-6 bg-gray-800 rounded-full w-16 animate-pulse"></div>
-    </td>
-    <td className="p-4">
-      <div className="h-4 bg-gray-800 rounded w-20 animate-pulse"></div>
-    </td>
-    <td className="p-4">
-      <div className="h-8 bg-gray-800 rounded w-20 animate-pulse"></div>
-    </td>
-  </tr>
-)
-
-const ImageSkeleton = () => (
-  <div className="space-y-3">
-    <div className="h-4 bg-gray-800 rounded w-24 animate-pulse"></div>
-    <div className="aspect-[4/3] bg-gray-800 rounded-lg animate-pulse flex items-center justify-center">
-      <ImageIcon className="h-8 w-8 text-gray-600" />
-    </div>
-  </div>
-)
-
-export default function AdminUsers() {
-  const [filteredUsers, setFilteredUsers] = useState([])
-  const [modalUser, setModalUser] = useState(null)
-  const [imgs, setImgs] = useState({ nat: "", selfie: "", video: "", natLoaded: false, selfieLoaded: false, videoLoaded: false })
-  const [loadingUsers, setLoadingUsers] = useState(true)
+  // State management
+  const [users, setUsers] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
   const [searchTerm, setSearchTerm] = useState("")
   const [roleFilter, setRoleFilter] = useState("all")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [appealFilter, setAppealFilter] = useState(false)
-  const { users, setUsers, addOrUpdateUser } = useUserStore();
+  const [verificationFilter, setVerificationFilter] = useState("all")
+  const [showAppeals, setShowAppeals] = useState(false)
+  const [selectedUser, setSelectedUser] = useState(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [actionLoading, setActionLoading] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
 
-  const userSubscriptionRef = useRef(null);
-
+  // Fetch users on mount
   useEffect(() => {
-    // Subscribe to all user updates for admin
-    if (!userSubscriptionRef.current) {
-      userSubscriptionRef.current = subscribeToAllUsers(null, (payload) => {
-        console.log('User update received in admin Users:', payload);
-      }, "admin");
-    }
+    fetchUsers()
+  }, [])
+
+  // Real-time subscription
+  useEffect(() => {
+    const channel = subscribeToAllUsers(() => {
+      // Silently refetch when users change
+      fetchUsers(true)
+    })
 
     return () => {
-    if (userSubscriptionRef.current) {
-      unsubscribeFromChannel(userSubscriptionRef.current);
-      userSubscriptionRef.current = null;
+      unsubscribeFromChannel(channel)
     }
-  };
+  }, [])
 
-  }, []);
+  async function fetchUsers(silent = false) {
+    if (!silent) setLoading(true)
+    setError("")
 
-  useEffect(() => {
-    async function loadUsers() {
-      setLoadingUsers(true)
-      try {
-        const data = await getUsers()
-        setUsers(data)
-        setFilteredUsers(data)
-      } catch (error) {
-        console.error("Failed to fetch users:", error)
-      }
-      setLoadingUsers(false)
+    try {
+      const data = await getUsers()
+      setUsers(data || [])
+    } catch (err) {
+      console.error("Failed to fetch users:", err)
+      setError("Failed to load users. Please try again.")
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
     }
-    loadUsers()
-  }, [setUsers])
+  }
 
-  useEffect(() => {
-    let filtered = users
+  // Pull-to-refresh handler for mobile
+  async function handleRefresh() {
+    setRefreshing(true)
+    await fetchUsers(true)
+  }
 
-    if (searchTerm) {
-      filtered = filtered.filter((user) =>
-        `${user.first_name} ${user.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchTerm.toLowerCase())
+  // Filter and search logic
+  const filteredUsers = useMemo(() => {
+    let result = users
+
+    // Search by name or email
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase()
+      result = result.filter(
+        (user) =>
+          `${user.first_name} ${user.last_name}`.toLowerCase().includes(term) ||
+          user.email?.toLowerCase().includes(term)
       )
     }
 
+    // Role filter
     if (roleFilter !== "all") {
-      filtered = filtered.filter((user) => (user.role || "user") === roleFilter)
+      result = result.filter((user) => user.role === roleFilter)
     }
 
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((user) => user.verification_status === statusFilter)
+    // Verification status filter
+    if (verificationFilter !== "all") {
+      result = result.filter((user) => user.verification_status === verificationFilter)
     }
 
-    if (appealFilter) {
-      filtered = filtered.filter((user) => user.is_appealing === true)
+    // Show appeals toggle
+    if (showAppeals) {
+      result = result.filter((user) => user.is_appealing === true)
     }
 
-    setFilteredUsers(filtered)
-  }, [users, searchTerm, roleFilter, statusFilter, appealFilter])
+    return result
+  }, [users, searchTerm, roleFilter, verificationFilter, showAppeals])
 
-  async function openModal(user) {
-    setModalUser(user)
+  // View user details
+  function handleViewUser(user) {
+    setSelectedUser(user)
+    setIsModalOpen(true)
+  }
 
-    setImgs({
-      nat: "", selfie: "", video: "", natLoaded: false, selfieLoaded: false, videoLoaded: false
-    })
+  // Close modal
+  function closeModal() {
+    setIsModalOpen(false)
+    setTimeout(() => setSelectedUser(null), 300)
+  }
 
+  // Back handler for mobile
+  useBackHandler(isModalOpen, closeModal, 100)
+
+  // Approve verification
+  async function handleApprove() {
+    if (!selectedUser) return
+
+    setActionLoading(true)
     try {
-      const [nat, selfie, video] = await Promise.all([
-        user.government_id_key
-          ? getSignedUrl("government-ids", user.government_id_key, { transform: { width: 500 } })
-          : Promise.resolve(""),
-        user.selfie_id_key
-          ? getSignedUrl("selfie-ids", user.selfie_id_key, { transform: { width: 500 } })
-          : Promise.resolve(""),
-        user.verification_video_key
-          ? getSignedUrl("verification-videos", user.verification_video_key)
-          : Promise.resolve(""),
-      ]);      
-
-      setImgs({
-        nat,
-        selfie,
-        video,
-        natLoaded: false,
-        selfieLoaded: false,
-        videoLoaded: false,
-      })
+      await adminUpdateVerificationStatus(selectedUser.id, "verified")
+      // Update local state
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === selectedUser.id
+            ? { ...u, verification_status: "verified", is_appealing: false }
+            : u
+        )
+      )
+      setSelectedUser((prev) => ({ ...prev, verification_status: "verified", is_appealing: false }))
     } catch (err) {
-      console.error("Signed-URL error", err)
+      console.error("Failed to approve verification:", err)
+      alert("Failed to approve verification. Please try again.")
+    } finally {
+      setActionLoading(false)
     }
   }
 
-  const closeModal = () => setModalUser(null)
+  // Reject verification
+  async function handleReject() {
+    if (!selectedUser) return
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    })
-  }
-
-  async function handleUpdateStatus(newStatus) {
-    if (!modalUser) return;
+    setActionLoading(true)
     try {
-      await adminUpdateVerificationStatus(modalUser.id, newStatus)
-      addOrUpdateUser({ ...modalUser, verification_status: newStatus });
-      setModalUser(null)
+      await adminUpdateVerificationStatus(selectedUser.id, "rejected")
+      // Update local state
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === selectedUser.id
+            ? { ...u, verification_status: "rejected", is_appealing: false }
+            : u
+        )
+      )
+      setSelectedUser((prev) => ({ ...prev, verification_status: "rejected", is_appealing: false }))
     } catch (err) {
-      console.error("Failed to update verification status:", err)
-      alert("Failed to update status.")
+      console.error("Failed to reject verification:", err)
+      alert("Failed to reject verification. Please try again.")
+    } finally {
+      setActionLoading(false)
     }
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-white">User Management</h1>
-          <p className="text-gray-400 mt-1">Manage user accounts and verify identity documents</p>
+    <div className="min-h-screen bg-gray-900 text-gray-100 p-4 md:p-8">
+      {/* Header */}
+      <div className="max-w-7xl mx-auto mb-8">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-semibold text-white mb-1">User Management</h1>
+            <p className="text-sm text-gray-400">View and manage all users and verification requests</p>
+          </div>
+          <div className="flex items-center gap-2 text-sm">
+            <div className="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded text-gray-300">
+              {filteredUsers.length} {filteredUsers.length === 1 ? "user" : "users"}
+            </div>
+          </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-xl p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-400 text-sm">Total Users</p>
-              <p className="text-2xl font-bold text-white">{users.length}</p>
-            </div>
-            <div className="bg-blue-600/20 p-3 rounded-lg">
-              <Users className="h-6 w-6 text-blue-400" />
-            </div>
-          </div>
-        </div>
-        <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-xl p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-400 text-sm">Verified</p>
-              <p className="text-2xl font-bold text-green-400">
-                {users.filter((u) => u.verification_status === "verified").length}
-              </p>
-            </div>
-            <div className="bg-green-600/20 p-3 rounded-lg">
-              <CheckCircle className="h-6 w-6 text-green-400" />
-            </div>
-          </div>
-        </div>
-        <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-xl p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-400 text-sm">Pending</p>
-              <p className="text-2xl font-bold text-yellow-400">
-                {users.filter((u) => u.verification_status === "pending").length}
-              </p>
-            </div>
-            <div className="bg-yellow-600/20 p-3 rounded-lg">
-              <Clock className="h-6 w-6 text-yellow-400" />
-            </div>
-          </div>
-        </div>
-        <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-xl p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-400 text-sm">Admins</p>
-              <p className="text-2xl font-bold text-purple-400">{users.filter((u) => u.role === "admin").length}</p>
-            </div>
-            <div className="bg-purple-600/20 p-3 rounded-lg">
-              <Shield className="h-6 w-6 text-purple-400" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-xl p-6">
-        <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
+        {/* Search and Filters */}
+        <div className="space-y-4">
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Search users by name or email..."
+              placeholder="Search by name or email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
             />
           </div>
 
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <Filter className="h-4 w-4 text-gray-400" />
+          {/* Filters Row */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            {/* Role Filter */}
+            <div className="flex-1">
               <select
                 value={roleFilter}
                 onChange={(e) => setRoleFilter(e.target.value)}
-                className="bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
               >
                 <option value="all">All Roles</option>
                 <option value="user">Users</option>
                 <option value="admin">Admins</option>
               </select>
             </div>
+
+            {/* Verification Status Filter */}
+            <div className="flex-1">
+              <select
+                value={verificationFilter}
+                onChange={(e) => setVerificationFilter(e.target.value)}
+                className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+              >
+                <option value="all">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="verified">Verified</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </div>
+
+            {/* Show Appeals Toggle */}
             <button
-              onClick={() => setAppealFilter(!appealFilter)}
-              className={`inline-flex items-center px-3 py-2 border rounded-md text-sm font-medium ${
-                appealFilter 
-                  ? 'bg-yellow-600/20 text-yellow-400 border-yellow-600/30' 
-                  : 'bg-gray-800/50 text-gray-300 border-gray-700 hover:bg-gray-700/50'
+              onClick={() => setShowAppeals(!showAppeals)}
+              className={`px-4 py-2.5 rounded text-sm font-medium transition-all flex items-center gap-2 whitespace-nowrap border ${
+                showAppeals
+                  ? "bg-orange-900 border-orange-700 text-orange-300"
+                  : "bg-gray-800 border-gray-700 text-gray-400 hover:bg-gray-700"
               }`}
             >
-              <AlertTriangle className="h-4 w-4 mr-2" />
-              {appealFilter ? 'Hide Appeals' : 'Show Appeals'}
+              <AlertTriangle className="w-4 h-4" />
+              Appeals Only
             </button>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">All Status</option>
-              <option value="verified">Verified</option>
-              <option value="pending">Pending</option>
-              <option value="rejected">Rejected</option>
-            </select>
           </div>
         </div>
       </div>
 
-      <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-800 bg-gray-800/50">
-                <th className="text-left p-4 text-gray-300 font-medium">User</th>
-                <th className="text-left p-4 text-gray-300 font-medium">Email</th>
-                <th className="text-left p-4 text-gray-300 font-medium">Role</th>
-                <th className="text-left p-4 text-gray-300 font-medium">Status</th>
-                <th className="text-left p-4 text-gray-300 font-medium">Joined</th>
-                <th className="text-left p-4 text-gray-300 font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loadingUsers ? (
-                Array.from({ length: 5 }).map((_, index) => <UserRowSkeleton key={index} />)
-              ) : filteredUsers.length === 0 ? (
-                <tr>
-                  <td colSpan="6" className="text-center py-12">
-                    <Users className="h-16 w-16 text-gray-600 mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-gray-400 mb-2">No users found</h3>
-                    <p className="text-gray-500">
-                      {searchTerm || roleFilter !== "all" || statusFilter !== "all"
-                        ? "Try adjusting your search or filters"
-                        : "No users have registered yet"}
-                    </p>
-                  </td>
-                </tr>
-              ) : (
-                filteredUsers.map((user) => {
-                  const statusColor = {
-                    verified: "bg-green-600/20 text-green-400 border border-green-600/30",
-                    pending: "bg-yellow-600/20 text-yellow-400 border border-yellow-600/30",
-                    rejected: "bg-red-600/20 text-red-400 border border-red-600/30",
-                  }
-                  return (
-                    <tr key={user.id} className="border-t border-gray-800 hover:bg-gray-800/30 transition-colors">
-                      <td className="p-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-medium">
-                            {user.first_name?.[0]?.toUpperCase() || "U"}
-                          </div>
-                          <div>
-                            <div className="text-sm font-medium text-gray-100 flex items-center">
-                              {user.first_name} {user.last_name}
-                              {user.is_appealing && <AppealBadge />}
-                            </div>
-                            <p className="text-sm text-gray-400">{user.contact_number || "No phone"}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <div className="flex items-center space-x-2">
-                          <Mail className="h-4 w-4 text-gray-500" />
-                          <span className="text-gray-300">{user.email}</span>
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-medium ${
-                            user.role === "admin"
-                              ? "bg-purple-600/20 text-purple-400 border border-purple-600/30"
-                              : "bg-gray-600/20 text-gray-400 border border-gray-600/30"
-                          }`}
-                        >
-                          {user.role || "user"}
-                        </span>
-                      </td>
-                      <td className="p-4">
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-medium ${
-                            statusColor[user.verification_status] || "bg-gray-700 text-gray-300 border border-gray-600/30"
-                          }`}
-                        >
-                          {user.verification_status?.charAt(0).toUpperCase() + user.verification_status?.slice(1) || "Unknown"}
-                        </span>
-                      </td>
-                      <td className="p-4">
-                        <div className="flex items-center space-x-2">
-                          <Calendar className="h-4 w-4 text-gray-500" />
-                          <span className="text-gray-400 text-sm">{formatDate(user.created_at)}</span>
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => openModal(user)}
-                            className="bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 px-3 py-2 rounded-lg transition-colors flex items-center space-x-2 text-sm"
-                          >
-                            <Eye className="h-4 w-4" />
-                            <span>View IDs</span>
-                          </button>
-                          <button className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors">
-                            <MoreVertical className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
+      {/* Content */}
+      <div className="max-w-7xl mx-auto">
+        {loading ? (
+          <LoadingState />
+        ) : error ? (
+          <ErrorState message={error} onRetry={() => fetchUsers()} />
+        ) : filteredUsers.length === 0 ? (
+          <EmptyState searchTerm={searchTerm} />
+        ) : isMobile ? (
+          <UserCardList users={filteredUsers} onView={handleViewUser} />
+        ) : (
+          <UserTable users={filteredUsers} onView={handleViewUser} />
+        )}
+      </div>
+
+      {/* User Details Modal */}
+      {isModalOpen && selectedUser && (
+        <UserDetailsModal
+          user={selectedUser}
+          onClose={closeModal}
+          onApprove={handleApprove}
+          onReject={handleReject}
+          actionLoading={actionLoading}
+          isMobile={isMobile}
+        />
+      )}
+    </div>
+  )
+}
+
+// Loading skeleton component
+function LoadingState() {
+  return (
+    <div className="space-y-4">
+      {[...Array(5)].map((_, i) => (
+        <div
+          key={i}
+          className="bg-gray-800 border border-gray-700 rounded p-4 animate-pulse"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-gray-700 rounded-full" />
+            <div className="flex-1 space-y-2">
+              <div className="h-4 bg-gray-700 rounded w-1/3" />
+              <div className="h-3 bg-gray-700 rounded w-1/2" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// Error state component
+function ErrorState({ message, onRetry }) {
+  return (
+    <div className="bg-gray-800 border border-red-900 rounded p-8 text-center">
+      <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+      <p className="text-red-400 mb-4">{message}</p>
+      <button
+        onClick={onRetry}
+        className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors"
+      >
+        Retry
+      </button>
+    </div>
+  )
+}
+
+// Empty state component
+function EmptyState({ searchTerm }) {
+  return (
+    <div className="bg-gray-800 border border-gray-700 rounded p-12 text-center">
+      <User className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+      <h3 className="text-lg font-medium text-gray-300 mb-2">
+        {searchTerm ? "No users found" : "No users yet"}
+      </h3>
+      <p className="text-gray-500 text-sm">
+        {searchTerm
+          ? "Try adjusting your search or filters"
+          : "Users will appear here once they sign up"}
+      </p>
+    </div>
+  )
+}
+
+// Mobile card list view
+function UserCardList({ users, onView }) {
+  return (
+    <div className="space-y-3">
+      {users.map((user) => (
+        <UserCard key={user.id} user={user} onView={onView} />
+      ))}
+    </div>
+  )
+}
+
+// Individual user card for mobile
+function UserCard({ user, onView }) {
+  const initials = `${user.first_name?.[0] || ""}${user.last_name?.[0] || ""}`.toUpperCase()
+  const fullName = `${user.first_name || ""} ${user.last_name || ""}`.trim() || "Unknown User"
+  const joinDate = new Date(user.created_at).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  })
+
+  return (
+    <div className="bg-gray-800 border border-gray-700 rounded p-4 hover:bg-gray-750 transition-colors">
+      <div className="flex items-start gap-3 mb-3">
+        {/* Avatar */}
+        <div className="w-12 h-12 rounded-full bg-gray-700 border border-gray-600 flex items-center justify-center text-gray-300 font-medium text-sm flex-shrink-0">
+          {initials || "?"}
+        </div>
+
+        {/* User Info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2 mb-1">
+            <h3 className="font-medium text-white truncate">{fullName}</h3>
+            {user.is_appealing && (
+              <span className="px-1.5 py-0.5 bg-orange-900 border border-orange-700 rounded text-orange-300 text-xs font-medium flex-shrink-0">
+                Appeal
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-gray-400 truncate">{user.email}</p>
         </div>
       </div>
 
-      {modalUser && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-800">
-              <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-medium text-lg">
-                  {modalUser.first_name?.[0]?.toUpperCase() || "U"}
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-white">
-                    {modalUser.first_name} {modalUser.last_name}
-                  </h3>
-                  <p className="text-gray-400">{modalUser.email}</p>
-                </div>
-              </div>
-              <button
-                onClick={closeModal}
-                className="p-2 hover:bg-gray-800 rounded-lg transition-colors text-gray-400 hover:text-white"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+      {/* Badges Row */}
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
+        <RoleBadge role={user.role} />
+        <VerificationBadge status={user.verification_status} />
+      </div>
 
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                <div className="space-y-4">
-                  <h4 className="text-lg font-semibold text-white mb-4">User Information</h4>
-                  <div className="space-y-3">
-                    <div className="flex items-center space-x-3">
-                      <User className="h-4 w-4 text-gray-500" />
-                      <span className="text-gray-400">Name:</span>
-                      <span className="text-white">
-                        {modalUser.first_name} {modalUser.last_name}
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <Mail className="h-4 w-4 text-gray-500" />
-                      <span className="text-gray-400">Email:</span>
-                      <span className="text-white">{modalUser.email}</span>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <Shield className="h-4 w-4 text-gray-500" />
-                      <span className="text-gray-400">Role:</span>
-                      <span className="text-white">{modalUser.role || "user"}</span>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <Calendar className="h-4 w-4 text-gray-500" />
-                      <span className="text-gray-400">Joined:</span>
-                      <span className="text-white">{formatDate(modalUser.created_at)}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <h4 className="text-lg font-semibold text-white mb-4">Contact Information</h4>
-                  <div className="space-y-3">
-                    <div>
-                      <span className="text-gray-400">Phone:</span>
-                      <span className="text-white ml-2">{modalUser.contact_number || "Not provided"}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-400">Address:</span>
-                      <span className="text-white ml-2">{modalUser.address || "Not provided"}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+      {/* Footer */}
+      <div className="flex items-center justify-between pt-3 border-t border-gray-700">
+        <span className="text-xs text-gray-500">Joined {joinDate}</span>
+        <button
+          onClick={() => onView(user)}
+          className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 border border-gray-600 text-gray-300 rounded text-sm font-medium transition-colors flex items-center gap-1.5"
+        >
+          <Eye className="w-4 h-4" />
+          View
+        </button>
+      </div>
+    </div>
+  )
+}
 
-              <div>
-                <h4 className="text-lg font-semibold text-white mb-4">Identity Documents</h4>
-                <div className="grid md:grid-cols-2 gap-6 mb-6">
-                  <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
-                    <div className="flex items-center space-x-2 mb-3">
-                      <Shield className="h-4 w-4 text-blue-400" />
-                      <p className="font-medium text-white">National ID</p>
-                    </div>
+// Desktop table view
+function UserTable({ users, onView }) {
+  return (
+    <div className="bg-gray-800 border border-gray-700 rounded overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-700 bg-gray-900">
+              <th className="text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">
+                User
+              </th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">
+                Email
+              </th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">
+                Role
+              </th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">
+                Status
+              </th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">
+                Joined
+              </th>
+              <th className="text-right px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-700">
+            {users.map((user) => (
+              <UserTableRow key={user.id} user={user} onView={onView} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
 
-                    {!imgs.nat ? (
-                      <div className="aspect-[4/3] bg-gray-800 rounded-lg border-2 border-dashed border-gray-700 flex items-center justify-center">
-                        <div className="text-center">
-                          <AlertCircle className="h-8 w-8 text-gray-600 mx-auto mb-2" />
-                          <p className="text-gray-500 text-sm">No document uploaded</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-3 relative">
-                        {!imgs.natLoaded && <ImageSkeleton />}
-                        <img
-                          src={imgs.nat}
-                          alt="National ID"
-                          className={`w-full rounded-lg border border-gray-700 shadow-lg transition-opacity duration-300 ${
-                            imgs.natLoaded ? "opacity-100" : "opacity-0 absolute top-0 left-0"
-                          }`}
-                          onLoad={() => setImgs((prev) => ({ ...prev, natLoaded: true }))}
-                        />
-                        {imgs.natLoaded && (
-                          <button className="w-full bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 py-2 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2">
-                            <Download className="h-4 w-4" />
-                            <span>Download</span>
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
+// Individual table row
+function UserTableRow({ user, onView }) {
+  const initials = `${user.first_name?.[0] || ""}${user.last_name?.[0] || ""}`.toUpperCase()
+  const fullName = `${user.first_name || ""} ${user.last_name || ""}`.trim() || "Unknown User"
+  const joinDate = new Date(user.created_at).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  })
 
-                  <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
-                    <div className="flex items-center space-x-2 mb-3">
-                      <User className="h-4 w-4 text-blue-400" />
-                      <p className="font-medium text-white">Selfie with ID</p>
-                    </div>
-
-                    {!imgs.selfie ? (
-                      <div className="aspect-[4/3] bg-gray-800 rounded-lg border-2 border-dashed border-gray-700 flex items-center justify-center">
-                        <div className="text-center">
-                          <AlertCircle className="h-8 w-8 text-gray-600 mx-auto mb-2" />
-                          <p className="text-gray-500 text-sm">No document uploaded</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-3 relative">
-                        {!imgs.selfieLoaded && <ImageSkeleton />}
-                        <img
-                          src={imgs.selfie}
-                          alt="Selfie with ID"
-                          className={`w-full rounded-lg border border-gray-700 shadow-lg transition-opacity duration-300 ${
-                            imgs.selfieLoaded ? "opacity-100" : "opacity-0 absolute top-0 left-0"
-                          }`}
-                          onLoad={() => setImgs((prev) => ({ ...prev, selfieLoaded: true }))}
-                        />
-                        {imgs.selfieLoaded && (
-                          <button className="w-full bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 py-2 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2">
-                            <Download className="h-4 w-4" />
-                            <span>Download</span>
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
-                  <div className="flex items-center space-x-2 mb-3">
-                    <ImageIcon className="h-4 w-4 text-blue-400" />
-                    <p className="font-medium text-white">Verification Video</p>
-                  </div>
-                  {!imgs.video ? (
-                    <div className="aspect-video bg-gray-800 rounded-lg border-2 border-dashed border-gray-700 flex items-center justify-center">
-                      <div className="text-center">
-                        <AlertCircle className="h-8 w-8 text-gray-600 mx-auto mb-2" />
-                        <p className="text-gray-500 text-sm">No video uploaded</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="relative">
-                      {!imgs.videoLoaded && <div className="aspect-video bg-gray-800 rounded-lg animate-pulse"></div>}
-                      <video
-                        src={imgs.video}
-                        controls
-                        className={`w-full rounded-lg border border-gray-700 shadow-lg transition-opacity duration-300 ${
-                          imgs.videoLoaded ? "opacity-100" : "opacity-0 absolute top-0 left-0"
-                        }`}
-                        onLoadedData={() => setImgs((prev) => ({ ...prev, videoLoaded: true }))}
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-4 p-6 border-t border-gray-800">
-              <button
-                onClick={closeModal}
-                className="px-6 py-3 border border-gray-700 bg-gray-800/50 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-colors"
-              >
-                Close
-              </button>
-
-              {modalUser?.verification_status !== "verified" && (
-                <>
-                  <button
-                    onClick={() => handleUpdateStatus("verified")}
-                    className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg transition-colors flex items-center space-x-2"
-                  >
-                    <CheckCircle className="h-4 w-4" />
-                    <span>Approve</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleUpdateStatus("rejected")}
-                    className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg transition-colors flex items-center space-x-2"
-                  >
-                    <X className="h-4 w-4" />
-                    <span>Reject</span>
-                  </button>
-                </>
+  return (
+    <tr className="hover:bg-gray-750 transition-colors">
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-gray-700 border border-gray-600 flex items-center justify-center text-gray-300 font-medium text-sm flex-shrink-0">
+            {initials || "?"}
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-white truncate">{fullName}</span>
+              {user.is_appealing && (
+                <span className="px-1.5 py-0.5 bg-orange-900 border border-orange-700 rounded text-orange-300 text-xs font-medium flex-shrink-0">
+                  Appeal
+                </span>
               )}
             </div>
           </div>
+        </div>
+      </td>
+      <td className="px-4 py-3">
+        <span className="text-sm text-gray-400">{user.email}</span>
+      </td>
+      <td className="px-4 py-3">
+        <RoleBadge role={user.role} />
+      </td>
+      <td className="px-4 py-3">
+        <VerificationBadge status={user.verification_status} />
+      </td>
+      <td className="px-4 py-3">
+        <span className="text-sm text-gray-400">{joinDate}</span>
+      </td>
+      <td className="px-4 py-3 text-right">
+        <button
+          onClick={() => onView(user)}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 border border-gray-600 text-gray-300 rounded text-sm font-medium transition-colors"
+        >
+          <Eye className="w-4 h-4" />
+          View
+        </button>
+      </td>
+    </tr>
+  )
+}
+
+// Role badge component
+function RoleBadge({ role }) {
+  const isAdmin = role === "admin"
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border ${
+        isAdmin
+          ? "bg-purple-900 border-purple-700 text-purple-300"
+          : "bg-gray-700 border-gray-600 text-gray-300"
+      }`}
+    >
+      {isAdmin && <Shield className="w-3 h-3" />}
+      {role === "admin" ? "Admin" : "User"}
+    </span>
+  )
+}
+
+// Verification status badge component
+function VerificationBadge({ status }) {
+  const config = {
+    verified: {
+      icon: CheckCircle,
+      text: "Verified",
+      className: "bg-green-900 border border-green-700 text-green-300",
+    },
+    pending: {
+      icon: Clock,
+      text: "Pending",
+      className: "bg-yellow-900 border border-yellow-700 text-yellow-300",
+    },
+    rejected: {
+      icon: XCircle,
+      text: "Rejected",
+      className: "bg-red-900 border border-red-700 text-red-300",
+    },
+  }
+
+  const { icon: Icon, text, className } = config[status] || config.pending
+
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border ${className}`}>
+      <Icon className="w-3 h-3" />
+      {text}
+    </span>
+  )
+}
+
+// User details modal
+function UserDetailsModal({ user, onClose, onApprove, onReject, actionLoading, isMobile }) {
+  const fullName = `${user.first_name || ""} ${user.last_name || ""}`.trim() || "Unknown User"
+  const joinDate = new Date(user.created_at).toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  })
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
+      {/* Modal Content */}
+      <div
+        className={`relative bg-gray-800 border-gray-700 w-full max-h-[90vh] overflow-y-auto ${
+          isMobile
+            ? "rounded-t-2xl border-t border-x"
+            : "rounded border sm:max-w-3xl"
+        }`}
+      >
+        {/* Header */}
+        <div className="sticky top-0 bg-gray-800 border-b border-gray-700 px-4 sm:px-6 py-4 flex items-center justify-between z-10">
+          <div>
+            <h2 className="text-xl font-semibold text-white">{fullName}</h2>
+            <p className="text-sm text-gray-400 mt-0.5">{user.email}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-700 transition-colors text-gray-400"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="px-4 sm:px-6 py-6 space-y-6">
+          {/* User Info Section */}
+          <div>
+            <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-3">
+              User Information
+            </h3>
+            <div className="bg-gray-900 border border-gray-700 rounded p-4 space-y-3">
+              <InfoRow icon={Calendar} label="Joined" value={joinDate} />
+              <InfoRow icon={Mail} label="Email" value={user.email} />
+              {user.contact_number && (
+                <InfoRow icon={Phone} label="Phone" value={user.contact_number} />
+              )}
+              {user.address && (
+                <InfoRow icon={MapPin} label="Address" value={user.address} />
+              )}
+              <div className="flex items-center justify-between pt-2 border-t border-gray-700">
+                <span className="text-sm text-gray-400">Role</span>
+                <RoleBadge role={user.role} />
+              </div>
+              <div className="flex items-center justify-between pt-2 border-t border-gray-700">
+                <span className="text-sm text-gray-400">Verification Status</span>
+                <VerificationBadge status={user.verification_status} />
+              </div>
+              {user.is_appealing && (
+                <div className="flex items-center gap-2 pt-2 border-t border-gray-700 text-orange-300">
+                  <AlertTriangle className="w-4 h-4" />
+                  <span className="text-sm font-medium">User has submitted an appeal</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Verification Documents Section */}
+          <div>
+            <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-3">
+              Verification Documents
+            </h3>
+            <div className="space-y-3">
+              <DocumentPreview
+                icon={FileText}
+                label="Government ID"
+                storageKey={user.government_id_key}
+                bucket="government-ids"
+                type="image"
+              />
+              <DocumentPreview
+                icon={ImageIcon}
+                label="Selfie with ID"
+                storageKey={user.selfie_id_key}
+                bucket="selfie-ids"
+                type="image"
+              />
+              <DocumentPreview
+                icon={Video}
+                label="Verification Video"
+                storageKey={user.verification_video_key}
+                bucket="verification-videos"
+                type="video"
+              />
+            </div>
+          </div>
+
+          {/* Actions Section */}
+          {user.verification_status === "pending" || user.is_appealing ? (
+            <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-700">
+              <button
+                onClick={onReject}
+                disabled={actionLoading}
+                className="flex-1 px-4 py-3 bg-red-900 hover:bg-red-800 border border-red-700 text-red-200 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {actionLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <>
+                    <XCircle className="w-5 h-5" />
+                    Reject
+                  </>
+                )}
+              </button>
+              <button
+                onClick={onApprove}
+                disabled={actionLoading}
+                className="flex-1 px-4 py-3 bg-green-900 hover:bg-green-800 border border-green-700 text-green-200 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {actionLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <>
+                    <CheckCircle className="w-5 h-5" />
+                    Approve
+                  </>
+                )}
+              </button>
+            </div>
+          ) : (
+            <div className="pt-4 border-t border-gray-700 text-center text-sm text-gray-500">
+              No pending verification actions
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Info row component for user details
+function InfoRow({ icon: Icon, label, value }) {
+  return (
+    <div className="flex items-start gap-3">
+      <Icon className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="text-xs text-gray-500 mb-0.5">{label}</p>
+        <p className="text-sm text-white break-words">{value || "Not provided"}</p>
+      </div>
+    </div>
+  )
+}
+
+// Document preview component
+function DocumentPreview({ icon: Icon, label, storageKey, bucket, type }) {
+  const [mediaUrl, setMediaUrl] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false)
+
+  useEffect(() => {
+    if (storageKey && isExpanded && !mediaUrl) {
+      loadMedia()
+    }
+  }, [storageKey, isExpanded])
+
+  async function loadMedia() {
+    setLoading(true)
+    setError(false)
+
+    try {
+      const url = await getSignedUrl(bucket, storageKey, { expiresIn: 300 })
+      setMediaUrl(url)
+    } catch (err) {
+      console.error(`Failed to load ${label}:`, err)
+      setError(true)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (!storageKey) {
+    return (
+      <div className="bg-gray-900 border border-gray-700 rounded p-4">
+        <div className="flex items-center gap-3 text-gray-500">
+          <Icon className="w-5 h-5" />
+          <span className="text-sm">{label}</span>
+          <span className="ml-auto text-xs">Not uploaded</span>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-gray-900 border border-gray-700 rounded overflow-hidden">
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-800 transition-colors"
+      >
+        <Icon className="w-5 h-5 text-gray-300" />
+        <span className="text-sm font-medium text-white">{label}</span>
+        <span className="ml-auto text-xs text-gray-500">
+          {isExpanded ? "Hide" : "View"}
+        </span>
+      </button>
+
+      {isExpanded && (
+        <div className="border-t border-gray-700 p-4">
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
+            </div>
+          ) : error ? (
+            <div className="text-center py-8 text-red-400 text-sm">
+              Failed to load document
+            </div>
+          ) : mediaUrl ? (
+            type === "video" ? (
+              <video
+                src={mediaUrl}
+                controls
+                className="w-full rounded bg-black"
+              />
+            ) : (
+              <img
+                src={mediaUrl}
+                alt={label}
+                className="w-full rounded"
+              />
+            )
+          ) : null}
         </div>
       )}
     </div>
