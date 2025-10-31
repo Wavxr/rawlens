@@ -614,9 +614,9 @@ const BookingDetailView = ({
           </div>
         ) : null}
 
-        {/* Rental Extension Manager - Only show for confirmed and active rentals that have been delivered */}
+        {/* Rental Extension Manager - Only show for confirmed and active rentals that have been delivered or return scheduled */}
         {['confirmed', 'active'].includes(booking.rental_status) && 
-         booking.shipping_status === 'delivered' && (
+         ['delivered', 'return_scheduled'].includes(booking.shipping_status) && (
           <RentalExtensionManager 
             rental={booking} 
             userId={userId} 
