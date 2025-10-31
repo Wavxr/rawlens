@@ -92,7 +92,7 @@ const RequestCard = ({ rental, isSelected = false, onClick, variant = 'sidebar' 
                 <img
                   src={cameraImage}
                   alt={cameraName}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                   onError={() => setImgBroken(true)}
                 />
               ) : (
@@ -170,7 +170,7 @@ const RequestCard = ({ rental, isSelected = false, onClick, variant = 'sidebar' 
             <img
               src={cameraImage}
               alt={cameraName}
-              className="object-cover w-full h-full"
+              className="w-full h-full object-contain"
               onError={() => setImgBroken(true)}
             />
           ) : (

@@ -389,18 +389,16 @@ const BookingDetailView = ({
         {/* Equipment Section */}
         <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
           <div className="flex-shrink-0">
-            <div className="w-full lg:w-64 h-48 lg:h-56 bg-gray-100 rounded-lg overflow-hidden">
+            <div className="w-full lg:w-64 bg-neutral-100 flex items-center justify-center rounded-lg overflow-hidden">
               {!imgBroken && cameraImage ? (
                 <img
                   src={cameraImage}
                   alt={cameraName}
-                  className="object-cover w-full h-full"
+                  className="w-full h-auto object-contain p-3 sm:p-8"
                   onError={() => setImgBroken(true)}
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-400">
-                  <CameraIcon className="h-12 w-12 sm:h-16 sm:w-16" />
-                </div>
+                <CameraIcon className="w-16 h-16 sm:w-24 sm:h-24 text-neutral-300" />
               )}
             </div>
           </div>
