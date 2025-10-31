@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import DateFilterInput from '../../forms/DateFilterInput';
+import useBackHandler from '../../../hooks/useBackHandler';
 
 const MobileRentalFooter = ({
   calculatedPrice,
@@ -80,6 +81,12 @@ const MobileRentalFooter = ({
       setFooterState('available');
     }
   }, [footerState, isCheckingAvailability, isAvailabilityChecked, isAvailable]);
+
+  // Handle mobile back button when date selector is open
+  useBackHandler(isDateSelectorOpen, () => {
+    setIsDateSelectorOpen(false);
+    setFooterState('initial');
+  }, 100);
 
   const handleFooterButtonClick = async () => {
     if (sourcePageType === 'search') {
