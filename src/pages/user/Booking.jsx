@@ -16,11 +16,55 @@ import CancellationModal from "../../components/modals/CancellationModal"
 import useIsMobile from "../../hooks/useIsMobile"
 import { toast, ToastContainer } from "react-toastify"
 import 'react-toastify/dist/ReactToastify.css';
-import { Package, Truck, CheckCircle, Clock, CreditCard, Zap, RotateCcw } from "lucide-react"
+import { Package, Truck, CheckCircle, Clock, CreditCard } from "lucide-react"
 
-// Main Component
-export default function Rentals() {
-  // State Management
+const Booking = () => {
+  // EmptyState Component - Shows when no rentals in filter
+  const EmptyState = ({ activeFilter }) => {
+    const config = {
+      payment_pending: {
+        icon: CheckCircle,
+        iconColor: 'text-green-600',
+        bgColor: 'bg-green-100',
+        title: 'No payment required',
+        subtitle: 'All your confirmed rentals have been paid for.'
+      },
+      awaiting: {
+        icon: Clock,
+        iconColor: 'text-blue-600',
+        bgColor: 'bg-blue-100',
+        title: 'No rentals awaiting delivery',
+        subtitle: 'Once your payment is verified, rentals will appear here.'
+      },
+      active: {
+        icon: CheckCircle,
+        iconColor: 'text-green-600',
+        bgColor: 'bg-green-100',
+        title: 'No active rentals',
+        subtitle: 'Active rentals will show here when they\'re delivered.'
+      },
+      returning: {
+        icon: Truck,
+        iconColor: 'text-amber-600',
+        bgColor: 'bg-amber-100',
+        title: 'No returning rentals',
+        subtitle: 'Rentals being returned will appear here.'
+      }
+    };
+
+    const currentConfig = config[activeFilter] || config.payment_pending;
+    const Icon = currentConfig.icon;
+
+    return (
+      <div className="bg-white border border-gray-200 rounded-xl p-8 sm:p-12 text-center">
+        <div className={`w-16 h-16 rounded-2xl ${currentConfig.bgColor} flex items-center justify-center mx-auto mb-4`}>
+          <Icon className={`h-8 w-8 ${currentConfig.iconColor}`} />
+        </div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">{currentConfig.title}</h3>
+        <p className="text-sm text-gray-600 leading-relaxed max-w-md mx-auto">{currentConfig.subtitle}</p>
+      </div>
+    );
+  };
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const authLoading = useAuthStore((s) => s.loading)
@@ -1255,6 +1299,11 @@ export default function Rentals() {
               ))}
             </div>
           )}
+          {isMobile && displayedRentals.length === 0 && (
+            <div className="px-3 py-4">
+              <EmptyState activeFilter={activeFilter} />
+            </div>
+          )}
         </FilterTabs>
 
         {/* Error Message */}
@@ -1407,3 +1456,5 @@ export default function Rentals() {
     </div>
   )
 }
+
+export default Booking
