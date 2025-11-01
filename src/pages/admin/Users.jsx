@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import {
   Search,
   User,
@@ -40,7 +40,6 @@ export default function Users() {
   const [selectedUser, setSelectedUser] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
-  const [refreshing, setRefreshing] = useState(false)
 
   // Fetch users on mount
   useEffect(() => {
@@ -71,14 +70,7 @@ export default function Users() {
       setError("Failed to load users. Please try again.")
     } finally {
       setLoading(false)
-      setRefreshing(false)
     }
-  }
-
-  // Pull-to-refresh handler for mobile
-  async function handleRefresh() {
-    setRefreshing(true)
-    await fetchUsers(true)
   }
 
   // Filter and search logic
@@ -530,12 +522,13 @@ function VerificationBadge({ status }) {
     },
   }
 
-  const { icon: Icon, text, className } = config[status] || config.pending
+  const statusConfig = config[status] || config.pending
+  const Icon = statusConfig.icon
 
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border ${className}`}>
+    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border ${statusConfig.className}`}>
       <Icon className="w-3 h-3" />
-      {text}
+      {statusConfig.text}
     </span>
   )
 }
@@ -686,7 +679,8 @@ function UserDetailsModal({ user, onClose, onApprove, onReject, actionLoading, i
 }
 
 // Info row component for user details
-function InfoRow({ icon: Icon, label, value }) {
+function InfoRow({ icon, label, value }) {
+  const Icon = icon
   return (
     <div className="flex items-start gap-3">
       <Icon className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
@@ -699,19 +693,13 @@ function InfoRow({ icon: Icon, label, value }) {
 }
 
 // Document preview component
-function DocumentPreview({ icon: Icon, label, storageKey, bucket, type }) {
+function DocumentPreview({ icon, label, storageKey, bucket, type }) {
   const [mediaUrl, setMediaUrl] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
 
-  useEffect(() => {
-    if (storageKey && isExpanded && !mediaUrl) {
-      loadMedia()
-    }
-  }, [storageKey, isExpanded])
-
-  async function loadMedia() {
+  const loadMedia = useCallback(async () => {
     setLoading(true)
     setError(false)
 
@@ -724,7 +712,15 @@ function DocumentPreview({ icon: Icon, label, storageKey, bucket, type }) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [bucket, storageKey, label])
+
+  useEffect(() => {
+    if (storageKey && isExpanded && !mediaUrl) {
+      loadMedia()
+    }
+  }, [storageKey, isExpanded, mediaUrl, loadMedia])
+
+  const Icon = icon
 
   if (!storageKey) {
     return (
