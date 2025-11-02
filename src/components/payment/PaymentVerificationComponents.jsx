@@ -1,12 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Eye, Check, X, CreditCard, AlertTriangle } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { getPaymentReceiptUrl } from '../../services/paymentService';
+import useBackHandler from '../../hooks/useBackHandler';
 
 const PaymentVerificationModal = ({ rental, isOpen, onClose, onVerify, onReject }) => {
   const [rejectionReason, setRejectionReason] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [receiptUrl, setReceiptUrl] = useState(null);
+
+  // Handle mobile back button - close modal when back is pressed (only when not processing)
+  useBackHandler(isOpen && !isProcessing, () => {
+    onClose();
+  }, 100);
 
   // Get fresh signed URL for receipt
   useEffect(() => {

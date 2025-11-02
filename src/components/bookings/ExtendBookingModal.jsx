@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { X, Calendar, Camera, User, DollarSign, Upload, AlertCircle } from 'lucide-react';
 import useAuthStore from '../../stores/useAuthStore';
 import { createAdminExtension, checkExtensionEligibility, checkCameraAvailabilityForExtension } from '../../services/extensionService';
+import useBackHandler from '../../hooks/useBackHandler';
 
 const ExtendBookingModal = ({ isOpen, onClose, booking }) => {
   const { user } = useAuthStore();
@@ -18,6 +19,13 @@ const ExtendBookingModal = ({ isOpen, onClose, booking }) => {
   const [additionalPrice, setAdditionalPrice] = useState(0);
   const [eligibilityChecked, setEligibilityChecked] = useState(false);
   const [isEligible, setIsEligible] = useState(false);
+
+  // Handle mobile back button - close modal when back is pressed
+  useBackHandler(isOpen, () => {
+    if (!loading) {
+      onClose();
+    }
+  }, 100);
 
   const resetForm = useCallback(() => {
     setNewEndDate('');

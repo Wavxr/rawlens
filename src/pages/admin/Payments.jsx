@@ -11,6 +11,7 @@ import { subscribeToAllPayments, unsubscribeFromChannel } from '../../services/r
 import usePaymentStore from '../../stores/paymentStore';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import useBackHandler from '../../hooks/useBackHandler';
 
 const Payments = () => {
   const [loading, setLoading] = useState(true);
@@ -22,7 +23,8 @@ const Payments = () => {
   const channelRef = useRef(null);
   const { setPayments, getPaymentsByStatus } = usePaymentStore();
 
-  // Get only submitted payments from the store
+
+
   const submittedPayments = storeReady ? getPaymentsByStatus('submitted') : [];
 
   useEffect(() => {
@@ -32,31 +34,27 @@ const Payments = () => {
         if (response.success) {
           setPayments(response.data);
           setStoreReady(true);
-        } else {
-          // Handle API error
         }
       } catch {
-        // Handle fetch error
       } finally {
         setLoading(false);
       }
-    };    fetchPayments();
+    }; fetchPayments();
 
-    // Subscribe to real-time updates - the store will be updated by the realtime service
-    const channel = subscribeToAllPayments(() => {
-      // The real-time service handles updating the store with hydrated data
-      // We don't need to manually manage updates here
-    });
+    const channel = subscribeToAllPayments(() => { });
 
     channelRef.current = channel;
 
     return () => {
-      // Use the service function for cleanup
       if (channelRef.current) {
         unsubscribeFromChannel(channelRef.current);
       }
     };
-  }, [setPayments]); // Include setPayments in dependencies
+  }, [setPayments]);
+  
+  useBackHandler(expandedPayments.size > 0, () => {
+    setExpandedPayments(new Set());
+  }, 100);
 
   const toggleExpanded = (paymentId) => {
     const newExpanded = new Set(expandedPayments);
@@ -69,7 +67,6 @@ const Payments = () => {
   };
 
   const handleVerifyPayment = async (paymentId, paymentType, payment) => {
-    // Add to verifying set
     setVerifyingPayments(prev => new Set([...prev, paymentId]));
     
     let result;
@@ -83,7 +80,6 @@ const Payments = () => {
         }
         result = await adminVerifyRentalPayment(paymentId);
       } else if (paymentType === 'extension') {
-        // Find the extension associated with this payment
         const extensionId = payment.extension_id;
         if (!extensionId) {
           throw new Error('Extension payment must have an associated extension');
@@ -138,7 +134,6 @@ const Payments = () => {
         }
       );
     } finally {
-      // Remove from verifying set
       setVerifyingPayments(prev => {
         const newSet = new Set(prev);
         newSet.delete(paymentId);
@@ -148,9 +143,8 @@ const Payments = () => {
   };
 
   const handleFetchReceiptUrl = async (payment) => {
-    if (!payment?.payment_receipt_url) return; // no stored path
+    if (!payment?.payment_receipt_url) return;
     const id = payment.id;
-    // Use cached if available
     if (receiptUrlCache[id]) {
       window.open(receiptUrlCache[id], '_blank', 'noopener,noreferrer');
       return;
@@ -185,24 +179,6 @@ const Payments = () => {
 
   return (
     <div className="min-h-screen bg-gray-900">
-      {/* Header Section */}
-      <div className="bg-gray-800 border-b border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white">Payment Applications</h1>
-              <p className="mt-1 text-sm text-gray-400">Review and verify customer payment submissions</p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <p className="text-2xl font-bold text-white">{submittedPayments.length}</p>
-                <p className="text-xs text-gray-400">Pending Reviews</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
         {submittedPayments.length === 0 ? (
