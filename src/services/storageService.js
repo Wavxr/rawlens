@@ -2,11 +2,28 @@ import { supabase } from "../lib/supabaseClient";
 
 /* ---------- Path Helpers ---------- */
 
-// Generate a standardized object path
-export function objectPath(entityId, type, ext, { versioned = true } = {}) {
+export function objectPath(...args) {
   const ts = Date.now();
-  const filename = versioned ? `${type}-${ts}.${ext}` : `${type}.${ext}`;
-  return `${entityId}/${filename}`;
+  let versioned = true;
+
+  // If the last argument is an options object, extract it.
+  if (args.length > 0 && typeof args[args.length - 1] === 'object' && args[args.length - 1] !== null) {
+    const opts = args.pop();
+    if (typeof opts.versioned === 'boolean') {
+      versioned = opts.versioned;
+    }
+  }
+
+  if (args.length < 2) {
+    throw new Error('objectPath: requires at least a filename and an extension.');
+  }
+
+  const ext = args.pop();
+  const filename = args.pop();
+  
+  const finalFilename = versioned ? `${filename}-${ts}.${ext}` : `${filename}.${ext}`;
+  
+  return [...args, finalFilename].join('/');
 }
 
 

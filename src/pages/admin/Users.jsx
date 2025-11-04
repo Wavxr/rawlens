@@ -18,8 +18,9 @@ import {
   MapPin,
   Shield,
   Loader2,
+  Trash2,
 } from "lucide-react"
-import { getUsers } from "../../services/userService"
+import { getUsers, deleteUser } from "../../services/userService"
 import { adminUpdateVerificationStatus } from "../../services/verificationService"
 import { getSignedUrl } from "../../services/storageService"
 import { subscribeToAllUsers, unsubscribeFromChannel } from "../../services/realtimeService"
@@ -40,6 +41,7 @@ export default function Users() {
   const [selectedUser, setSelectedUser] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
 
   // Fetch users on mount
   useEffect(() => {
@@ -117,8 +119,21 @@ export default function Users() {
     setTimeout(() => setSelectedUser(null), 300)
   }
 
+  function openDeleteConfirm(user) {
+    setSelectedUser(user);
+    setIsDeleteConfirmOpen(true);
+  }
+
+  function closeDeleteConfirm() {
+    setIsDeleteConfirmOpen(false);
+    setTimeout(() => setSelectedUser(null), 300);
+  }
+
   // Back handler for mobile
-  useBackHandler(isModalOpen, closeModal, 100)
+  useBackHandler(isModalOpen || isDeleteConfirmOpen, () => {
+    if (isModalOpen) closeModal();
+    if (isDeleteConfirmOpen) closeDeleteConfirm();
+  }, 100);
 
   // Approve verification
   async function handleApprove() {
@@ -165,6 +180,23 @@ export default function Users() {
       alert("Failed to reject verification. Please try again.")
     } finally {
       setActionLoading(false)
+    }
+  }
+
+  // Delete user
+  async function handleDeleteUser() {
+    if (!selectedUser) return;
+
+    setActionLoading(true);
+    try {
+      await deleteUser(selectedUser.id);
+      setUsers((prev) => prev.filter((u) => u.id !== selectedUser.id));
+      closeDeleteConfirm();
+    } catch (err) {
+      console.error("Failed to delete user:", err);
+      alert("Failed to delete user. Please try again.");
+    } finally {
+      setActionLoading(false);
     }
   }
 
@@ -252,9 +284,9 @@ export default function Users() {
         ) : filteredUsers.length === 0 ? (
           <EmptyState searchTerm={searchTerm} />
         ) : isMobile ? (
-          <UserCardList users={filteredUsers} onView={handleViewUser} />
+          <UserCardList users={filteredUsers} onView={handleViewUser} onDelete={openDeleteConfirm} />
         ) : (
-          <UserTable users={filteredUsers} onView={handleViewUser} />
+          <UserTable users={filteredUsers} onView={handleViewUser} onDelete={openDeleteConfirm} />
         )}
       </div>
 
@@ -267,6 +299,20 @@ export default function Users() {
           onReject={handleReject}
           actionLoading={actionLoading}
           isMobile={isMobile}
+          onDelete={() => {
+            closeModal();
+            openDeleteConfirm(selectedUser);
+          }}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteConfirmOpen && selectedUser && (
+        <DeleteConfirmModal
+          user={selectedUser}
+          onClose={closeDeleteConfirm}
+          onConfirm={handleDeleteUser}
+          loading={actionLoading}
         />
       )}
     </div>
@@ -329,18 +375,18 @@ function EmptyState({ searchTerm }) {
 }
 
 // Mobile card list view
-function UserCardList({ users, onView }) {
+function UserCardList({ users, onView, onDelete }) {
   return (
     <div className="space-y-3">
       {users.map((user) => (
-        <UserCard key={user.id} user={user} onView={onView} />
+        <UserCard key={user.id} user={user} onView={onView} onDelete={onDelete} />
       ))}
     </div>
   )
 }
 
 // Individual user card for mobile
-function UserCard({ user, onView }) {
+function UserCard({ user, onView, onDelete }) {
   const initials = `${user.first_name?.[0] || ""}${user.last_name?.[0] || ""}`.toUpperCase()
   const fullName = `${user.first_name || ""} ${user.last_name || ""}`.trim() || "Unknown User"
   const joinDate = new Date(user.created_at).toLocaleDateString("en-US", {
@@ -380,20 +426,28 @@ function UserCard({ user, onView }) {
       {/* Footer */}
       <div className="flex items-center justify-between pt-3 border-t border-gray-700">
         <span className="text-xs text-gray-500">Joined {joinDate}</span>
-        <button
-          onClick={() => onView(user)}
-          className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 border border-gray-600 text-gray-300 rounded text-sm font-medium transition-colors flex items-center gap-1.5"
-        >
-          <Eye className="w-4 h-4" />
-          View
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => onDelete(user)}
+            className="px-3 py-1.5 bg-red-900/50 hover:bg-red-900 border border-red-800 text-red-300 rounded text-sm font-medium transition-colors flex items-center gap-1.5"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => onView(user)}
+            className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 border border-gray-600 text-gray-300 rounded text-sm font-medium transition-colors flex items-center gap-1.5"
+          >
+            <Eye className="w-4 h-4" />
+            View
+          </button>
+        </div>
       </div>
     </div>
   )
 }
 
 // Desktop table view
-function UserTable({ users, onView }) {
+function UserTable({ users, onView, onDelete }) {
   return (
     <div className="bg-gray-800 border border-gray-700 rounded overflow-hidden">
       <div className="overflow-x-auto">
@@ -422,7 +476,7 @@ function UserTable({ users, onView }) {
           </thead>
           <tbody className="divide-y divide-gray-700">
             {users.map((user) => (
-              <UserTableRow key={user.id} user={user} onView={onView} />
+              <UserTableRow key={user.id} user={user} onView={onView} onDelete={onDelete} />
             ))}
           </tbody>
         </table>
@@ -432,7 +486,7 @@ function UserTable({ users, onView }) {
 }
 
 // Individual table row
-function UserTableRow({ user, onView }) {
+function UserTableRow({ user, onView, onDelete }) {
   const initials = `${user.first_name?.[0] || ""}${user.last_name?.[0] || ""}`.toUpperCase()
   const fullName = `${user.first_name || ""} ${user.last_name || ""}`.trim() || "Unknown User"
   const joinDate = new Date(user.created_at).toLocaleDateString("en-US", {
@@ -473,13 +527,21 @@ function UserTableRow({ user, onView }) {
         <span className="text-sm text-gray-400">{joinDate}</span>
       </td>
       <td className="px-4 py-3 text-right">
-        <button
-          onClick={() => onView(user)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 border border-gray-600 text-gray-300 rounded text-sm font-medium transition-colors"
-        >
-          <Eye className="w-4 h-4" />
-          View
-        </button>
+        <div className="flex items-center justify-end gap-2">
+          <button
+            onClick={() => onView(user)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 border border-gray-600 text-gray-300 rounded text-sm font-medium transition-colors"
+          >
+            <Eye className="w-4 h-4" />
+            View
+          </button>
+          <button
+            onClick={() => onDelete(user)}
+            className="p-2 bg-red-900/50 hover:bg-red-900 border border-red-800 text-red-300 rounded transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
       </td>
     </tr>
   )
@@ -520,6 +582,11 @@ function VerificationBadge({ status }) {
       text: "Rejected",
       className: "bg-red-900 border border-red-700 text-red-300",
     },
+    deleted: {
+      icon: Trash2,
+      text: "Deleted",
+      className: "bg-gray-700 border border-gray-600 text-gray-400",
+    }
   }
 
   const statusConfig = config[status] || config.pending
@@ -534,7 +601,7 @@ function VerificationBadge({ status }) {
 }
 
 // User details modal
-function UserDetailsModal({ user, onClose, onApprove, onReject, actionLoading, isMobile }) {
+function UserDetailsModal({ user, onClose, onApprove, onReject, actionLoading, isMobile, onDelete }) {
   const fullName = `${user.first_name || ""} ${user.last_name || ""}`.trim() || "Unknown User"
   const joinDate = new Date(user.created_at).toLocaleDateString("en-US", {
     month: "long",
@@ -636,46 +703,105 @@ function UserDetailsModal({ user, onClose, onApprove, onReject, actionLoading, i
           </div>
 
           {/* Actions Section */}
-          {user.verification_status === "pending" || user.is_appealing ? (
-            <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-700">
-              <button
-                onClick={onReject}
-                disabled={actionLoading}
-                className="flex-1 px-4 py-3 bg-red-900 hover:bg-red-800 border border-red-700 text-red-200 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {actionLoading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <>
-                    <XCircle className="w-5 h-5" />
-                    Reject
-                  </>
-                )}
-              </button>
-              <button
-                onClick={onApprove}
-                disabled={actionLoading}
-                className="flex-1 px-4 py-3 bg-green-900 hover:bg-green-800 border border-green-700 text-green-200 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {actionLoading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <>
-                    <CheckCircle className="w-5 h-5" />
-                    Approve
-                  </>
-                )}
-              </button>
-            </div>
-          ) : (
-            <div className="pt-4 border-t border-gray-700 text-center text-sm text-gray-500">
-              No pending verification actions
-            </div>
-          )}
+          <div className="pt-4 border-t border-gray-700 space-y-3">
+            {user.verification_status === "pending" || user.is_appealing ? (
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={onReject}
+                  disabled={actionLoading}
+                  className="flex-1 px-4 py-3 bg-red-900 hover:bg-red-800 border border-red-700 text-red-200 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {actionLoading ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <>
+                      <XCircle className="w-5 h-5" />
+                      Reject
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={onApprove}
+                  disabled={actionLoading}
+                  className="flex-1 px-4 py-3 bg-green-900 hover:bg-green-800 border border-green-700 text-green-200 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {actionLoading ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <>
+                      <CheckCircle className="w-5 h-5" />
+                      Approve
+                    </>
+                  )}
+                </button>
+              </div>
+            ) : (
+              <div className="text-center text-sm text-gray-500">
+                No pending verification actions
+              </div>
+            )}
+            
+            {/* Delete Button */}
+            <button
+              onClick={onDelete}
+              disabled={actionLoading}
+              className="w-full px-4 py-2.5 bg-gray-700/50 hover:bg-gray-700 border border-gray-600 text-gray-300 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete User
+            </button>
+          </div>
         </div>
       </div>
     </div>
   )
+}
+
+// Delete Confirmation Modal
+function DeleteConfirmModal({ user, onClose, onConfirm, loading }) {
+  const fullName = `${user.first_name || ""} ${user.last_name || ""}`.trim() || user.email;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-gray-800 border border-red-700 rounded-lg shadow-xl w-full max-w-md p-6">
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 flex-shrink-0 rounded-full bg-red-900 border border-red-700 flex items-center justify-center">
+            <AlertTriangle className="w-6 h-6 text-red-300" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-white">Delete User</h2>
+            <p className="text-sm text-gray-400 mt-1">
+              Are you sure you want to permanently delete <strong className="text-white">{fullName}</strong>? This action will remove all their data, including auth records, profile, and stored files. This cannot be undone.
+            </p>
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 mt-6">
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
+          >
+            {loading ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <>
+                <Trash2 className="w-5 h-5" />
+                Delete
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // Info row component for user details
