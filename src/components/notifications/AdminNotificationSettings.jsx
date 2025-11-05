@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import useAuthStore from '../../stores/useAuthStore';
 import useSettingsStore from '../../stores/settingsStore';
-import { getAdminDevices, toggleAdminDeviceNotifications, updateAdminDeviceActivity, deduplicateAdminTokens } from '../../services/pushService';
+import { getAdminDevices, toggleAdminDeviceNotifications, updateAdminDeviceActivity, deduplicateAdminTokens, registerAdminPushNotifications, requestNotificationPermission } from '../../services/pushService';
 import { updateAdminPushNotificationSetting, isAdminPushNotificationEnabled } from '../../utils/tokenLifecycle';
+import PushPermissionModal from './PushPermissionModal';
 
 export default function AdminNotificationSettings() {
   const { user } = useAuthStore();
@@ -14,13 +15,27 @@ export default function AdminNotificationSettings() {
   const [globalEnabled, setGlobalEnabled] = useState(false);
   const [togglingGlobal, setTogglingGlobal] = useState(false);
   const [togglingDevice, setTogglingDevice] = useState(new Set());
+  const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const [permissionState, setPermissionState] = useState('default');
 
   const loadNotificationSettings = useCallback(async () => {
     if (!userId) return;
     
     try {
-      const enabled = await isAdminPushNotificationEnabled(userId);
-      setGlobalEnabled(enabled);
+      const dbEnabled = await isAdminPushNotificationEnabled(userId);
+      
+      // Sync with browser permission state
+      const browserPermission = Notification.permission;
+      setPermissionState(browserPermission);
+      
+      // If database says enabled but browser permission is denied/default, show as disabled
+      if (dbEnabled && browserPermission !== 'granted') {
+        setGlobalEnabled(false);
+        // Optionally update database to match reality
+        // await updateAdminPushNotificationSetting(userId, false);
+      } else {
+        setGlobalEnabled(dbEnabled);
+      }
     } catch (error) {
       console.error('Error loading admin notification settings:', error);
     }
@@ -56,10 +71,52 @@ export default function AdminNotificationSettings() {
     
     setTogglingGlobal(true);
     try {
-      const success = await updateAdminPushNotificationSetting(userId, enabled);
-      if (success) {
-        setGlobalEnabled(enabled);
-        await loadAdminDevices();
+      if (enabled) {
+        // Admin wants to ENABLE notifications
+        const currentPermission = Notification.permission;
+        setPermissionState(currentPermission);
+        
+        if (currentPermission === 'default') {
+          // Need to request permission first
+          const granted = await requestNotificationPermission();
+          setPermissionState(Notification.permission);
+          
+          if (granted) {
+            // Register FCM token
+            const registered = await registerAdminPushNotifications(userId);
+            if (registered) {
+              // Update settings
+              const success = await updateAdminPushNotificationSetting(userId, true);
+              if (success) {
+                setGlobalEnabled(true);
+                await loadAdminDevices();
+              }
+            }
+          } else {
+            // Permission denied, show instructions modal
+            setShowPermissionModal(true);
+          }
+        } else if (currentPermission === 'granted') {
+          // Permission already granted, just register/update
+          const registered = await registerAdminPushNotifications(userId);
+          if (registered) {
+            const success = await updateAdminPushNotificationSetting(userId, true);
+            if (success) {
+              setGlobalEnabled(true);
+              await loadAdminDevices();
+            }
+          }
+        } else {
+          // Permission denied, show instructions
+          setShowPermissionModal(true);
+        }
+      } else {
+        // Admin wants to DISABLE notifications
+        const success = await updateAdminPushNotificationSetting(userId, false);
+        if (success) {
+          setGlobalEnabled(false);
+          await loadAdminDevices();
+        }
       }
     } catch (error) {
       console.error('Error updating admin global notifications:', error);
@@ -115,6 +172,14 @@ export default function AdminNotificationSettings() {
     }
   };
 
+  const handleRetryPermission = async () => {
+    setShowPermissionModal(false);
+    // Wait for modal to close, then retry
+    setTimeout(async () => {
+      await handleGlobalToggle(true);
+    }, 300);
+  };
+
   if (settingsLoading || loadingDevices) {
     return (
       <div className="bg-gray-800 rounded-lg shadow-lg p-6">
@@ -159,6 +224,31 @@ export default function AdminNotificationSettings() {
             />
           </button>
         </div>
+
+        {/* Warning when browser permission is revoked */}
+        {permissionState === 'denied' && (
+          <div className="p-4 bg-yellow-900/30 border border-yellow-700 rounded-lg">
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0">
+                <svg className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h4 className="text-sm font-medium text-yellow-300">Browser Permissions Disabled</h4>
+                <p className="text-sm text-yellow-200 mt-1">
+                  Notifications are blocked in your browser settings. To receive push notifications, you need to enable them in your browser first.
+                </p>
+                <button
+                  onClick={() => setShowPermissionModal(true)}
+                  className="mt-2 text-sm font-medium text-yellow-300 hover:text-yellow-100 underline"
+                >
+                  Show instructions
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center justify-between p-4 border border-gray-700 rounded-lg">
           <div className="flex-1">
@@ -263,6 +353,13 @@ export default function AdminNotificationSettings() {
           </div>
         )}
       </div>
+
+      <PushPermissionModal
+        isOpen={showPermissionModal}
+        onClose={() => setShowPermissionModal(false)}
+        permissionState={permissionState}
+        onRetry={handleRetryPermission}
+      />
     </div>
   );
 }

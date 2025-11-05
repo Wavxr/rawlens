@@ -32,6 +32,11 @@ export async function requestNotificationPermission() {
 // Retrieve the FCM token for this device/browser
 export async function getFcmToken() {
   try {
+    // Check permission first to avoid errors
+    if (Notification.permission !== 'granted') {
+      return null;
+    }
+    
     const token = await getToken(messaging, {
       vapidKey: import.meta.env.VITE_FIREBASE_VAPID_PUBLIC_KEY,
     });
@@ -110,72 +115,43 @@ export async function saveUserFcmToken(userId, token) {
     const browserType = getBrowserType();
     const deviceName = getDeviceName();
     const platform = detectPlatform();
+    const timestamp = new Date().toISOString();
 
-    // Check if device already exists
-    const { data: existingDevice } = await supabase
+    // Atomic upsert: Insert if new, update if exists
+    // Uses unique constraint (user_id, device_id) to determine conflict
+    const { data, error } = await supabase
       .from("user_fcm_tokens")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("device_id", deviceId)
-      .single();
-
-    let data, error;
-
-    if (existingDevice) {
-      // Update existing device with new token
-      const result = await supabase
-        .from("user_fcm_tokens")
-        .update({
-          fcm_token: token,
-          last_seen: new Date().toISOString(),
-          mapped: true,
-          enabled: true,
-          device_info: {
-            ...existingDevice.device_info,
-            deviceName,
-            userAgent: navigator.userAgent,
-            timestamp: new Date().toISOString(),
-          },
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", existingDevice.id)
-        .select()
-        .single();
-
-      data = result.data;
-      error = result.error;
-      console.log(`Updated user device token: ${deviceName}`);
-    } else {
-      // Create new device entry
-      const result = await supabase
-        .from("user_fcm_tokens")
-        .insert({
+      .upsert(
+        {
           user_id: userId,
+          device_id: deviceId,
           fcm_token: token,
           platform: platform,
-          device_id: deviceId,
           browser_type: browserType,
-          last_seen: new Date().toISOString(),
+          last_seen: timestamp,
           mapped: true,
           enabled: true,
           device_info: {
             userAgent: navigator.userAgent,
             deviceName,
-            timestamp: new Date().toISOString(),
+            timestamp,
           },
-        })
-        .select()
-        .single();
-
-      data = result.data;
-      error = result.error;
-      console.log(`Created new user device: ${deviceName}`);
-    }
+          updated_at: timestamp,
+        },
+        {
+          onConflict: 'user_id,device_id',
+          ignoreDuplicates: false,
+        }
+      )
+      .select()
+      .single();
 
     if (error) {
       console.error("Error saving user FCM token:", error);
       throw error;
     }
+
+    console.log(`✅ Saved FCM token for device: ${deviceName}`);
 
     tokenSaveCache.set(cacheKey, {
       data,
@@ -208,72 +184,43 @@ export async function saveAdminFcmToken(userId, token) {
     const browserType = getBrowserType();
     const deviceName = getDeviceName();
     const platform = detectPlatform();
+    const timestamp = new Date().toISOString();
 
-    // Check if device already exists
-    const { data: existingDevice } = await supabase
+    // Atomic upsert: Insert if new, update if exists
+    // Uses unique constraint (user_id, device_id) to determine conflict
+    const { data, error } = await supabase
       .from("admin_fcm_tokens")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("device_id", deviceId)
-      .single();
-
-    let data, error;
-
-    if (existingDevice) {
-      // Update existing device with new token
-      const result = await supabase
-        .from("admin_fcm_tokens")
-        .update({
-          fcm_token: token,
-          last_seen: new Date().toISOString(),
-          mapped: true,
-          enabled: true,
-          device_info: {
-            ...existingDevice.device_info,
-            deviceName,
-            userAgent: navigator.userAgent,
-            timestamp: new Date().toISOString(),
-          },
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", existingDevice.id)
-        .select()
-        .single();
-
-      data = result.data;
-      error = result.error;
-      console.log(`Updated admin device token: ${deviceName}`);
-    } else {
-      // Create new device entry
-      const result = await supabase
-        .from("admin_fcm_tokens")
-        .insert({
+      .upsert(
+        {
           user_id: userId,
+          device_id: deviceId,
           fcm_token: token,
           platform: platform,
-          device_id: deviceId,
           browser_type: browserType,
-          last_seen: new Date().toISOString(),
+          last_seen: timestamp,
           mapped: true,
           enabled: true,
           device_info: {
             userAgent: navigator.userAgent,
             deviceName,
-            timestamp: new Date().toISOString(),
+            timestamp,
           },
-        })
-        .select()
-        .single();
-
-      data = result.data;
-      error = result.error;
-      console.log(`Created new admin device: ${deviceName}`);
-    }
+          updated_at: timestamp,
+        },
+        {
+          onConflict: 'user_id,device_id',
+          ignoreDuplicates: false,
+        }
+      )
+      .select()
+      .single();
 
     if (error) {
       console.error("Error saving admin FCM token:", error);
       throw error;
     }
+
+    console.log(`✅ Saved FCM token for device: ${deviceName}`);
 
     tokenSaveCache.set(cacheKey, {
       data,

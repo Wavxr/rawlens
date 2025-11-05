@@ -1,27 +1,14 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import useAuthStore from '../../stores/useAuthStore';
 import { useEffect, useState } from 'react';
-import { registerUserPushNotifications, registerAdminPushNotifications, isPushSupported } from '../../services/pushService';
-import PushMigrationPrompt from '../notifications/PushMigrationPrompt';
 import LoadingScreen from './LoadingScreen';
 
 const ProtectedRoute = ({ requiredRole }) => {
   const { session, role, loading, roleLoading, checkSessionValidity, forceCleanup } = useAuthStore();
   const [sessionValid, setSessionValid] = useState(true);
 
-  useEffect(() => {
-    const userId = session?.user?.id;
-    if (userId && isPushSupported() && role) {
-      // Auto-register FCM token if permission is already granted
-      if (Notification.permission === 'granted') {
-        if (role === 'admin') {
-          registerAdminPushNotifications(userId).catch(console.error);
-        } else {
-          registerUserPushNotifications(userId).catch(console.error);
-        }
-      }
-    }
-  }, [session?.user?.id, role]);
+  // Note: FCM token registration is now handled exclusively through Settings page
+  // No auto-registration on login to avoid unsolicited permission prompts
 
   // Periodically check session validity when user interacts with the app
   useEffect(() => {
@@ -54,12 +41,7 @@ const ProtectedRoute = ({ requiredRole }) => {
   if (!session || !sessionValid) return <Navigate to="/login" replace />;
   if (requiredRole && role !== requiredRole) return <Navigate to="/" replace />;
   
-  return (
-    <>
-      <Outlet />
-      <PushMigrationPrompt />
-    </>
-  );
+  return <Outlet />;
 };
 
 export default ProtectedRoute;

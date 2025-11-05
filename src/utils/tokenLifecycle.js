@@ -525,7 +525,7 @@ export async function mapUserTokenOnLogin(userId) {
   try {
     const currentToken = await getFcmToken();
     if (!currentToken) {
-      console.warn('No FCM token found for current device');
+      // Silently skip if no token (permission not granted or not supported)
       return false;
     }
 
@@ -558,7 +558,7 @@ export async function mapAdminTokenOnLogin(userId) {
   try {
     const currentToken = await getFcmToken();
     if (!currentToken) {
-      console.warn('No FCM token found for current device');
+      // Silently skip if no token (permission not granted or not supported)
       return false;
     }
 
