@@ -9,6 +9,7 @@ import {
   unmapUserTokenOnLogout, 
   unmapAdminTokenOnLogout 
 } from '../utils/tokenLifecycle';
+import { getIsSignupInProgress } from '../services/authService';
 
 const useAuthStore = create((set, get) => ({
   // state
@@ -17,11 +18,12 @@ const useAuthStore = create((set, get) => ({
   profile: null,
   session: null,
   loading: true,    
-  roleLoading: false, 
+  roleLoading: false,
+  isInitializing: false, // Track if we're in initial app load
 
   /* -------- initialise session -------- */
   initialize: async () => {
-    set({ loading: true });
+    set({ loading: true, isInitializing: true });
     try {
       // First check if we can even communicate with Supabase
       const { data: { session }, error } = await supabase.auth.getSession();
@@ -65,22 +67,31 @@ const useAuthStore = create((set, get) => ({
       console.error("Critical error during auth initialization:", e);
       get().forceCleanup();
     } finally {
-      set({ loading: false }); // Ensure loading is always set to false
+      set({ loading: false, isInitializing: false }); // Ensure loading is always set to false
     }
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         try {
           const currentUser = get().user;
+          const isInitializing = get().isInitializing;
 
-          console.log(' Auth state change:', event, 'current user:', currentUser?.id, 'new session user:', session?.user?.id);
+          console.log('🔔 Auth state change:', event, 'current user:', currentUser?.id, 'new session user:', session?.user?.id, 'isInitializing:', isInitializing);
+
+          // CRITICAL FIX: Ignore SIGNED_IN during signup flow
+          // Check both initialization flag AND signup-in-progress flag
+          if (event === 'SIGNED_IN' && (isInitializing || getIsSignupInProgress())) {
+            console.log('⏭️ Ignoring SIGNED_IN during initialization or signup flow');
+            return;
+          }
 
           // This event fires on tab focus, token refresh, etc.
           // We only want to trigger a full reload if the user actually changes.
           if (event === 'SIGNED_IN' && session?.user?.id !== currentUser?.id) {
-            console.log('New user signed in, initializing...');
+            console.log('✨ New user signed in, initializing...');
             set({ loading: true });
             set({ session, user: session.user });
+            
             await get().fetchUserData(session.user.id);
             
             // Map FCM tokens for the logged-in user session
@@ -93,20 +104,20 @@ const useAuthStore = create((set, get) => ({
             
             set({ loading: false });
           } else if (event === 'SIGNED_OUT') {
-            console.log('SIGNED_OUT event received');
+            console.log('👋 SIGNED_OUT event received');
             
             // Always ensure state is cleared on SIGNED_OUT
             const currentState = get();
             if (currentState.user || currentState.session) {
-              console.log('Clearing remaining state on SIGNED_OUT');
+              console.log('🧹 Clearing remaining state on SIGNED_OUT');
               get().forceCleanup();
             }
           } else if (event === 'TOKEN_REFRESHED' && session) {
-            console.log('Token refreshed for user:', session.user.id);
+            console.log('🔄 Token refreshed for user:', session.user.id);
             // Update session but don't reload user data
             set({ session, user: session.user });
           } else if (event === 'USER_UPDATED' && session) {
-            console.log('User updated:', session.user.id);
+            console.log('📝 User updated:', session.user.id);
             set({ session, user: session.user });
           }
         } catch (e) {

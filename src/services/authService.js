@@ -21,6 +21,11 @@ const toDbRow = (uid, userData, govKey, selfieKey, videoKey) => ({
 
 /* ---------- exports ------------------------------------------------------ */
 
+// Flag to track if signup is in progress (prevents auth listener from acting)
+let isSignupInProgress = false;
+
+export const getIsSignupInProgress = () => isSignupInProgress;
+
 /**
  * SIGN-UP FLOW:
  * 1. Create auth account
@@ -35,30 +40,33 @@ export async function signUp(
   selfieFile,
   verificationVideoFile
 ) {
-  // 1. Auth
-  const { data: auth, error: authErr } = await supabase.auth.signUp({
-    email,
-    password,
-  });
-  if (authErr) {
-    const msg = authErr.message || 'Sign up failed';
-    // Normalize common 422 cases from GoTrue:
-    // - existing user
-    // - password policy violations
-    if (authErr.status === 422 || /registered|already exists/i.test(msg)) {
-      return {
-        error: {
-          code: 'USER_EXISTS',
-          message: 'An account already exists for this email. Please sign in.'
-        }
-      };
-    }
-    return { error: authErr };
-  }
-
-  const uid = auth.user.id;
-
+  // Set flag to prevent auth listener from acting
+  isSignupInProgress = true;
+  
   try {
+    // 1. Auth
+    const { data: auth, error: authErr } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+    if (authErr) {
+      const msg = authErr.message || 'Sign up failed';
+      // Normalize common 422 cases from GoTrue:
+      // - existing user
+      // - password policy violations
+      if (authErr.status === 422 || /registered|already exists/i.test(msg)) {
+        return {
+          error: {
+            code: 'USER_EXISTS',
+            message: 'An account already exists for this email. Please sign in.'
+          }
+        };
+      }
+      return { error: authErr };
+    }
+
+    const uid = auth.user.id;
+
     // 2. Upload KYC files
     const govKey = await uploadFile(
       "government-ids",
@@ -85,12 +93,43 @@ export async function signUp(
 
     if (dbErr) throw dbErr;
 
+    // Note: user_settings will be created by database trigger automatically
+    // This avoids RLS/FK race conditions during signup
+
+    // Sign out to prevent auto-login race condition
+    // User must explicitly log in after signup (better UX for verification flow anyway)
+    try {
+      await supabase.auth.signOut();
+    } catch (signOutErr) {
+      console.warn('Failed to sign out after signup:', signOutErr);
+    }
+
     return { success: true };
   } catch (error) {
-    // Client cannot call admin.deleteUser without service role; avoid noisy 403
+    // Rollback: Delete auth user and cleanup files using edge function
+    console.error('Profile creation failed, rolling back user creation:', error);
+    
+    try {
+      const { error: deleteError } = await supabase.functions.invoke('delete-user', {
+        body: { userId: uid }
+      });
+      
+      if (deleteError) {
+        console.error('Rollback failed:', deleteError);
+      } else {
+        console.log('Successfully rolled back user creation');
+      }
+    } catch (rollbackError) {
+      console.error('Rollback error:', rollbackError);
+    }
+    
     // Ensure the session is cleared so user retries cleanly
     try { await supabase.auth.signOut(); } catch {}
+    
     return { error };
+  } finally {
+    // CRITICAL: Clear the signup flag
+    isSignupInProgress = false;
   }
 }
 
