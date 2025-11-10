@@ -549,44 +549,6 @@ const BookingDetailView = ({
           </div>
         )}
 
-        {/* Delivery Progress */}
-        <div>
-          <h4 className="font-semibold text-gray-900 mb-3 sm:mb-4 text-sm sm:text-base">Delivery Progress</h4>
-          <div className="bg-gray-50 rounded-lg p-2 sm:p-4">
-            <div className="flex items-center justify-between gap-1 sm:gap-2">
-              {shippingSteps.map((step, idx) => {
-                const Icon = step.icon;
-                const reached = idx <= currentStep;
-                const isActive = idx === currentStep;
-                const displayLabel = isMobile ? step.shortLabel : step.label;
-                return (
-                  <div key={step.key} className="flex flex-col items-center flex-1 min-w-0">
-                    <div
-                      className={`w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 rounded-full flex items-center justify-center border-2 ${
-                        reached
-                          ? isActive
-                            ? 'bg-blue-500 border-blue-500 text-white'
-                            : 'bg-green-500 border-green-500 text-white'
-                          : 'bg-white border-gray-300 text-gray-400'
-                      }`}
-                    >
-                      <Icon className="h-2.5 w-2.5 sm:h-3 sm:w-3 lg:h-4 lg:w-4" />
-                    </div>
-                    <span
-                      className={`text-[10px] sm:text-xs lg:text-xs mt-1 sm:mt-1.5 lg:mt-2 text-center leading-tight max-w-full ${
-                        reached ? 'text-gray-900 font-medium' : 'text-gray-500'
-                      }`}
-                      title={step.label}
-                    >
-                      {displayLabel}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
         {/* Status Messages */}
         {booking.shipping_status === 'returned' ? (
           <div className="p-2 sm:p-3 bg-green-50 border border-green-200 rounded-lg flex items-center space-x-2 sm:space-x-3">

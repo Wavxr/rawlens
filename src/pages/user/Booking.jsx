@@ -241,27 +241,6 @@ const Booking = () => {
     }
   }
 
-  // Helper Functions: Shipping steps configuration
-  const shippingSteps = [
-    { key: "ready_to_ship", label: "Packed", icon: Package },
-    { key: "in_transit_to_user", label: "On the way", icon: Truck },
-    { key: "delivered", label: "Delivered", icon: CheckCircle },
-    { key: "return_scheduled", label: "Return scheduled", icon: Clock },
-    { key: "in_transit_to_owner", label: "Returning", icon: Truck },
-    { key: "returned", label: "Returned", icon: CheckCircle },
-  ]
-
-  // Helper Functions: Calculate current shipping step
-  function computeCurrentStep(rental) {
-    if (!rental?.shipping_status) {
-      if (rental.rental_status === "confirmed") return 0
-      if (rental.rental_status === "active") return 2
-      return 0
-    }
-    const idx = shippingSteps.findIndex((s) => s.key === rental.shipping_status)
-    return idx >= 0 ? idx : 0
-  }
-
   // Helper Functions: Get status badge styling
   function getStatusBadgeClasses(status) {
     switch (status) {
@@ -873,9 +852,6 @@ const Booking = () => {
     const soonEnd = showCountdownToEnd && daysUntil(rental.end_date) <= 3
     const soonStart = showCountdownToStart && daysUntil(rental.start_date) <= 2
 
-    const steps = shippingSteps
-    const currentStep = computeCurrentStep(rental)
-
     return (
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         {/* Header Section */}
@@ -1070,42 +1046,6 @@ const Booking = () => {
               )}
             </div>
           )}
-
-          {/* Delivery Progress */}
-          <div>
-            <h4 className="font-semibold text-gray-900 mb-3 sm:mb-4 text-sm sm:text-base">Delivery Progress</h4>
-            <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
-              <div className="flex items-center justify-between">
-                {steps.map((step, idx) => {
-                  const Icon = step.icon
-                  const reached = idx <= currentStep
-                  const isActive = idx === currentStep
-                  return (
-                    <div key={step.key} className="flex flex-col items-center">
-                      <div
-                        className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border-2 ${
-                          reached
-                            ? isActive
-                              ? "bg-blue-500 border-blue-500 text-white"
-                              : "bg-green-500 border-green-500 text-white"
-                            : "bg-white border-gray-300 text-gray-400"
-                        }`}
-                      >
-                        <Icon className="h-3 w-3 sm:h-4 sm:w-4" />
-                      </div>
-                      <span
-                        className={`text-xs mt-1 sm:mt-2 text-center max-w-12 sm:max-w-16 leading-tight ${
-                          reached ? "text-gray-900 font-medium" : "text-gray-500"
-                        }`}
-                      >
-                        {step.label}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
 
           {/* Status Messages */}
           {rental.shipping_status === 'returned' ? (
