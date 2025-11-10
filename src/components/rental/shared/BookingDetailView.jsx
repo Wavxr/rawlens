@@ -65,7 +65,6 @@ const BookingDetailView = ({
   booking, 
   onRefresh, 
   onBack,
-  isMobile = false,
   actionLoading = {},
   contractViewLoading = {},
   contractViewError = {},
@@ -161,28 +160,6 @@ const BookingDetailView = ({
 
   const soonEnd = showCountdownToEnd && daysUntil(booking.end_date) <= 3;
   const soonStart = showCountdownToStart && daysUntil(booking.start_date) <= 2;
-
-  // Delivery progress steps
-  const shippingSteps = [
-    { key: 'ready_to_ship', label: 'Packed', shortLabel: 'Packed', icon: Package },
-    { key: 'in_transit_to_user', label: 'On the way', shortLabel: 'Transit', icon: Truck },
-    { key: 'delivered', label: 'Delivered', shortLabel: 'Delivered', icon: CheckCircle2 },
-    { key: 'return_scheduled', label: 'Return scheduled', shortLabel: 'Return', icon: Clock },
-    { key: 'in_transit_to_owner', label: 'Returning', shortLabel: 'Returning', icon: Truck },
-    { key: 'returned', label: 'Returned', shortLabel: 'Returned', icon: CheckCircle2 },
-  ];
-
-  const computeCurrentStep = (rental) => {
-    if (!rental?.shipping_status) {
-      if (rental.rental_status === 'confirmed') return 0;
-      if (rental.rental_status === 'active') return 2;
-      return 0;
-    }
-    const idx = shippingSteps.findIndex((s) => s.key === rental.shipping_status);
-    return idx >= 0 ? idx : 0;
-  };
-
-  const currentStep = computeCurrentStep(booking);
 
   // Action checks
   const canConfirmDelivered = booking.shipping_status === 'in_transit_to_user';
