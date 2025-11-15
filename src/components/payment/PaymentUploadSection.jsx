@@ -17,16 +17,18 @@ const PaymentUploadSection = ({ rental, onUploadComplete }) => {
 
   // Fetch fresh signed URL for receipt if it exists
   useEffect(() => {
-    if (initialPayment?.receipt_url && (paymentStatus === 'submitted' || paymentStatus === 'rejected')) {
+    if (paymentId && initialPayment?.receipt_url && (paymentStatus === 'submitted' || paymentStatus === 'rejected')) {
       const fetchReceiptUrl = async () => {
-        const result = await getPaymentReceiptUrl(rental.id);
+        const result = await getPaymentReceiptUrl(paymentId);
         if (result.success) {
           setReceiptUrl(result.url);
         }
       };
       fetchReceiptUrl();
+    } else {
+      setReceiptUrl(null);
     }
-  }, [rental.id, initialPayment?.receipt_url, paymentStatus]);
+  }, [paymentId, initialPayment?.receipt_url, paymentStatus]);
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];

@@ -43,7 +43,6 @@ function formatDate(dateStr) {
  * BookingDetailView Component - Displays full booking/rental details
  * @param {Object} props
  * @param {Object} props.booking - Booking/rental object
- * @param {Function} props.onRefresh - Callback to refresh data
  * @param {Function} props.onBack - Mobile back handler
  * @param {boolean} props.isMobile - Mobile layout flag
  * @param {Object} props.actionLoading - Loading states for actions
@@ -63,7 +62,6 @@ function formatDate(dateStr) {
  */
 const BookingDetailView = ({ 
   booking, 
-  onRefresh, 
   onBack,
   actionLoading = {},
   contractViewLoading = {},
@@ -558,8 +556,7 @@ const BookingDetailView = ({
          ['delivered', 'return_scheduled'].includes(booking.shipping_status) && (
           <RentalExtensionManager 
             rental={booking} 
-            userId={userId} 
-            onRefresh={onRefresh}
+            userId={userId}
           />
         )}
 

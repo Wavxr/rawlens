@@ -199,6 +199,7 @@ export function subscribeToUserPayments(userId, callback) {
     filter: `user_id=eq.${userId}`,
     onPayload: async (eventType, record, payload) => {
       const { addOrUpdatePayment, removePayment } = usePaymentStore.getState();
+      const { syncPaymentForRental, removePaymentFromRental } = useRentalStore.getState();
       let hydratedData = null;
 
       switch (eventType) {
@@ -213,11 +214,13 @@ export function subscribeToUserPayments(userId, callback) {
           } else if (data) {
             hydratedData = data;
             addOrUpdatePayment(data);
+            syncPaymentForRental(data);
           }
           break;
         }
         case 'DELETE':
           removePayment(record.id);
+          removePaymentFromRental({ paymentId: record.id, rentalId: record.rental_id });
           break;
         default:
           break;

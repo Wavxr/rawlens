@@ -16,7 +16,7 @@ import CancellationModal from "../../components/modals/CancellationModal"
 import useIsMobile from "../../hooks/useIsMobile"
 import { toast, ToastContainer } from "react-toastify"
 import 'react-toastify/dist/ReactToastify.css';
-import { Package, Truck, CheckCircle, Clock, CreditCard } from "lucide-react"
+import { Truck, CheckCircle, Clock, CreditCard } from "lucide-react"
 
 const Booking = () => {
   // EmptyState Component - Shows when no rentals in filter
@@ -117,7 +117,6 @@ const Booking = () => {
         if (!extensionSubscriptionRef.current) {
           extensionSubscriptionRef.current = subscribeToUserExtensions(user.id, (payload) => {
             console.log('Extension update received in Booking:', payload);
-            loadRentals(user.id); // Refresh rentals to get updated extension data
           });
         }
 
@@ -125,7 +124,6 @@ const Booking = () => {
         if (!paymentSubscriptionRef.current) {
           paymentSubscriptionRef.current = subscribeToUserPayments(user.id, (payload) => {
             console.log('Payment update received in Booking:', payload);
-            loadRentals(user.id); // Refresh rentals to get updated payment status
           });
         }
 
@@ -199,7 +197,7 @@ const Booking = () => {
       }
       // Awaiting delivery: paid and waiting for shipment/delivery
       else if (paymentStatus === "verified" &&
-               (r.shipping_status === "ready_to_ship" || r.shipping_status === "in_transit_to_user")) {
+               (!r.shipping_status || r.shipping_status === "ready_to_ship" || r.shipping_status === "in_transit_to_user")) {
         groups.awaiting.push(r);
       }
       // Active rentals: currently in use
@@ -1079,8 +1077,7 @@ const Booking = () => {
            rental.shipping_status === 'delivered' && (
             <RentalExtensionManager 
               rental={rental} 
-              userId={user.id} 
-              onRefresh={refresh}
+              userId={user.id}
             />
           )}
 
@@ -1313,7 +1310,6 @@ const Booking = () => {
                   {selectedRental && (
                     <BookingDetailView
                       booking={selectedRental}
-                      onRefresh={refresh}
                       isMobile={false}
                       actionLoading={actionLoading}
                       contractViewLoading={contractViewLoading}
@@ -1346,7 +1342,6 @@ const Booking = () => {
           >
             <BookingDetailView
               booking={selectedRental}
-              onRefresh={refresh}
               onBack={handleMobileClose}
               isMobile={true}
               actionLoading={actionLoading}

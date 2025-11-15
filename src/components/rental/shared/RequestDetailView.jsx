@@ -105,8 +105,9 @@ const RequestDetailView = ({ rental, onRefresh, onBack, isMobile = false }) => {
   );
   const paymentStatus = initialPayment?.payment_status;
 
-  const needsPayment = rental.rental_status === 'confirmed' && 
-    (!initialPayment || ['pending', 'submitted', 'rejected'].includes(paymentStatus));
+  const needsPaymentAction = rental.rental_status === 'confirmed' &&
+    (!initialPayment || ['pending', 'rejected'].includes(paymentStatus));
+  const isAwaitingVerification = rental.rental_status === 'confirmed' && paymentStatus === 'submitted';
 
   // Cancel handlers
   const handleCancelRequest = async () => {
@@ -312,25 +313,8 @@ const RequestDetailView = ({ rental, onRefresh, onBack, isMobile = false }) => {
             </div>
           )}
 
-          {/* Payment submitted */}
-          {paymentStatus === 'submitted' && (
-            <div className="bg-white border border-gray-200 rounded-lg p-4 sm:p-5 shadow-sm">
-              <div className="flex items-center gap-3 text-blue-700">
-                <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
-                  <Clock className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="text-sm font-semibold">Payment Receipt Submitted</div>
-                  <div className="text-xs text-blue-600 mt-1">
-                    Your payment receipt is being reviewed (usually within 24 hours).
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Payment needed */}
-          {needsPayment && (
+          {/* Payment required actions */}
+          {needsPaymentAction && (
             <>
               <div className="bg-white border border-gray-200 rounded-lg p-4 sm:p-5 shadow-sm">
                 <div className="flex items-start gap-3 mb-4">
@@ -347,6 +331,18 @@ const RequestDetailView = ({ rental, onRefresh, onBack, isMobile = false }) => {
                 <PaymentDetails rental={rental} />
               </div>
               
+              <div className="bg-white border border-gray-200 rounded-lg p-4 sm:p-5 shadow-sm">
+                <PaymentUploadSection rental={rental} onUploadComplete={handleUploadComplete} />
+              </div>
+            </>
+          )}
+
+          {/* Awaiting verification - show details and status without duplicate warning */}
+          {isAwaitingVerification && (
+            <>
+              <div className="bg-white border border-gray-200 rounded-lg p-4 sm:p-5 shadow-sm">
+                <PaymentDetails rental={rental} />
+              </div>
               <div className="bg-white border border-gray-200 rounded-lg p-4 sm:p-5 shadow-sm">
                 <PaymentUploadSection rental={rental} onUploadComplete={handleUploadComplete} />
               </div>

@@ -59,8 +59,19 @@ export async function getExtensionById(extensionId) {
       `)
       .eq('id', extensionId)
       .single();
-    
-    return { data, error };
+
+    if (error || !data) {
+      return { data: null, error: error || new Error('Extension not found') };
+    }
+
+    const { data: paymentsData, error: paymentsError } = await supabase
+      .from('payments')
+      .select('*')
+      .eq('extension_id', extensionId);
+
+    const payments = paymentsError || !paymentsData ? [] : paymentsData;
+
+    return { data: { ...data, payments }, error: null };
   } catch (error) {
     return { data: null, error };
   }

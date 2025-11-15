@@ -42,6 +42,7 @@ export async function signUp(
 ) {
   // Set flag to prevent auth listener from acting
   isSignupInProgress = true;
+  let uid = null;
   
   try {
     // 1. Auth
@@ -65,7 +66,7 @@ export async function signUp(
       return { error: authErr };
     }
 
-    const uid = auth.user.id;
+    uid = auth.user.id;
 
     // 2. Upload KYC files
     const govKey = await uploadFile(
@@ -110,21 +111,25 @@ export async function signUp(
     console.error('Profile creation failed, rolling back user creation:', error);
     
     try {
-      const { error: deleteError } = await supabase.functions.invoke('delete-user', {
-        body: { userId: uid }
-      });
-      
-      if (deleteError) {
-        console.error('Rollback failed:', deleteError);
-      } else {
-        console.log('Successfully rolled back user creation');
+      if (uid) {
+        const { error: deleteError } = await supabase.functions.invoke('delete-user', {
+          body: { userId: uid }
+        });
+        
+        if (deleteError) {
+          console.error('Rollback failed:', deleteError);
+        } else {
+          console.log('Successfully rolled back user creation');
+        }
       }
     } catch (rollbackError) {
       console.error('Rollback error:', rollbackError);
     }
     
     // Ensure the session is cleared so user retries cleanly
-    try { await supabase.auth.signOut(); } catch {}
+    try { await supabase.auth.signOut(); } catch (signOutError) {
+      console.warn('Failed to clear session after signup failure:', signOutError);
+    }
     
     return { error };
   } finally {

@@ -29,6 +29,104 @@ const useRentalStore = create((set) => ({
       };
     }),
 
+  syncPaymentForRental: (payment) =>
+    set((state) => {
+      if (!payment?.rental_id) {
+        return {};
+      }
+
+      const updateList = (list) => {
+        if (!Array.isArray(list) || list.length === 0) {
+          return list;
+        }
+
+        let mutated = false;
+        const nextList = list.map((rental) => {
+          if (rental.id !== payment.rental_id) {
+            return rental;
+          }
+
+          const existingPayments = Array.isArray(rental.payments) ? [...rental.payments] : [];
+          const index = existingPayments.findIndex((p) => p.id === payment.id);
+
+          if (index !== -1) {
+            const current = existingPayments[index];
+            const isSameReference = current === payment;
+            if (!isSameReference) {
+              existingPayments[index] = payment;
+              mutated = true;
+            }
+          } else {
+            existingPayments.push(payment);
+            mutated = true;
+          }
+
+          if (!mutated) {
+            return rental;
+          }
+
+          return {
+            ...rental,
+            payments: existingPayments,
+          };
+        });
+
+        return mutated ? nextList : list;
+      };
+
+      const rentals = updateList(state.rentals);
+      const allRentals = updateList(state.allRentals);
+
+      if (rentals === state.rentals && allRentals === state.allRentals) {
+        return {};
+      }
+
+      return { rentals, allRentals };
+    }),
+
+  removePaymentFromRental: ({ paymentId, rentalId }) =>
+    set((state) => {
+      if (!paymentId || !rentalId) {
+        return {};
+      }
+
+      const updateList = (list) => {
+        if (!Array.isArray(list) || list.length === 0) {
+          return list;
+        }
+
+        let mutated = false;
+        const nextList = list.map((rental) => {
+          if (rental.id !== rentalId || !Array.isArray(rental.payments)) {
+            return rental;
+          }
+
+          const filtered = rental.payments.filter((payment) => payment.id !== paymentId);
+
+          if (filtered.length === rental.payments.length) {
+            return rental;
+          }
+
+          mutated = true;
+          return {
+            ...rental,
+            payments: filtered,
+          };
+        });
+
+        return mutated ? nextList : list;
+      };
+
+      const rentals = updateList(state.rentals);
+      const allRentals = updateList(state.allRentals);
+
+      if (rentals === state.rentals && allRentals === state.allRentals) {
+        return {};
+      }
+
+      return { rentals, allRentals };
+    }),
+
   removeRental: (id) =>
     set((state) => ({
       rentals: state.rentals.filter((r) => r.id !== id),
@@ -40,8 +138,10 @@ const useRentalStore = create((set) => ({
     try {
       const { data, error } = await getUserRentals(userId);
       if (error) throw error;
+      const normalized = Array.isArray(data) ? data : [];
       set({
-        rentals: Array.isArray(data) ? data : [],
+        rentals: normalized,
+        allRentals: normalized,
         loading: false,
       });
     } catch (error) {

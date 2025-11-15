@@ -72,6 +72,7 @@ const Requests = () => {
   const [activeFilter, setActiveFilter] = useState('to_approve');
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [isMobileDetailOpen, setIsMobileDetailOpen] = useState(false);
+  const selectedRequestRef = useRef(null);
 
   // Refresh handler
   const handleRefresh = useCallback(() => {
@@ -94,7 +95,17 @@ const Requests = () => {
       if (!paymentSubscriptionRef.current) {
         paymentSubscriptionRef.current = subscribeToUserPayments(user.id, (payload) => {
           console.log('Payment update received in Cart:', payload);
-          loadRentals(user.id);
+
+          const currentSelected = selectedRequestRef.current;
+          if (payload?.hydratedData?.rental_id && currentSelected?.id === payload.hydratedData.rental_id) {
+            const freshRental = useRentalStore.getState().rentals.find(
+              (rental) => rental.id === payload.hydratedData.rental_id
+            );
+
+            if (freshRental && freshRental !== currentSelected) {
+              setSelectedRequest(freshRental);
+            }
+          }
         });
       }
     }
@@ -111,6 +122,10 @@ const Requests = () => {
       }
     };
   }, [user?.id, loadRentals]);
+
+  useEffect(() => {
+    selectedRequestRef.current = selectedRequest;
+  }, [selectedRequest]);
 
   // Filter rentals into groups
   const filterGroups = useMemo(() => {
@@ -156,17 +171,35 @@ const Requests = () => {
   // Get displayed rentals based on active filter
   const displayedRentals = useMemo(() => filterGroups[activeFilter] || [], [filterGroups, activeFilter]);
 
-  // Auto-select first rental when filter changes or data loads
+  // Auto-select when the displayed collection changes and keep selected request synced with latest store data
   useEffect(() => {
-    if (displayedRentals.length > 0) {
-      // If no selection or current selection not in list, select first
-      if (!selectedRequest || !displayedRentals.find(r => r.id === selectedRequest.id)) {
-        setSelectedRequest(displayedRentals[0]);
+    if (displayedRentals.length === 0) {
+      if (selectedRequest) {
+        setSelectedRequest(null);
       }
-    } else {
-      setSelectedRequest(null);
+      return;
+    }
+
+    const matched = selectedRequest
+      ? displayedRentals.find((rental) => rental.id === selectedRequest.id)
+      : null;
+
+    const nextSelection = matched || displayedRentals[0];
+
+    if (!selectedRequest || nextSelection !== selectedRequest) {
+      setSelectedRequest(nextSelection);
     }
   }, [displayedRentals, selectedRequest]);
+
+  // Ensure selection reference is refreshed whenever rentals update via realtime events
+  useEffect(() => {
+    if (!selectedRequest) return;
+
+    const latest = rentals.find((rental) => rental.id === selectedRequest.id);
+    if (latest && latest !== selectedRequest) {
+      setSelectedRequest(latest);
+    }
+  }, [rentals, selectedRequest]);
 
   // Handle request card click
   const handleRequestClick = useCallback((rental) => {

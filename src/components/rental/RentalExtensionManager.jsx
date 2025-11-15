@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   Calendar, 
   Clock, 
@@ -11,10 +11,10 @@ import {
 } from 'lucide-react';
 import { userRequestRentalExtension, userGetExtensionHistory } from '../../services/extensionService';
 import { uploadPaymentReceipt } from '../../services/paymentService';
+import useExtensionStore from '../../stores/extensionStore';
 import { toast } from 'react-toastify';
 
-const RentalExtensionManager = ({ rental, userId, onRefresh }) => {
-  const [extensionHistory, setExtensionHistory] = useState([]);
+const RentalExtensionManager = ({ rental, userId }) => {
   const [showExtensionForm, setShowExtensionForm] = useState(false);
   const [newEndDate, setNewEndDate] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -22,20 +22,27 @@ const RentalExtensionManager = ({ rental, userId, onRefresh }) => {
   const [uploadingPayment, setUploadingPayment] = useState({});
   const [showHistory, setShowHistory] = useState(false);
 
+  const extensions = useExtensionStore((state) => state.extensions);
+  const setExtensions = useExtensionStore((state) => state.setExtensions);
+
+  const extensionHistory = useMemo(
+    () => extensions.filter((extension) => extension.rental_id === rental.id),
+    [extensions, rental.id]
+  );
+
   const loadExtensionHistory = useCallback(async () => {
     try {
       setHistoryLoading(true);
       const result = await userGetExtensionHistory(userId);
       if (result.success) {
-        const rentalExtensions = result.data.filter(ext => ext.rental_id === rental.id);
-        setExtensionHistory(rentalExtensions);
+        setExtensions(result.data);
       }
     } catch (error) {
       console.error('Error loading extension history:', error);
     } finally {
       setHistoryLoading(false);
     }
-  }, [userId, rental.id]);
+  }, [userId, setExtensions]);
 
   useEffect(() => {
     loadExtensionHistory();
@@ -65,7 +72,6 @@ const RentalExtensionManager = ({ rental, userId, onRefresh }) => {
         setShowExtensionForm(false);
         setNewEndDate('');
         await loadExtensionHistory();
-        if (onRefresh) onRefresh();
       } else {
         toast.error(result.error || 'Failed to request extension');
       }
@@ -90,7 +96,6 @@ const RentalExtensionManager = ({ rental, userId, onRefresh }) => {
       if (result.success) {
         toast.success('Payment receipt uploaded successfully! 💸');
         await loadExtensionHistory();
-        if (onRefresh) onRefresh();
       } else {
         toast.error(result.error || 'Failed to upload receipt');
       }

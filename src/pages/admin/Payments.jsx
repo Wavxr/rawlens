@@ -35,7 +35,8 @@ const Payments = () => {
           setPayments(response.data);
           setStoreReady(true);
         }
-      } catch {
+      } catch (error) {
+        console.error('Failed to fetch submitted payments:', error);
       } finally {
         setLoading(false);
       }
@@ -89,9 +90,21 @@ const Payments = () => {
 
         if (result.success) {
           const rentalId = payment.rental_id;
-          const reactivationResult = await adminReactivateRentalAfterExtensionPayment(rentalId);
-          if (!reactivationResult.success) {
-            console.warn('Extension payment verified but failed to reactivate rental:');
+          const rentalStartDate = payment.rentals?.start_date ? new Date(payment.rentals.start_date) : null;
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          if (rentalStartDate) {
+            rentalStartDate.setHours(0, 0, 0, 0);
+          }
+
+          const hasStarted = !rentalStartDate || rentalStartDate <= today;
+          const isAlreadyActive = payment.rentals?.rental_status === 'active';
+
+          if (hasStarted || isAlreadyActive) {
+            const reactivationResult = await adminReactivateRentalAfterExtensionPayment(rentalId);
+            if (!reactivationResult.success) {
+              console.warn('Extension payment verified but failed to reactivate rental:', reactivationResult.error);
+            }
           }
         }
       }

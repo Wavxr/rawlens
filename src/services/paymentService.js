@@ -435,18 +435,55 @@ export async function adminGetSubmittedPayments() {
 // reactivates rental after extension payment verification
 export async function adminReactivateRentalAfterExtensionPayment(rentalId) {
   try {
-    const { data, error } = await supabase
+    const { data: rental, error: fetchError } = await supabase
       .from("rentals")
-      .update({
-        shipping_status: "delivered",
-        rental_status: "active",
-      })
+      .select("id, rental_status, shipping_status, start_date")
+      .eq("id", rentalId)
+      .single();
+
+    if (fetchError) throw fetchError;
+    if (!rental) throw new Error("Rental not found.");
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const startDate = rental.start_date ? new Date(rental.start_date) : null;
+    if (startDate) {
+      startDate.setHours(0, 0, 0, 0);
+    }
+
+    const hasStarted = !startDate || startDate <= today;
+
+    if (!hasStarted) {
+      // Rental hasn't started yet; keep it in its scheduled state.
+      return { success: true, updatedRental: rental, skipped: true };
+    }
+
+    const updates = {};
+
+    if (rental.shipping_status !== "delivered") {
+      updates.shipping_status = "delivered";
+    }
+
+    if (rental.rental_status !== "active") {
+      updates.rental_status = "active";
+    }
+
+    if (Object.keys(updates).length === 0) {
+      // Nothing to update; already in correct state.
+      return { success: true, updatedRental: rental, skipped: true };
+    }
+
+    const { data: updatedRental, error: updateError } = await supabase
+      .from("rentals")
+      .update(updates)
       .eq("id", rentalId)
       .select()
       .single();
 
-    if (error) throw error;
-    return { success: true, updatedRental: data };
+    if (updateError) throw updateError;
+
+    return { success: true, updatedRental, skipped: false };
   } catch (error) {
     console.error("Error in adminReactivateRentalAfterExtensionPayment:", error);
     return { success: false, error: error.message || "Failed to reactivate rental after extension payment." };
