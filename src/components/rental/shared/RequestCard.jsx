@@ -66,6 +66,10 @@ const RequestCard = ({ rental, isSelected = false, onClick, variant = 'sidebar' 
   const cameraImage = camera.image_url || '';
   const dateRange = `${formatDate(rental.start_date)} — ${formatDate(rental.end_date)}`;
   const referenceId = rental.id.slice(0, 8);
+  const rejectionExpiryDate = rental.rejection_expires_at ? new Date(rental.rejection_expires_at) : null;
+  const rejectionCountdownDays = rejectionExpiryDate
+    ? Math.max(0, Math.ceil((rejectionExpiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : null;
 
   // Calculate days
   const days = (() => {
@@ -147,6 +151,12 @@ const RequestCard = ({ rental, isSelected = false, onClick, variant = 'sidebar' 
                 })}
               </div>
             )}
+
+            {rental.rental_status === 'rejected' && rejectionCountdownDays !== null && (
+              <div className="text-[10px] text-red-600 font-medium mt-1">
+                Auto-delete in {rejectionCountdownDays > 0 ? `${rejectionCountdownDays} day${rejectionCountdownDays === 1 ? '' : 's'}` : '24 hrs'}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -209,6 +219,12 @@ const RequestCard = ({ rental, isSelected = false, onClick, variant = 'sidebar' 
           {typeof rental.total_price === 'number' && (
             <div className="text-sm font-semibold text-gray-900 mt-1">
               ₱{Number(rental.total_price).toFixed(2)}
+            </div>
+          )}
+
+          {rental.rental_status === 'rejected' && rejectionCountdownDays !== null && (
+            <div className="text-[11px] text-red-600 font-medium mt-1">
+              Auto-delete in {rejectionCountdownDays > 0 ? `${rejectionCountdownDays} day${rejectionCountdownDays === 1 ? '' : 's'}` : '24 hrs'}
             </div>
           )}
         </div>

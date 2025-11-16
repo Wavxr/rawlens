@@ -60,6 +60,16 @@ export function RentalCard({
     (payment) => payment.payment_type === "rental" && !payment.extension_id
   );
 
+  const rejectionExpiryDate = rental.rejection_expires_at
+    ? new Date(rental.rejection_expires_at)
+    : null;
+  const rejectionCountdownDays = rejectionExpiryDate
+    ? Math.max(
+        0,
+        Math.ceil((rejectionExpiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+      )
+    : null;
+
   const handleCardRef = (element) => {
     if (!registerCardRef) return;
     registerCardRef(String(rental.id), element);
@@ -351,6 +361,39 @@ export function RentalCard({
         {contractError && (
           <div className="mt-2 p-2 bg-red-900/50 border border-red-700 rounded-md">
             <p className="text-red-300 text-xs">{contractError}</p>
+          </div>
+        )}
+
+        {rental.rental_status === "rejected" && (
+          <div className="mt-2 p-2 bg-red-900/20 border border-red-700 rounded-md">
+            <div className="flex items-start gap-1.5">
+              <AlertCircle className="h-3.5 w-3.5 text-red-400 flex-shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-red-200 text-xs font-medium mb-0.5">
+                  Auto Removal Scheduled
+                </p>
+                {rejectionCountdownDays !== null ? (
+                  <p className="text-red-300 text-xs leading-relaxed">
+                    {rejectionCountdownDays > 0
+                      ? `This request will be permanently deleted in ${rejectionCountdownDays} day${
+                          rejectionCountdownDays === 1 ? "" : "s"
+                        } (${formatDate(rental.rejection_expires_at)}).`
+                      : `This request is queued for removal within 24 hours (${formatDate(
+                          rental.rejection_expires_at
+                        )}).`}
+                  </p>
+                ) : (
+                  <p className="text-red-300 text-xs leading-relaxed">
+                    Deletion is scheduled shortly.
+                  </p>
+                )}
+                {rental.rejection_reason && (
+                  <p className="text-red-400 text-[10px] mt-1">
+                    Reason: {rental.rejection_reason}
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
         )}
 

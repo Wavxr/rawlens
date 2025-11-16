@@ -10,6 +10,8 @@ const DETAILED_RENTAL_QUERY = `
   payments (*)
 `;
 
+const REJECTION_EXPIRY_DAYS = 7;
+
 // ------------------------------------------
 //    -- Helper Functions --
 // ------------------------------------------
@@ -143,12 +145,7 @@ export async function getRentalsByStatus(status = null) {
     const { data, error } = await query;
     if (error) throw error;
 
-    // Filter out temporary bookings with pending status
-    const filteredData = data.filter(rental =>
-      !(rental.booking_type === 'temporary' && rental.rental_status === 'pending')
-    );
-
-    return { data: filteredData, error: null };
+    return { data: data || [], error: null };
   } catch (error) {
     console.error("Error in getRentalsByStatus:", error);
     return { data: null, error: error.message || "Failed to fetch rentals by status." };
@@ -670,15 +667,17 @@ export async function adminConfirmApplicationWithConflictCheck(rentalId) {
 
 // Admin rejects application (contract becomes void)
 export async function adminRejectApplication(rentalId, rejectionReason = null) {
+  const expiresAt = new Date(Date.now() + REJECTION_EXPIRY_DAYS * 24 * 60 * 60 * 1000).toISOString();
+
   const updateData = {
-    rental_status: 'rejected'
+    rental_status: 'rejected',
+    rejection_expires_at: expiresAt,
   };
-  
-  // If rejection reason is provided, store it
-  if (rejectionReason) {
-    updateData.rejection_reason = rejectionReason;
+
+  if (typeof rejectionReason === 'string' && rejectionReason.trim().length > 0) {
+    updateData.rejection_reason = rejectionReason.trim();
   }
-  
+
   return await updateRentalStatus(rentalId, updateData);
 }
 

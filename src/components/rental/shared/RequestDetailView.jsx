@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { 
   Camera as CameraIcon, 
   Calendar, 
@@ -76,6 +76,23 @@ const RequestDetailView = ({ rental, onRefresh, onBack, isMobile = false }) => {
   const [isCancelling, setIsCancelling] = useState(false);
   const [showCancellationModal, setShowCancellationModal] = useState(false);
   const [imgBroken, setImgBroken] = useState(false);
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    setNow(Date.now());
+  }, [rental?.id]);
+
+  useEffect(() => {
+    if (!rental?.rejection_expires_at) return undefined;
+
+    const intervalId = setInterval(() => {
+      setNow(Date.now());
+    }, 60000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [rental?.rejection_expires_at]);
 
   // Handle mobile back button - navigate back when back is pressed
   useBackHandler(!!rental, onBack, 100);
@@ -98,6 +115,23 @@ const RequestDetailView = ({ rental, onRefresh, onBack, isMobile = false }) => {
   const cameraName = camera.name || 'Camera';
   const cameraImage = camera.image_url || '';
   const dateRange = `${formatDate(rental.start_date)} — ${formatDate(rental.end_date)}`;
+  const rejectionExpiryDate = rental.rejection_expires_at ? new Date(rental.rejection_expires_at) : null;
+  const rejectionCountdownMs = rejectionExpiryDate ? rejectionExpiryDate.getTime() - now : null;
+
+  const rejectionCountdownLabel = (() => {
+    if (rejectionCountdownMs === null) return null;
+    if (rejectionCountdownMs <= 0) {
+      return 'within 24 hours';
+    }
+
+    const hours = Math.ceil(rejectionCountdownMs / (1000 * 60 * 60));
+    if (hours < 24) {
+      return `${hours} hour${hours === 1 ? '' : 's'}`;
+    }
+
+    const days = Math.ceil(rejectionCountdownMs / (1000 * 60 * 60 * 24));
+    return `${days} day${days === 1 ? '' : 's'}`;
+  })();
 
   // Payment status logic
   const initialPayment = rental.payments?.find(
@@ -278,16 +312,28 @@ const RequestDetailView = ({ rental, onRefresh, onBack, isMobile = false }) => {
         </div>
       </div>
 
-      {/* Rejection Reason */}
-      {rental.rental_status === 'rejected' && rental.rejection_reason && (
-        <div className="bg-white border border-gray-200 rounded-lg p-3 sm:p-5 shadow-sm">
+      {/* Rejection Details */}
+      {rental.rental_status === 'rejected' && (
+        <div className="bg-white border border-red-200 rounded-lg p-3 sm:p-5 shadow-sm">
           <div className="flex items-start gap-2.5 sm:gap-3">
             <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0">
               <XCircle className="w-5 h-5 text-red-600" />
             </div>
-            <div className="flex-1">
-              <div className="text-sm font-semibold text-red-900 mb-1">Rejection Reason</div>
-              <div className="text-sm text-red-700 leading-relaxed">{rental.rejection_reason}</div>
+            <div className="flex-1 space-y-2">
+              <div>
+                <div className="text-sm font-semibold text-red-900 mb-1">Request Declined</div>
+                <p className="text-sm text-red-700 leading-relaxed">
+                  {rejectionCountdownLabel
+                    ? `This request will be automatically removed ${rejectionCountdownLabel} (${formatDate(rental.rejection_expires_at)}).`
+                    : 'This request is queued for automatic cleanup shortly.'}
+                </p>
+              </div>
+              {rental.rejection_reason && (
+                <div className="text-sm text-red-700 leading-relaxed border-t border-red-100 pt-2">
+                  <span className="font-medium text-red-900">Reason:&nbsp;</span>
+                  {rental.rejection_reason}
+                </div>
+              )}
             </div>
           </div>
         </div>

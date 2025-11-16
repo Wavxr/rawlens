@@ -15,11 +15,27 @@ const STATUS_FILTERS = [
 const MONTH_RANGE = { past: 6, future: 12 };
 
 export function needsAdminAction(rental) {
-  return (
-    rental.rental_status === "pending" ||
-    (rental.rental_status === "confirmed" &&
-      rental.shipping_status === "in_transit_to_owner")
-  );
+  if (!rental) return false;
+
+  if (rental.rental_status === "pending") {
+    return true;
+  }
+
+  if (
+    rental.rental_status === "confirmed" &&
+    rental.shipping_status === "in_transit_to_owner"
+  ) {
+    return true;
+  }
+
+  if (
+    rental.rental_status === "pending" &&
+    rental.booking_type === "temporary"
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 function doesRentalOverlapMonth(rental, monthString) {
