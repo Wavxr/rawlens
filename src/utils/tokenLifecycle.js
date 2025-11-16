@@ -525,7 +525,7 @@ export async function mapUserTokenOnLogin(userId) {
   try {
     const currentToken = await getFcmToken();
     if (!currentToken) {
-      // Silently skip if no token (permission not granted or not supported)
+      // No token means push is disabled on this device; skip mapping.
       return false;
     }
 
@@ -543,7 +543,7 @@ export async function mapUserTokenOnLogin(userId) {
       return false;
     }
 
-    console.log('Successfully mapped user token on login for current device');
+    // Mapping succeeded; nothing else to log to keep console quiet.
     return true;
   } catch (error) {
     console.error('Error mapping user token on login:', error);
@@ -558,7 +558,7 @@ export async function mapAdminTokenOnLogin(userId) {
   try {
     const currentToken = await getFcmToken();
     if (!currentToken) {
-      // Silently skip if no token (permission not granted or not supported)
+      // No admin token retrieved, likely due to missing permissions.
       return false;
     }
 
@@ -576,7 +576,7 @@ export async function mapAdminTokenOnLogin(userId) {
       return false;
     }
 
-    console.log('Successfully mapped admin token on login for current device');
+    // Token is now marked as mapped for this admin device.
     return true;
   } catch (error) {
     console.error('Error mapping admin token on login:', error);
@@ -609,7 +609,7 @@ export async function unmapUserTokenOnLogout(userId) {
       return false;
     }
 
-    console.log('Successfully unmapped user token on logout for current device');
+    // Token flag flipped to prevent further notifications for this device.
     return true;
   } catch (error) {
     console.error('Error unmapping user token on logout:', error);
@@ -642,7 +642,7 @@ export async function unmapAdminTokenOnLogout(userId) {
       return false;
     }
 
-    console.log('Successfully unmapped admin token on logout for current device');
+    // Admin device token is now inactive for push delivery.
     return true;
   } catch (error) {
     console.error('Error unmapping admin token on logout:', error);

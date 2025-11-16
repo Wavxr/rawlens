@@ -36,7 +36,6 @@ const useAuthStore = create((set, get) => ({
       }
 
       if (session?.user) {
-        console.log('Found existing session for user:', session.user.id);
         set({ session, user: session.user });
         
         try {
@@ -60,7 +59,6 @@ const useAuthStore = create((set, get) => ({
           return;
         }
       } else {
-        console.log('No existing session found');
         get().forceCleanup();
       }
     } catch (e) {
@@ -76,19 +74,15 @@ const useAuthStore = create((set, get) => ({
           const currentUser = get().user;
           const isInitializing = get().isInitializing;
 
-          console.log('🔔 Auth state change:', event, 'current user:', currentUser?.id, 'new session user:', session?.user?.id, 'isInitializing:', isInitializing);
-
           // CRITICAL FIX: Ignore SIGNED_IN during signup flow
           // Check both initialization flag AND signup-in-progress flag
           if (event === 'SIGNED_IN' && (isInitializing || getIsSignupInProgress())) {
-            console.log('⏭️ Ignoring SIGNED_IN during initialization or signup flow');
             return;
           }
 
           // This event fires on tab focus, token refresh, etc.
           // We only want to trigger a full reload if the user actually changes.
           if (event === 'SIGNED_IN' && session?.user?.id !== currentUser?.id) {
-            console.log('✨ New user signed in, initializing...');
             set({ loading: true });
             set({ session, user: session.user });
             
@@ -104,20 +98,15 @@ const useAuthStore = create((set, get) => ({
             
             set({ loading: false });
           } else if (event === 'SIGNED_OUT') {
-            console.log('👋 SIGNED_OUT event received');
-            
             // Always ensure state is cleared on SIGNED_OUT
             const currentState = get();
             if (currentState.user || currentState.session) {
-              console.log('🧹 Clearing remaining state on SIGNED_OUT');
               get().forceCleanup();
             }
           } else if (event === 'TOKEN_REFRESHED' && session) {
-            console.log('🔄 Token refreshed for user:', session.user.id);
             // Update session but don't reload user data
             set({ session, user: session.user });
           } else if (event === 'USER_UPDATED' && session) {
-            console.log('📝 User updated:', session.user.id);
             set({ session, user: session.user });
           }
         } catch (e) {
@@ -126,7 +115,6 @@ const useAuthStore = create((set, get) => ({
           
           // On critical error during auth state change, ensure we're in a clean state
           if (e.message?.includes('session') || e.message?.includes('auth')) {
-            console.log('Auth error detected, performing emergency cleanup');
             get().forceCleanup();
           }
         }
@@ -182,20 +170,16 @@ const useAuthStore = create((set, get) => ({
   },
 
   logout: async () => {
-    console.log('Starting logout process...');
     try {
       const currentUser = get().user;
       const currentRole = get().role;
       const currentSession = get().session;
-      
-      console.log('Current user before logout:', currentUser?.id, 'role:', currentRole);
       
       // Check if we already have a valid session before attempting logout
       let hasValidSession = false;
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
         hasValidSession = !error && session?.user?.id;
-        console.log('Session check result:', hasValidSession ? 'Valid session found' : 'No valid session');
       } catch (sessionError) {
         console.warn('Session check failed:', sessionError);
         hasValidSession = false;
@@ -203,7 +187,6 @@ const useAuthStore = create((set, get) => ({
       
       // If no valid session and no current user, we're already logged out
       if (!hasValidSession && !currentUser && !currentSession) {
-        console.log(' Already logged out - performing cleanup only');
         get().forceCleanup();
         return;
       }
@@ -211,45 +194,35 @@ const useAuthStore = create((set, get) => ({
       // Handle FCM token unmapping (only if we have user info)
       if (currentUser?.id) {
         try {
-          console.log(' Unmapping FCM tokens...');
           if (currentRole === 'admin') {
             await unmapAdminTokenOnLogout(currentUser.id);
           } else {
             await unmapUserTokenOnLogout(currentUser.id);
           }
-          console.log(' FCM tokens unmapped successfully');
         } catch (fcmError) {
           console.warn(' FCM token unmapping failed, continuing logout:', fcmError);
         }
       }
       
       // Clear all stores immediately
-      console.log('🔧 Clearing all store states...');
       get().forceCleanup();
       
       // Only call Supabase signOut if we have a valid session
       if (hasValidSession) {
-        console.log('Calling Supabase signOut...');
         const { error } = await supabase.auth.signOut();
         if (error) {
           console.error('Supabase logout error (but state already cleared):', error);
-        } else {
-          console.log('Supabase logout successful');
         }
-      } else {
-        console.log('Skipping Supabase signOut - no valid session');
       }
       
     } catch (e) {
       console.error('Critical logout error:', e);
       // Ensure state is cleared even on critical error
-      console.log('Emergency state clearing...');
       get().forceCleanup();
     }
   },
 
   forceCleanup: () => {
-    console.log('Performing force cleanup of all auth state...');
     useSettingsStore.getState().clearAll();
     useUserStore.getState().clearUser();
     set({ user: null, session: null, role: null, profile: null });
@@ -266,8 +239,6 @@ const useAuthStore = create((set, get) => ({
         localStorage.removeItem(key);
       }
     });
-    
-    console.log('Force cleanup completed');
   },
   
   register: async (email, password) => {
@@ -295,7 +266,6 @@ const useAuthStore = create((set, get) => ({
   refreshUserData: async () => {
     const isValid = await get().checkSessionValidity();
     if (!isValid) {
-      console.log('Session invalid, performing cleanup');
       get().forceCleanup();
       return false;
     }

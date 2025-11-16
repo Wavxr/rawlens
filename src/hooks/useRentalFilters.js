@@ -127,22 +127,12 @@ export function useRentalFilters({ allRentals, searchParams, setSearchParams }) 
   useEffect(() => {
     const statusParam = searchParams.get("status") || DEFAULT_STATUS;
     setSelectedStatus((prevStatus) => {
-      if (prevStatus === statusParam) return prevStatus;
-      console.log("[RentalFilters] Syncing status from search params", {
-        statusParam,
-        previousStatus: prevStatus,
-      });
-      return statusParam;
+      return prevStatus === statusParam ? prevStatus : statusParam;
     });
 
     const monthParam = searchParams.get("month") || "";
     setSelectedMonth((prevMonth) => {
-      if (prevMonth === monthParam) return prevMonth;
-      console.log("[RentalFilters] Syncing month from search params", {
-        monthParam,
-        previousMonth: prevMonth,
-      });
-      return monthParam;
+      return prevMonth === monthParam ? prevMonth : monthParam;
     });
   }, [searchParams]);
 
@@ -206,10 +196,6 @@ export function useRentalFilters({ allRentals, searchParams, setSearchParams }) 
   const monthOptions = useMemo(() => getMonthOptions(), []);
 
   const handleStatusChange = (status) => {
-    console.log("[RentalFilters] handleStatusChange", {
-      currentStatus: selectedStatus,
-      nextStatus: status,
-    });
     setSelectedStatus(status);
     const params = new URLSearchParams(searchParams);
     params.set("status", status);
