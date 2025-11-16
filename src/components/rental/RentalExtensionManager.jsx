@@ -1,18 +1,19 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { 
-  Calendar, 
-  Clock, 
-  Plus, 
-  AlertCircle, 
-  CheckCircle2, 
-  CreditCard, 
+import {
+  Calendar,
+  Clock,
+  Plus,
+  AlertCircle,
+  CheckCircle2,
   XCircle,
   Loader2,
+  AlertTriangle,
 } from 'lucide-react';
 import { userRequestRentalExtension, userGetExtensionHistory } from '../../services/extensionService';
 import { uploadPaymentReceipt } from '../../services/paymentService';
 import useExtensionStore from '../../stores/extensionStore';
 import { toast } from 'react-toastify';
+import ExtensionHistoryCard from './extensions/ExtensionHistoryCard';
 
 const RentalExtensionManager = ({ rental, userId }) => {
   const [showExtensionForm, setShowExtensionForm] = useState(false);
@@ -20,15 +21,96 @@ const RentalExtensionManager = ({ rental, userId }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [uploadingPayment, setUploadingPayment] = useState({});
-  const [showHistory, setShowHistory] = useState(false);
+  const [showHistory, setShowHistory] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    const stored = sessionStorage.getItem('rental-extension-history-open');
+    return stored === null ? true : stored === 'true';
+  });
 
   const extensions = useExtensionStore((state) => state.extensions);
   const setExtensions = useExtensionStore((state) => state.setExtensions);
 
-  const extensionHistory = useMemo(
+  const rentalExtensions = useMemo(
     () => extensions.filter((extension) => extension.rental_id === rental.id),
     [extensions, rental.id]
   );
+
+  const sortedExtensions = useMemo(() => {
+    return [...rentalExtensions].sort((a, b) => {
+      const aDate = new Date(a.requested_at).getTime();
+      const bDate = new Date(b.requested_at).getTime();
+      return bDate - aDate;
+    });
+  }, [rentalExtensions]);
+
+  const latestExtensionSummary = useMemo(() => {
+    if (!sortedExtensions.length) return null;
+
+    const latest = sortedExtensions[0];
+    const latestPayment = latest.payments?.[0] || null;
+
+    if (latest.extension_status === 'pending') {
+      return {
+        icon: Clock,
+        label: 'Extension under review',
+        pillClass: 'bg-amber-100 text-amber-700 border border-amber-200',
+      };
+    }
+
+    if (latest.extension_status === 'rejected') {
+      return {
+        icon: XCircle,
+        label: 'Extension request declined',
+        pillClass: 'bg-red-100 text-red-700 border border-red-200',
+      };
+    }
+
+    if (latest.extension_status === 'approved') {
+      if (!latestPayment) {
+        return {
+          icon: CheckCircle2,
+          label: 'Extension approved',
+          pillClass: 'bg-green-100 text-green-700 border border-green-200',
+        };
+      }
+
+      switch (latestPayment.payment_status) {
+        case 'pending':
+          return {
+            icon: AlertTriangle,
+            label: 'Payment receipt required',
+            pillClass: 'bg-blue-100 text-blue-700 border border-blue-200',
+          };
+        case 'submitted':
+          return {
+            icon: Clock,
+            label: 'Receipt under review',
+            pillClass: 'bg-blue-100 text-blue-700 border border-blue-200',
+          };
+        case 'verified':
+          return {
+            icon: CheckCircle2,
+            label: 'Extension complete',
+            pillClass: 'bg-green-100 text-green-700 border border-green-200',
+          };
+        case 'rejected':
+          return {
+            icon: XCircle,
+            label: 'Upload a clearer receipt',
+            pillClass: 'bg-red-100 text-red-700 border border-red-200',
+          };
+        default:
+          return null;
+      }
+    }
+
+    return null;
+  }, [sortedExtensions]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    sessionStorage.setItem('rental-extension-history-open', String(showHistory));
+  }, [showHistory]);
 
   const loadExtensionHistory = useCallback(async () => {
     try {
@@ -106,80 +188,6 @@ const RentalExtensionManager = ({ rental, userId }) => {
     }
   };
 
-  const getExtensionStatusInfo = (extension) => {
-    switch (extension.extension_status) {
-      case 'pending':
-        return {
-          color: 'bg-amber-100 text-amber-800 border-amber-200',
-          icon: Clock,
-          title: 'Under Admin Review',
-          description: 'Your extension request is being reviewed by our admin team. We\'ll notify you once it\'s approved or if we need more information.'
-        };
-      case 'approved':
-        return {
-          color: 'bg-green-100 text-green-800 border-green-200',
-          icon: CheckCircle2,
-          title: 'Extension Approved!',
-          description: 'Great news! Your extension has been approved. Please make the payment to confirm the new dates.'
-        };
-      case 'rejected':
-        return {
-          color: 'bg-red-100 text-red-800 border-red-200',
-          icon: XCircle,
-          title: 'Extension Request Declined',
-          description: extension.admin_notes || 'Your extension request couldn\'t be approved. Please contact us if you have questions.'
-        };
-      default:
-        return {
-          color: 'bg-gray-100 text-gray-800 border-gray-200',
-          icon: AlertCircle,
-          title: 'Extension Request',
-          description: 'Status unknown'
-        };
-    }
-  };
-
-  const getPaymentStatusInfo = (payment) => {
-    if (!payment) return null;
-    
-    switch (payment.payment_status) {
-      case 'pending':
-        return {
-          color: 'bg-amber-100 text-amber-800',
-          icon: CreditCard,
-          title: 'Payment Required',
-          description: 'Please upload your payment receipt to complete the extension.',
-          canUpload: true
-        };
-      case 'submitted':
-        return {
-          color: 'bg-blue-100 text-blue-800',
-          icon: Clock,
-          title: 'Payment Under Review',
-          description: 'Your payment receipt is being verified. This usually takes up to 24 hours.',
-          canUpload: false
-        };
-      case 'verified':
-        return {
-          color: 'bg-green-100 text-green-800',
-          icon: CheckCircle2,
-          title: 'Payment Verified',
-          description: 'Your rental has been extended successfully.',
-          canUpload: false
-        };
-      case 'rejected':
-        return {
-          color: 'bg-red-100 text-red-800',
-          icon: XCircle,
-          title: 'Payment Receipt Rejected',
-          description: 'Please upload a new, clear payment receipt.',
-          canUpload: true
-        };
-      default:
-        return null;
-    }
-  };
-
   const formatDate = (dateStr) => {
     try {
       return new Date(dateStr).toLocaleDateString('en-US', {
@@ -193,7 +201,7 @@ const RentalExtensionManager = ({ rental, userId }) => {
   };
 
   const canRequestExtension = () => {
-    const hasActivePendingRequest = extensionHistory.some(ext => 
+    const hasActivePendingRequest = sortedExtensions.some(ext =>
       ext.extension_status === 'pending' || 
       (ext.extension_status === 'approved' && ext.payments?.[0]?.payment_status !== 'verified')
     );
@@ -313,7 +321,7 @@ const RentalExtensionManager = ({ rental, userId }) => {
             <span className="text-xs sm:text-sm text-gray-600">Loading extension history...</span>
           </div>
         </div>
-      ) : extensionHistory.length > 0 ? (
+      ) : sortedExtensions.length > 0 ? (
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
           <button
             onClick={() => setShowHistory(!showHistory)}
@@ -323,8 +331,17 @@ const RentalExtensionManager = ({ rental, userId }) => {
               <Calendar className="w-5 h-5 text-[#052844]" />
               <h3 className="font-semibold text-gray-900 text-sm sm:text-base">Extension History</h3>
               <span className="px-2 py-0.5 bg-[#052844] text-white text-xs rounded-md">
-                {extensionHistory.length}
+                {sortedExtensions.length}
               </span>
+              {latestExtensionSummary && (
+                <span className={`hidden sm:inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${latestExtensionSummary.pillClass}`}>
+                  {(() => {
+                    const SummaryIcon = latestExtensionSummary.icon;
+                    return SummaryIcon ? <SummaryIcon className="h-3.5 w-3.5" /> : null;
+                  })()}
+                  {latestExtensionSummary.label}
+                </span>
+              )}
             </div>
             <div className={`transform transition-transform duration-200 ${showHistory ? 'rotate-180' : ''}`}>
               <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -332,122 +349,33 @@ const RentalExtensionManager = ({ rental, userId }) => {
               </svg>
             </div>
           </button>
+
+          {latestExtensionSummary && (
+            <div className="mt-3 sm:hidden">
+              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${latestExtensionSummary.pillClass}`}>
+                {(() => {
+                  const SummaryIcon = latestExtensionSummary.icon;
+                  return SummaryIcon ? <SummaryIcon className="h-3.5 w-3.5" /> : null;
+                })()}
+                {latestExtensionSummary.label}
+              </span>
+            </div>
+          )}
           
           {showHistory && (
             <div className="mt-4 space-y-3">
-          
-          {extensionHistory.map((extension) => {
-            const statusInfo = getExtensionStatusInfo(extension);
-            const StatusIcon = statusInfo.icon;
-            const extensionPayment = extension.payments?.[0]; // Extension payments are linked via extension_id
-            const paymentInfo = getPaymentStatusInfo(extensionPayment);
-            
-            // Only hide extension status if it's approved AND payment is verified (extension completed)
-            const hideExtensionStatus = extension.extension_status === 'approved' && extensionPayment?.payment_status === 'verified';
-            
-            return (
-              <div key={extension.id} className="bg-white border border-gray-200 rounded-lg p-3 sm:p-4 space-y-3">
-                {/* Extension Status - Show for pending, rejected, or approved with unverified payment */}
-                {!hideExtensionStatus && (
-                  <div className={`border rounded-lg p-3 ${statusInfo.color}`}>
-                    <div className="flex items-center gap-2">
-                      <StatusIcon className="w-4 h-4 flex-shrink-0" />
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-sm">{statusInfo.title}</h4>
-                        <p className="text-xs opacity-90 mt-0.5">{statusInfo.description}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Extension Details - Compact */}
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="bg-gray-50 rounded-md p-2">
-                    <div className="text-xs text-gray-500 font-medium mb-0.5">
-                      Original
-                    </div>
-                    <div className="text-xs font-medium text-gray-900">
-                      {formatDate(extension.original_end_date)}
-                    </div>
-                  </div>
-                  <div className="bg-gray-50 rounded-md p-2">
-                    <div className="text-xs text-gray-500 font-medium mb-0.5">
-                      Requested
-                    </div>
-                    <div className="text-xs font-medium text-gray-900">
-                      {formatDate(extension.requested_end_date)}
-                    </div>
-                  </div>
-                  <div className="bg-gray-50 rounded-md p-2">
-                    <div className="text-xs text-gray-500 font-medium mb-0.5">
-                      Cost
-                    </div>
-                    <div className="text-xs font-medium text-gray-900 flex items-center gap-0.5">
-                      ₱{Number(extension.additional_price).toFixed(2)}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Payment Section - Only show if extension is approved */}
-                {extension.extension_status === 'approved' && paymentInfo && (
-                  <div className={`border rounded-lg p-3 ${paymentInfo.color}`}>
-                    <div className="flex items-start gap-2">
-                      <paymentInfo.icon className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-sm mb-0.5">{paymentInfo.title}</h4>
-                        <p className="text-xs opacity-90 mb-2">{paymentInfo.description}</p>
-                        
-                        {paymentInfo.canUpload && (
-                          <div className="space-y-2">
-                            <div className="bg-white/50 rounded-md p-2">
-                              <div className="text-xs text-gray-600 font-medium mb-1">
-                                Amount: ₱{Number(extension.additional_price).toFixed(2)}
-                              </div>
-                            </div>
-                            
-                            <div>
-                              <input
-                                type="file"
-                                accept="image/*,.pdf"
-                                onChange={(e) => {
-                                  const file = e.target.files[0];
-                                  if (file && extensionPayment?.id) {
-                                    handleUploadPaymentReceipt(extensionPayment.id, file);
-                                  }
-                                }}
-                                disabled={uploadingPayment[extensionPayment?.id]}
-                                className="block w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-[#052844]/10 file:text-[#052844] hover:file:bg-[#052844]/20 disabled:opacity-50 file:transition-colors file:duration-150"
-                              />
-                              {uploadingPayment[extensionPayment?.id] && (
-                                <div className="flex items-center gap-2 mt-1.5 text-xs text-[#052844]">
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                  Uploading...
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Request Date - Compact */}
-                <div className="text-xs text-gray-500 flex items-center gap-1 pt-1 border-t border-gray-100">
-                  <Clock className="w-3 h-3" />
-                  {new Date(extension.requested_at).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric'
-                  })}
-                </div>
-              </div>
-            );
-          })}
+              {sortedExtensions.map((extension) => (
+                <ExtensionHistoryCard
+                  key={extension.id}
+                  extension={extension}
+                  onUploadReceipt={handleUploadPaymentReceipt}
+                  uploadingPayment={uploadingPayment}
+                />
+              ))}
             </div>
           )}
         </div>
-      ) : !canRequestExtension() && extensionHistory.length === 0 ? (
+      ) : !canRequestExtension() && sortedExtensions.length === 0 ? (
         <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 text-center">
           <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center mx-auto mb-3">
             <Calendar className="w-6 h-6 text-gray-400" />
