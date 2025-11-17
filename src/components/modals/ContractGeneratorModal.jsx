@@ -178,18 +178,35 @@ export default function ContractGeneratorModal({ open, onClose, initialData = {}
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center">
-  <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-  <div className="relative bg-white rounded-xl sm:rounded-2xl shadow-2xl w-full sm:max-w-4xl mx-3 my-4 sm:mx-0 sm:my-0 max-h-[92svh] sm:max-h-[90vh] overflow-hidden border border-slate-200">
+      <div
+        className="absolute inset-0 bg-slate-950/35 backdrop-blur-sm"
+        onClick={() => {
+          if (!sendingEmail) {
+            onClose?.();
+          }
+        }}
+      />
+      <div className="relative bg-white rounded-xl sm:rounded-2xl shadow-2xl w-full sm:max-w-4xl mx-3 my-4 sm:mx-0 sm:my-0 max-h-[92svh] sm:max-h-[90vh] overflow-hidden border border-slate-200">
         <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b">
           <div className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-slate-700" />
             <h2 className="text-sm sm:text-base font-semibold text-slate-800">Rental Agreement</h2>
           </div>
-          <button type="button" onClick={onClose} className="p-2 rounded-lg hover:bg-slate-100 text-slate-600" aria-label="Close">
+          <button
+            type="button"
+            onClick={() => {
+              if (!sendingEmail) {
+                onClose?.();
+              }
+            }}
+            className="p-2 rounded-lg hover:bg-slate-100 text-slate-600 disabled:cursor-not-allowed disabled:opacity-60"
+            aria-label="Close"
+            disabled={sendingEmail}
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
-  <div className="overflow-y-auto max-h-[calc(92svh-56px)] sm:max-h-[calc(90vh-56px)] p-4 sm:p-6 overscroll-contain">
+        <div className="overflow-y-auto max-h-[calc(92svh-56px)] sm:max-h-[calc(90vh-56px)] p-4 sm:p-6 overscroll-contain">
           <div className="bg-white">
             <section className="space-y-4">
               <div className="flex items-start gap-2 bg-slate-50 border border-slate-200 rounded-lg p-3 sm:p-4">
