@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { Camera, Eye, EyeOff, Mail, Lock, ArrowRight } from "lucide-react"
-import useAuthStore from "../stores/useAuthStore"
+import useAuthStore from "@stores/useAuthStore"
 
 export default function Login() {
   const [email, setEmail] = useState("")

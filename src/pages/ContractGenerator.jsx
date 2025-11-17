@@ -2,9 +2,9 @@ import { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SignatureCanvas from 'react-signature-canvas';
 import { FileText, Loader2, Camera, User, ArrowLeft, Download, RefreshCw, Info } from 'lucide-react';
-import { generateSignedContractPdf } from '../services/pdfService';
-import DateFilterInput from '../components/forms/DateFilterInput';
-import { getPublicCameraNames, getPublicCameraByName, calculateRentalQuote } from '../services/publicService';
+import { generateSignedContractPdf } from '@services/pdfService';
+import DateFilterInput from '@components/user/forms/DateFilterInput';
+import { getPublicCameraNames, getPublicCameraByName, calculateRentalQuote } from '@services/publicService';
 
 // Loaded from public catalog at runtime
 

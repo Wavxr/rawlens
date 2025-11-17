@@ -1,4 +1,3 @@
-import React, { useState, useEffect } from 'react';
 import { 
   LineChart, 
   Line, 
@@ -15,7 +14,8 @@ import {
   Area,
   AreaChart
 } from 'recharts';
-import { getRevenueAnalytics } from '../../../services/dashboardService';
+import React, { useState, useEffect } from 'react';
+import { getRevenueAnalytics } from '@services/dashboardService';
 import { 
   DollarSign, 
   TrendingUp, 

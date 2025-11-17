@@ -13,13 +13,13 @@ import {
   User,
   X,
 } from "lucide-react";
-import { PaymentStatusBadge } from "../../payment/PaymentVerificationComponents";
+import { PaymentStatusBadge } from "@components/admin/payment/PaymentVerificationComponents";
 import {
   formatDate,
   getStatusColor,
   getStatusText,
   inclusiveDays,
-} from "../../../utils/rentalFormatting";
+} from "@utils/rentalFormatting";
 
 // Displays a single rental card with all admin actions.
 export function RentalCard({

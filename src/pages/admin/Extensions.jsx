@@ -11,15 +11,15 @@ import {
   Search,
   MessageSquare
 } from 'lucide-react';
-import { 
+import {
   adminGetAllExtensions,
-  adminApproveExtension, 
+  adminApproveExtension,
   adminRejectExtension,
-  checkCameraAvailabilityForExtension 
-} from '../../services/extensionService';
-import { subscribeToAllExtensions, unsubscribeFromChannel } from '../../services/realtimeService';
-import useAuthStore from '../../stores/useAuthStore';
-import useExtensionStore from '../../stores/extensionStore';
+  checkCameraAvailabilityForExtension,
+} from '@services/extensionService';
+import { subscribeToAllExtensions, unsubscribeFromChannel } from '@services/realtimeService';
+import useAuthStore from '@stores/useAuthStore';
+import useExtensionStore from '@stores/extensionStore';
 import { toast } from 'react-toastify';
 
 const Extensions = () => {

@@ -1,5 +1,5 @@
 import { Outlet, useNavigate, useLocation } from "react-router-dom"
-import useAuthStore from "../../stores/useAuthStore"
+import useAuthStore from "@stores/useAuthStore"
 import { Home, Search, ShoppingCart, Calendar, User, Camera, ChevronDown, LogOut } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
 

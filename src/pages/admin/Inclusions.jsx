@@ -4,7 +4,7 @@ import {
   createInclusionItem,
   updateInclusionItem,
   deleteInclusionItem,
-} from "../../services/inclusionService"
+} from "@services/inclusionService"
 import {
   Package,
   Plus,

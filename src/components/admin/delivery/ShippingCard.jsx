@@ -15,8 +15,8 @@ import {
   STEP_ORDER,
   formatDate,
   prettyShippingStatus,
-} from "../../../utils/rentalFormatting";
-import { getShippingBadgeClasses } from "../../../utils/deliveryFormatting";
+} from "@utils/rentalFormatting";
+import { getShippingBadgeClasses } from "@utils/deliveryFormatting";
 
 // Presentational card summarising a rental's delivery progress and actions.
 export function ShippingCard({

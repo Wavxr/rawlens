@@ -1,17 +1,17 @@
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
-import useAuthStore from '../../stores/useAuthStore';
-import useRentalStore from '../../stores/rentalStore';
+import useAuthStore from '@stores/useAuthStore';
+import useRentalStore from '@stores/rentalStore';
 import { 
   subscribeToUserRentals, 
   subscribeToUserPayments, 
   unsubscribeFromChannel 
-} from '../../services/realtimeService';
+} from '@services/realtimeService';
 import { Loader2, Camera as CameraIcon, AlertCircle, Clock, CheckCircle2, XCircle, CreditCard } from 'lucide-react';
-import FilterTabs from '../../components/rental/shared/FilterTabs';
-import RequestCard from '../../components/rental/shared/RequestCard';
-import RequestDetailView from '../../components/rental/shared/RequestDetailView';
-import MobileRequestOverlay from '../../components/rental/layouts/MobileRequestOverlay';
-import useIsMobile from '../../hooks/useIsMobile';
+import FilterTabs from '@components/user/rental/shared/FilterTabs';
+import RequestCard from '@components/user/rental/shared/RequestCard';
+import RequestDetailView from '@components/user/rental/shared/RequestDetailView';
+import MobileRequestOverlay from '@components/user/rental/layouts/MobileRequestOverlay';
+import useIsMobile from '@hooks/useIsMobile';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 

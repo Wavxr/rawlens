@@ -1,16 +1,16 @@
 import { useState, useEffect } from "react"
 import {
   insertCamera,
-  getAllCameras, 
+  getAllCameras,
   updateCamera,
   deleteCamera,
   duplicateCamera,
-} from "../../services/cameraService"
-import { 
-  getAllInclusionItems, 
-  getInclusionsForCamera, 
-  updateCameraInclusions 
-} from "../../services/inclusionService"
+} from "@services/cameraService"
+import {
+  getAllInclusionItems,
+  getInclusionsForCamera,
+  updateCameraInclusions,
+} from "@services/inclusionService"
 import {
   Camera,
   Plus,

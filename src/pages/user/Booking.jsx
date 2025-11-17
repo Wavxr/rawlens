@@ -1,24 +1,24 @@
 import { useEffect, useMemo, useState, useRef, useCallback } from "react"
 import { useNavigate } from "react-router-dom"
-import useAuthStore from "../../stores/useAuthStore"
-import useRentalStore from "../../stores/rentalStore"
-import { userConfirmDelivered, userConfirmSentBack } from "../../services/deliveryService"
-import { userCancelConfirmedRental } from "../../services/rentalService"
-import { getSignedContractUrl } from "../../services/pdfService"
-import { subscribeToUserRentals, subscribeToUserExtensions, subscribeToUserPayments, unsubscribeFromChannel } from "../../services/realtimeService"
-import { getRentalFeedback } from "../../services/feedbackService"
+import useAuthStore from "@stores/useAuthStore"
+import useRentalStore from "@stores/rentalStore"
+import { userConfirmDelivered, userConfirmSentBack } from "@services/deliveryService"
+import { userCancelConfirmedRental } from "@services/rentalService"
+import { getSignedContractUrl } from "@services/pdfService"
+import { subscribeToUserRentals, subscribeToUserExtensions, subscribeToUserPayments, unsubscribeFromChannel } from "@services/realtimeService"
+import { getRentalFeedback } from "@services/feedbackService"
 import { Loader2, AlertCircle } from "lucide-react"
-import FilterTabs from "../../components/rental/shared/FilterTabs"
-import BookingCard from "../../components/rental/shared/BookingCard"
-import BookingDetailView from "../../components/rental/shared/BookingDetailView"
-import MobileRequestOverlay from "../../components/rental/layouts/MobileRequestOverlay"
-import CancellationModal from "../../components/modals/CancellationModal"
-import FeedbackForm from "../../components/forms/FeedbackForm"
-import useIsMobile from "../../hooks/useIsMobile"
+import FilterTabs from "@components/user/rental/shared/FilterTabs"
+import BookingCard from "@components/user/rental/shared/BookingCard"
+import BookingDetailView from "@components/user/rental/shared/BookingDetailView"
+import MobileRequestOverlay from "@components/user/rental/layouts/MobileRequestOverlay"
+import CancellationModal from "@components/user/modals/CancellationModal"
+import FeedbackForm from "@components/user/forms/FeedbackForm"
+import useIsMobile from "@hooks/useIsMobile"
 import { toast, ToastContainer } from "react-toastify"
 import 'react-toastify/dist/ReactToastify.css';
 import { Truck, CheckCircle, Clock, CreditCard } from "lucide-react"
-import { AnimatePresence, motion } from "framer-motion"
+import { AnimatePresence, motion as Motion } from "framer-motion"
 
 const Booking = () => {
   // EmptyState Component - Shows when no rentals in filter
@@ -1329,7 +1329,6 @@ const Booking = () => {
                       onCancelRental={handleCancelConfirmedRental}
                       canCancelRental={canCancelConfirmed}
                       feedbackSubmitted={feedbackSubmitted}
-                      onFeedbackSubmit={handleFeedbackSubmit}
                       onShowFeedbackForm={setFeedbackFormVisibility}
                       userId={user.id}
                       useCountdown={useCountdown}
@@ -1361,7 +1360,6 @@ const Booking = () => {
               onCancelRental={handleCancelConfirmedRental}
               canCancelRental={canCancelConfirmed}
               feedbackSubmitted={feedbackSubmitted}
-              onFeedbackSubmit={handleFeedbackSubmit}
               onShowFeedbackForm={setFeedbackFormVisibility}
               userId={user.id}
               useCountdown={useCountdown}
@@ -1384,7 +1382,7 @@ const Booking = () => {
 
         <AnimatePresence>
           {showFeedbackForm && selectedRental && user?.id && (
-            <motion.div
+            <Motion.div
               className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 sm:p-6"
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1392,14 +1390,14 @@ const Booking = () => {
               transition={{ duration: 0.2, ease: "easeOut" }}
               onClick={handleFeedbackBackdropClick}
             >
-              <motion.div
+              <Motion.div
                 className="absolute inset-0 bg-slate-950/30 backdrop-blur-sm"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2, ease: "easeOut" }}
               />
-              <motion.div
+              <Motion.div
                 initial={{ opacity: 0, y: 24, scale: 0.98 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 24, scale: 0.98 }}
@@ -1414,8 +1412,8 @@ const Booking = () => {
                   onSkip={closeFeedbackForm}
                   onLoadingChange={handleFeedbackLoadingChange}
                 />
-              </motion.div>
-            </motion.div>
+              </Motion.div>
+            </Motion.div>
           )}
         </AnimatePresence>
 

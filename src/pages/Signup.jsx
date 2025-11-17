@@ -19,7 +19,7 @@ import {
   Video,
   Info,
 } from "lucide-react"
-import { signUp } from "../services/authService"
+import { signUp } from "@services/authService"
 
 export default function Signup() {
   const [loading, setLoading] = useState(false)

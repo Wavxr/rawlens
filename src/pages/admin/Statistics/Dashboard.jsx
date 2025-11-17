@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react"
 import { Camera, Package, Users, TrendingUp, BarChart3, Activity, DollarSign, Loader2, AlertTriangle } from "lucide-react"
-import { getDashboardStats, getRecentActivity } from "../../../services/dashboardService"
+import { getDashboardStats, getRecentActivity } from "@services/dashboardService"
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null)

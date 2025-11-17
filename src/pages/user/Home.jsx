@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Camera } from 'lucide-react';
-import CameraCard from '../../components/camera/CameraCard';
-import CameraCardBig from '../../components/camera/CameraCardBig';
-import useCameraStore from '../../stores/cameraStore';
-import useAuthStore from '../../stores/useAuthStore';
-import { getCameraModels } from '../../services/cameraService';
+import CameraCard from '@components/user/camera/CameraCard';
+import CameraCardBig from '@components/user/camera/CameraCardBig';
+import useCameraStore from '@stores/cameraStore';
+import useAuthStore from '@stores/useAuthStore';
+import { getCameraModels } from '@services/cameraService';
 
 export default function Home() {
   const navigate = useNavigate();

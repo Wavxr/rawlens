@@ -2,11 +2,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search as SearchIcon, Filter, Calendar, X, Info } from 'lucide-react';
-import CameraCard from '../../components/camera/CameraCard';
-import CameraCardBig from '../../components/camera/CameraCardBig';
-import DateFilterInput from '../../components/forms/DateFilterInput';
-import useCameraStore from '../../stores/cameraStore';
-import { getAvailableCamerasForDates } from '../../services/cameraService';
+import CameraCard from '@components/user/camera/CameraCard';
+import CameraCardBig from '@components/user/camera/CameraCardBig';
+import DateFilterInput from '@components/user/forms/DateFilterInput';
+import useCameraStore from '@stores/cameraStore';
+import { getAvailableCamerasForDates } from '@services/cameraService';
 
 export default function Search() {
   const navigate = useNavigate();

@@ -1,21 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AlertCircle, ChevronLeft, ChevronRight, Loader2, Search } from "lucide-react";
-import { subscribeToAllRentals, unsubscribeFromChannel } from "../../services/realtimeService";
-import { adminRejectApplication, adminStartRental, adminForceDeleteRental, adminRemoveCancelledRental } from "../../services/rentalService";
-import { adminConfirmReceived, adminConfirmReturned, adminMarkDelivered } from "../../services/bookingService";
-import { getSignedContractUrl } from "../../services/pdfService";
-import { getUserById } from "../../services/userService";
-import { useRentalFilters } from "../../hooks/useRentalFilters";
-import { useActionLoadingMap } from "../../hooks/useActionLoadingMap";
-import { useRentalConflicts } from "../../hooks/useRentalConflicts";
-import { usePaymentVerification } from "../../hooks/usePaymentVerification";
-import { RentalCard } from "../../components/admin/rentals/RentalCard";
-import { RentalDetailModal } from "../../components/admin/rentals/RentalDetailModal";
-import { DeleteConfirmModal } from "../../components/admin/rentals/DeleteConfirmModal";
-import ConflictResolutionModal from "../../components/modals/ConflictResolutionModal";
-import { PaymentVerificationModal } from "../../components/payment/PaymentVerificationComponents";
-import useRentalStore from "../../stores/rentalStore";
+import { subscribeToAllRentals, unsubscribeFromChannel } from "@services/realtimeService";
+import { adminRejectApplication, adminStartRental, adminForceDeleteRental, adminRemoveCancelledRental } from "@services/rentalService";
+import { adminConfirmReceived, adminConfirmReturned, adminMarkDelivered } from "@services/bookingService";
+import { getSignedContractUrl } from "@services/pdfService";
+import { getUserById } from "@services/userService";
+import { useRentalFilters } from "@hooks/useRentalFilters";
+import { useActionLoadingMap } from "@hooks/useActionLoadingMap";
+import { useRentalConflicts } from "@hooks/useRentalConflicts";
+import { usePaymentVerification } from "@hooks/usePaymentVerification";
+import { RentalCard } from "@components/admin/rentals/RentalCard";
+import { RentalDetailModal } from "@components/admin/rentals/RentalDetailModal";
+import { DeleteConfirmModal } from "@components/admin/rentals/DeleteConfirmModal";
+import ConflictResolutionModal from "@components/admin/modals/ConflictResolutionModal";
+import { PaymentVerificationModal } from "@components/admin/payment/PaymentVerificationComponents";
+import useRentalStore from "@stores/rentalStore";
 
 export default function Rentals() {
   const navigate = useNavigate();

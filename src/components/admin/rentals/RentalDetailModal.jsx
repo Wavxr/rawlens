@@ -1,11 +1,11 @@
 import { Truck, User, X } from "lucide-react";
-import RentalStepper from "../../rental/RentalStepper";
+import RentalStepper from "@components/shared/rental/RentalStepper";
 import {
   formatDate,
   getStatusText,
   inclusiveDays,
   prettyShippingStatus,
-} from "../../../utils/rentalFormatting";
+} from "@utils/rentalFormatting";
 
 // Displays the detailed modal for a selected rental.
 export function RentalDetailModal({ rental, customer, onClose, onManageLogistics }) {

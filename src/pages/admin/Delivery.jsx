@@ -1,17 +1,17 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AlertCircle, CheckCircle, ChevronLeft, ChevronRight, Clock, DollarSign, Loader2, Search, Truck, User, X } from "lucide-react";
-import { ShippingCard } from "../../components/admin/delivery/ShippingCard";
-import { useDeliveryFilters, DELIVERY_FILTERS } from "../../hooks/useDeliveryFilters";
-import { useActionLoadingMap } from "../../hooks/useActionLoadingMap";
-import { subscribeToAllRentals, unsubscribeFromChannel } from "../../services/realtimeService";
-import { adminReadyCamera, adminTransitToUser, adminConfirmReturned } from "../../services/deliveryService";
-import { adminConfirmReceived, adminConfirmReturned as adminConfirmReturnedBooking, adminMarkDelivered } from "../../services/bookingService";
-import { getUserById } from "../../services/userService";
-import { inclusiveDays, formatDate, getStatusText, prettyShippingStatus } from "../../utils/rentalFormatting";
-import RentalStepper from "../../components/rental/RentalStepper";
-import useRentalStore from "../../stores/rentalStore";
-import useAuthStore from "../../stores/useAuthStore";
+import { ShippingCard } from "@components/admin/delivery/ShippingCard";
+import { useDeliveryFilters, DELIVERY_FILTERS } from "@hooks/useDeliveryFilters";
+import { useActionLoadingMap } from "@hooks/useActionLoadingMap";
+import { subscribeToAllRentals, unsubscribeFromChannel } from "@services/realtimeService";
+import { adminReadyCamera, adminTransitToUser, adminConfirmReturned } from "@services/deliveryService";
+import { adminConfirmReceived, adminConfirmReturned as adminConfirmReturnedBooking, adminMarkDelivered } from "@services/bookingService";
+import { getUserById } from "@services/userService";
+import { inclusiveDays, formatDate, getStatusText, prettyShippingStatus } from "@utils/rentalFormatting";
+import RentalStepper from "@components/shared/rental/RentalStepper";
+import useRentalStore from "@stores/rentalStore";
+import useAuthStore from "@stores/useAuthStore";
 
 export default function Delivery() {
   const { user } = useAuthStore();

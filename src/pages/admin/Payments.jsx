@@ -1,17 +1,17 @@
 import { useEffect, useState, useRef } from 'react';
 import { Eye, Calendar, User, CreditCard, CheckCircle, ChevronDown, Loader2 } from 'lucide-react';
-import { 
-  adminGetSubmittedPayments, 
-  adminVerifyRentalPayment, 
+import {
+  adminGetSubmittedPayments,
+  adminVerifyRentalPayment,
   adminVerifyExtensionPayment,
   adminReactivateRentalAfterExtensionPayment,
-  getPaymentReceiptUrl
-} from '../../services/paymentService';
-import { subscribeToAllPayments, unsubscribeFromChannel } from '../../services/realtimeService';
-import usePaymentStore from '../../stores/paymentStore';
+  getPaymentReceiptUrl,
+} from '@services/paymentService';
+import { subscribeToAllPayments, unsubscribeFromChannel } from '@services/realtimeService';
+import usePaymentStore from '@stores/paymentStore';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import useBackHandler from '../../hooks/useBackHandler';
+import useBackHandler from '@hooks/useBackHandler';
 
 const Payments = () => {
   const [loading, setLoading] = useState(true);

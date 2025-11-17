@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { Outlet, useNavigate, useLocation } from "react-router-dom"
-import useAuthStore from "../../stores/useAuthStore"
+import useAuthStore from "@stores/useAuthStore"
 import {
   Camera,
   Users,

@@ -1,18 +1,18 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Loader2, Plus, Menu, Clock } from 'lucide-react';
-import { getAllCameras } from '../../services/cameraService';
-import { getCalendarBookings, getPotentialBookings } from '../../services/bookingService';
-import BookingCalendarGrid from '../../components/bookings/BookingCalendarGrid';
-import PotentialBookingsSidebar from '../../components/bookings/PotentialBookingsSidebar';
-import MobilePotentialBookingsPanel from '../../components/bookings/MobilePotentialBookingsPanel';
-import ExtensionRequestSidebar from '../../components/bookings/ExtensionRequestSidebar';
-import MobileExtensionRequestSidebar from '../../components/bookings/MobileExtensionRequestSidebar';
-import CreateBookingModal from '../../components/bookings/CreateBookingModal';
-import BookingDetailsModal from '../../components/bookings/BookingDetailsModal';
-import EditPotentialBookingModal from '../../components/bookings/EditPotentialBookingModal';
-import ExtendBookingModal from '../../components/bookings/ExtendBookingModal';
-import BookingContextMenu from '../../components/bookings/BookingContextMenu';
-import useExtensionStore from '../../stores/extensionStore';
+import { getAllCameras } from '@services/cameraService';
+import { getCalendarBookings, getPotentialBookings } from '@services/bookingService';
+import BookingCalendarGrid from '@components/admin/bookings/BookingCalendarGrid';
+import PotentialBookingsSidebar from '@components/admin/bookings/PotentialBookingsSidebar';
+import MobilePotentialBookingsPanel from '@components/admin/bookings/MobilePotentialBookingsPanel';
+import ExtensionRequestSidebar from '@components/admin/bookings/ExtensionRequestSidebar';
+import MobileExtensionRequestSidebar from '@components/admin/bookings/MobileExtensionRequestSidebar';
+import CreateBookingModal from '@components/admin/bookings/CreateBookingModal';
+import BookingDetailsModal from '@components/admin/bookings/BookingDetailsModal';
+import EditPotentialBookingModal from '@components/admin/bookings/EditPotentialBookingModal';
+import ExtendBookingModal from '@components/admin/bookings/ExtendBookingModal';
+import BookingContextMenu from '@components/admin/bookings/BookingContextMenu';
+import useExtensionStore from '@stores/extensionStore';
 
 // Date helper functions
 function startOfMonth(date) {

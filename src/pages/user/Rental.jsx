@@ -1,8 +1,8 @@
 // src/pages/user/Rental.jsx
 import React, { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import RentalFlowSection from '../../components/rental/RentalFlowSection';
-import useCameraStore from '../../stores/cameraStore';
+import RentalFlowSection from '@components/user/rental/RentalFlowSection';
+import useCameraStore from '@stores/cameraStore';
 
 export default function Rental() {
   const navigate = useNavigate();

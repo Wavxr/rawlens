@@ -1,12 +1,12 @@
 import { useEffect, useState, useRef } from "react";
-import { updateUserProfile } from "../../services/userService";
-import { getSignedUrl } from "../../services/storageService";
-import { subscribeToUserUpdates, unsubscribeFromChannel } from "../../services/realtimeService";
-import useAuthStore from "../../stores/useAuthStore";
-import useSettingsStore from "../../stores/settingsStore";
-import PushNotificationPrompt from "../../components/notifications/PushNotificationPrompt";
-import UserNotificationSettings from "../../components/notifications/UserNotificationSettings";
-import useBackHandler from "../../hooks/useBackHandler";
+import { updateUserProfile } from "@services/userService";
+import { getSignedUrl } from "@services/storageService";
+import { subscribeToUserUpdates, unsubscribeFromChannel } from "@services/realtimeService";
+import useAuthStore from "@stores/useAuthStore";
+import useSettingsStore from "@stores/settingsStore";
+import PushNotificationPrompt from "@components/user/notifications/PushNotificationPrompt";
+import UserNotificationSettings from "@components/user/notifications/UserNotificationSettings";
+import useBackHandler from "@hooks/useBackHandler";
 import { 
   LogOut, User, Shield, Bell, Camera, Upload, X, 
   Check, Clock, AlertCircle, Video, RotateCcw, 

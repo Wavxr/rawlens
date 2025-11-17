@@ -1,48 +1,48 @@
 // src/App.jsx
 import { Routes, Route } from 'react-router-dom';
 import { useEffect, Suspense, lazy } from 'react';
-import ProtectedRoute from './components/auth/ProtectedRoute';
-import RedirectRoute from './components/auth/RedirectRoute';
-import AuthErrorBoundary from './components/auth/AuthErrorBoundary';
-import BackHandlerProvider from './components/auth/BackHandlerProvider';
-import useThemeStore from './stores/useThemeStore';
-import NotificationToastManager from './components/notifications/NotificationToastManager';
-import LoadingScreen from './components/auth/LoadingScreen';
+import ProtectedRoute from '@components/shared/auth/ProtectedRoute';
+import RedirectRoute from '@components/shared/auth/RedirectRoute';
+import AuthErrorBoundary from '@components/shared/auth/AuthErrorBoundary';
+import BackHandlerProvider from '@components/shared/auth/BackHandlerProvider';
+import useThemeStore from '@stores/useThemeStore';
+import NotificationToastManager from '@components/shared/notifications/NotificationToastManager';
+import LoadingScreen from '@components/shared/auth/LoadingScreen';
 
 // Pages
-import Landing from './pages/Landing';
-import Login from './pages/Login';
-import Signup from './pages/Signup';
-import NotFound from './pages/NotFound';
-import ContractGenerator from './pages/ContractGenerator';
+import Landing from '@pages/Landing';
+import Login from '@pages/Login';
+import Signup from '@pages/Signup';
+import NotFound from '@pages/NotFound';
+import ContractGenerator from '@pages/ContractGenerator';
 
 // Admin (lazy-loaded for performance)
-const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
-const AdminCameras = lazy(() => import('./pages/admin/Cameras'));
-const AdminUsers = lazy(() => import('./pages/admin/Users'));
-const AdminInclusions = lazy(() => import('./pages/admin/Inclusions'));
-const AdminBookings = lazy(() => import('./pages/admin/Bookings'));
-const AdminRentals = lazy(() => import('./pages/admin/Rental'));
-const AdminDelivery = lazy(() => import('./pages/admin/Delivery'));
-const AdminExtensions = lazy(() => import('./pages/admin/Extensions'));
-const AdminPayments = lazy(() => import('./pages/admin/Payments'));
-const Settings = lazy(() => import('./pages/admin/Settings'));
+const AdminDashboard = lazy(() => import('@pages/admin/AdminDashboard'));
+const AdminCameras = lazy(() => import('@pages/admin/Cameras'));
+const AdminUsers = lazy(() => import('@pages/admin/Users'));
+const AdminInclusions = lazy(() => import('@pages/admin/Inclusions'));
+const AdminBookings = lazy(() => import('@pages/admin/Bookings'));
+const AdminRentals = lazy(() => import('@pages/admin/Rental'));
+const AdminDelivery = lazy(() => import('@pages/admin/Delivery'));
+const AdminExtensions = lazy(() => import('@pages/admin/Extensions'));
+const AdminPayments = lazy(() => import('@pages/admin/Payments'));
+const Settings = lazy(() => import('@pages/admin/Settings'));
 // Admin Statistics (individually lazy-loaded to avoid bundling all at once)
-const AdminStatsDashboard = lazy(() => import('./pages/admin/Statistics/Dashboard'));
-const AdminFeedbacks = lazy(() => import('./pages/admin/Statistics/Feedbacks'));
-const BookingTrends = lazy(() => import('./pages/admin/Statistics/BookingTrends'));
-const MonthlyHeatmap = lazy(() => import('./pages/admin/Statistics/MonthlyHeatmap'));
-const Revenue = lazy(() => import('./pages/admin/Statistics/Revenue'));
+const AdminStatsDashboard = lazy(() => import('@pages/admin/Statistics/Dashboard'));
+const AdminFeedbacks = lazy(() => import('@pages/admin/Statistics/Feedbacks'));
+const BookingTrends = lazy(() => import('@pages/admin/Statistics/BookingTrends'));
+const MonthlyHeatmap = lazy(() => import('@pages/admin/Statistics/MonthlyHeatmap'));
+const Revenue = lazy(() => import('@pages/admin/Statistics/Revenue'));
 
 // User (lazy-loaded)
-const UserDashboard = lazy(() => import('./pages/user/UserDashboard'));
-const Home = lazy(() => import('./pages/user/Home'));
-const Search = lazy(() => import('./pages/user/Search'));
-const Cart = lazy(() => import('./pages/user/Cart'));
-const Booking = lazy(() => import('./pages/user/Booking'));
-const Rental = lazy(() => import('./pages/user/Rental'));
-const UserEducational = lazy(() => import('./pages/user/Educational'));
-const UserProfile = lazy(() => import('./pages/user/Profile'));
+const UserDashboard = lazy(() => import('@pages/user/UserDashboard'));
+const Home = lazy(() => import('@pages/user/Home'));
+const Search = lazy(() => import('@pages/user/Search'));
+const Cart = lazy(() => import('@pages/user/Cart'));
+const Booking = lazy(() => import('@pages/user/Booking'));
+const Rental = lazy(() => import('@pages/user/Rental'));
+const UserEducational = lazy(() => import('@pages/user/Educational'));
+const UserProfile = lazy(() => import('@pages/user/Profile'));
 
 function App() {
   const { darkMode } = useThemeStore();

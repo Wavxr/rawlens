@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getMonthlyHeatmapData } from '../../../services/dashboardService';
+import { getMonthlyHeatmapData } from '@services/dashboardService';
 import { Calendar, Activity, DollarSign, TrendingUp, Loader2, AlertTriangle } from 'lucide-react';
 
 export default function MonthlyHeatmap() {

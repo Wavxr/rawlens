@@ -20,12 +20,12 @@ import {
   Loader2,
   Trash2,
 } from "lucide-react"
-import { getUsers, deleteUser } from "../../services/userService"
-import { adminUpdateVerificationStatus } from "../../services/verificationService"
-import { getSignedUrl } from "../../services/storageService"
-import { subscribeToAllUsers, unsubscribeFromChannel } from "../../services/realtimeService"
-import useIsMobile from "../../hooks/useIsMobile"
-import useBackHandler from "../../hooks/useBackHandler"
+import { getUsers, deleteUser } from "@services/userService"
+import { adminUpdateVerificationStatus } from "@services/verificationService"
+import { getSignedUrl } from "@services/storageService"
+import { subscribeToAllUsers, unsubscribeFromChannel } from "@services/realtimeService"
+import useIsMobile from "@hooks/useIsMobile"
+import useBackHandler from "@hooks/useBackHandler"
 
 export default function Users() {
   const isMobile = useIsMobile(768)
