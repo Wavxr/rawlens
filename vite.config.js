@@ -45,10 +45,6 @@ export default defineConfig({
             return 'vendor-firebase';
           }
 
-          if (/[\\/]node_modules[\\/](recharts|framer-motion)[\\/]/.test(id)) {
-            return 'vendor-charts';
-          }
-
           if (/[\\/]node_modules[\\/](leaflet|react-leaflet)[\\/]/.test(id)) {
             return 'vendor-leaflet';
           }
