@@ -1,117 +1,170 @@
-import { React, useState } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { submitRentalFeedback } from "../../services/feedbackService";
+import useBackHandler from "../../hooks/useBackHandler";
 import { Star, MessageSquare, Send, X } from "lucide-react";
 
-export default function FeedbackForm({ rentalId, userId, onSuccess, onSkip }) {
+const starScale = [1, 2, 3, 4, 5];
+
+export default function FeedbackForm({ rentalId, userId, onSuccess, onSkip, onLoadingChange }) {
   const [rating, setRating] = useState(null);
   const [feedback, setFeedback] = useState("");
   const [loading, setLoading] = useState(false);
   const [hoverRating, setHoverRating] = useState(null);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (rating === null && !feedback.trim()) {
-      alert("Please provide a rating or feedback before submitting.");
+  const hasContent = rating !== null || feedback.trim().length > 0;
+
+  const handleClose = useCallback(() => {
+    if (!loading) {
+      onSkip?.();
+    }
+  }, [loading, onSkip]);
+
+  useBackHandler(true, handleClose, 110);
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        handleClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleClose]);
+
+  useEffect(
+    () => () => {
+      onLoadingChange?.(false);
+    },
+    [onLoadingChange]
+  );
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (!hasContent) {
+      alert("Please share a rating or add a quick note before submitting.");
       return;
     }
 
     setLoading(true);
+    onLoadingChange?.(true);
     try {
       await submitRentalFeedback({ rentalId, userId, rating, feedback });
       onSuccess?.();
-    } catch (err) {
-      alert(err.message);
+    } catch (error) {
+      alert(error.message);
     } finally {
       setLoading(false);
+      onLoadingChange?.(false);
     }
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden w-full max-w-md">
-      <div className="bg-[#052844] p-5 flex justify-between items-center">
-        <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-          <MessageSquare size={20} />
-          Share Your Experience
-        </h3>
-      </div>
+    <div className="relative w-full">
+      <div className="relative w-full rounded-2xl border border-gray-200 bg-white shadow-xl">
+        <button
+          type="button"
+          onClick={handleClose}
+          className="absolute top-3 right-3 inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 transition-colors hover:text-gray-900"
+          aria-label="Close feedback form"
+          disabled={loading}
+        >
+          <X className="h-4 w-4" />
+        </button>
 
-      <form onSubmit={handleSubmit} className="p-6 space-y-6">
-        <div className="space-y-3">
-          <label className="block text-sm font-medium text-gray-700">
-            How would you rate your experience?
-          </label>
-          <div className="flex gap-1 justify-center py-2">
-            {[1, 2, 3, 4, 5].map((star) => (
-              <button
-                key={star}
-                type="button"
-                onMouseEnter={() => setHoverRating(star)}
-                onMouseLeave={() => setHoverRating(null)}
-                onClick={() => setRating(star)}
-                className="relative p-1"
-                aria-label={`Rate ${star} stars`}
-              >
-                <Star
-                  size={32}
-                  className={`${
-                    (hoverRating >= star || rating >= star)
-                      ? "text-[#052844] fill-[#052844]"
-                      : "text-gray-300"
-                  } transition-colors duration-200`}
-                />
-              </button>
-            ))}
-          </div>
-          <div className="text-center">
-            <span className="text-sm font-medium text-gray-500">
-              {rating ? `${rating} of 5 stars` : "Select rating"}
+        <div className="px-6 pt-6 pb-4">
+          <div className="flex items-start gap-4">
+            <span className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[#052844]/10 text-[#052844]">
+              <MessageSquare className="h-5 w-5" />
             </span>
+            <div className="flex-1">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">We'd love your take</p>
+              <h3 className="mt-1 text-xl font-semibold text-gray-900">How was your rental experience?</h3>
+              <p className="mt-2 text-sm text-gray-600">
+                Your feedback helps us keep RawLens rentals smooth and reliable for every shoot.
+              </p>
+            </div>
           </div>
         </div>
 
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">
-            Additional Feedback <span className="text-gray-400">(optional)</span>
-          </label>
-          <textarea
-            value={feedback}
-            onChange={(e) => setFeedback(e.target.value)}
-            placeholder="Tell us about your experience..."
-            className="w-full min-h-[100px] px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#052844] focus:border-transparent transition-all duration-150 resize-none"
-          />
-        </div>
+        <form onSubmit={handleSubmit} className="px-6 pb-6 space-y-6">
+          <div className="space-y-3">
+            <label className="block text-sm font-medium text-gray-800">
+              Rate the overall experience
+            </label>
+            <div className="flex justify-center gap-2 py-2">
+              {starScale.map((star) => {
+                const isActive = hoverRating ? hoverRating >= star : rating >= star;
+                return (
+                  <button
+                    key={star}
+                    type="button"
+                    onMouseEnter={() => setHoverRating(star)}
+                    onMouseLeave={() => setHoverRating(null)}
+                    onClick={() => setRating(star)}
+                    className="flex h-11 w-11 items-center justify-center rounded-full transition-colors"
+                    aria-label={`Rate ${star} star${star === 1 ? "" : "s"}`}
+                    aria-pressed={rating === star}
+                  >
+                    <Star
+                      className={`h-7 w-7 transition-colors duration-150 ${
+                        isActive ? "fill-[#052844] text-[#052844]" : "text-gray-300"
+                      }`}
+                    />
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-center text-sm font-medium text-gray-500">
+              {rating ? `${rating} of 5` : "Tap a star to choose"}
+            </p>
+          </div>
 
-        <div className="flex gap-3 pt-2">
-          <button
-            type="button"
-            onClick={onSkip}
-            className="flex-1 py-3 px-4 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
-          >
-            <X size={18} />
-            Skip
-          </button>
-          
-          <button
-            type="submit"
-            disabled={loading || (rating === null && !feedback.trim())}
-            className="flex-1 py-3 px-4 bg-[#052844] rounded-lg text-white font-medium hover:bg-[#063a5e] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-150 flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <>
-                <div
-                  className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"
-                />
-                Sending...
-              </>
-            ) : (
-              <>
-                <Send size={18} />
-                Submit Feedback
-              </>
-            )}
-          </button>
-        </div>
-      </form>
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-800">
+              Tell us more <span className="text-gray-400">(optional)</span>
+            </label>
+            <textarea
+              value={feedback}
+              onChange={(event) => setFeedback(event.target.value)}
+              placeholder="What stood out about the gear, delivery, or support?"
+              className="w-full min-h-[120px] resize-none rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 transition focus:border-[#052844] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#052844]/30"
+            />
+            <p className="text-xs text-gray-400">
+              Quick note: we share highlights with the team and keep everything else confidential.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <button
+              type="button"
+              onClick={handleClose}
+              disabled={loading}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:border-gray-300 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <X className="h-4 w-4" />
+              Skip for now
+            </button>
+            <button
+              type="submit"
+              disabled={loading || !hasContent}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#052844] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#063a5e] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loading ? (
+                <>
+                  <span className="inline-flex h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4" />
+                  Submit feedback
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

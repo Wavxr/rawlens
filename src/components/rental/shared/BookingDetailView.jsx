@@ -19,8 +19,6 @@ import {
 } from 'lucide-react';
 import PaymentDetails from '../../payment/PaymentDetails';
 import RentalExtensionManager from '../RentalExtensionManager';
-import { AnimatePresence } from 'framer-motion';
-import FeedbackForm from '../../forms/FeedbackForm';
 import useBackHandler from '../../../hooks/useBackHandler';
 
 /**
@@ -55,8 +53,7 @@ function formatDate(dateStr) {
  * @param {boolean} props.canCancelRental - Whether rental can be cancelled
  * @param {Object} props.feedbackSubmitted - Feedback submission status by rental ID
  * @param {Function} props.onFeedbackSubmit - Feedback submit handler
- * @param {Function} props.onShowFeedbackForm - Show feedback form handler
- * @param {boolean} props.showFeedbackForm - Whether feedback form is visible
+ * @param {Function} props.onShowFeedbackForm - Toggle feedback form handler
  * @param {string} props.userId - Current user ID
  * @param {Function} props.useCountdown - Countdown hook function
  */
@@ -74,7 +71,6 @@ const BookingDetailView = ({
   feedbackSubmitted = {},
   onFeedbackSubmit,
   onShowFeedbackForm,
-  showFeedbackForm = false,
   userId,
   useCountdown
 }) => {
@@ -615,7 +611,7 @@ const BookingDetailView = ({
            !feedbackSubmitted[booking.id] && 
            onShowFeedbackForm && (
             <button
-              onClick={() => onShowFeedbackForm(true)}
+              onClick={() => onShowFeedbackForm?.(true)}
               className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-[#052844] text-white rounded-lg hover:bg-[#063a5e] text-xs sm:text-sm font-medium transition-colors duration-150"
             >
               <span>Give Feedback</span>
@@ -631,27 +627,6 @@ const BookingDetailView = ({
         </div>
 
         {/* Feedback Form Modal */}
-        {showFeedbackForm && onFeedbackSubmit && userId && (
-          <AnimatePresence>
-            <div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4"
-              onClick={() => onShowFeedbackForm(false)}
-            >
-              <div onClick={(e) => e.stopPropagation()}>
-                <FeedbackForm
-                  rentalId={booking.id}
-                  userId={userId}
-                  onSuccess={onFeedbackSubmit}
-                  onSkip={() => onShowFeedbackForm(false)}
-                />
-              </div>
-            </div>
-          </AnimatePresence>
-        )}
-
         {contractViewError[booking.id] && (
           <div className="p-2 sm:p-3 bg-red-50 border border-red-200 rounded-lg">
             <p className="text-xs sm:text-sm text-red-600">{contractViewError[booking.id]}</p>

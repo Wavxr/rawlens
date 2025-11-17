@@ -13,10 +13,12 @@ import BookingCard from "../../components/rental/shared/BookingCard"
 import BookingDetailView from "../../components/rental/shared/BookingDetailView"
 import MobileRequestOverlay from "../../components/rental/layouts/MobileRequestOverlay"
 import CancellationModal from "../../components/modals/CancellationModal"
+import FeedbackForm from "../../components/forms/FeedbackForm"
 import useIsMobile from "../../hooks/useIsMobile"
 import { toast, ToastContainer } from "react-toastify"
 import 'react-toastify/dist/ReactToastify.css';
 import { Truck, CheckCircle, Clock, CreditCard } from "lucide-react"
+import { AnimatePresence, motion } from "framer-motion"
 
 const Booking = () => {
   // EmptyState Component - Shows when no rentals in filter
@@ -86,8 +88,37 @@ const Booking = () => {
   const [now, setNow] = useState(Date.now())
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState({});
+  const [isFeedbackFormBusy, setIsFeedbackFormBusy] = useState(false);
   const [showCancellationModal, setShowCancellationModal] = useState(false);
   const [rentalToCancel, setRentalToCancel] = useState(null);
+  const openFeedbackForm = useCallback(() => {
+    setIsFeedbackFormBusy(false);
+    setShowFeedbackForm(true);
+  }, [setIsFeedbackFormBusy, setShowFeedbackForm]);
+  const closeFeedbackForm = useCallback(() => {
+    setShowFeedbackForm(false);
+    setIsFeedbackFormBusy(false);
+  }, [setIsFeedbackFormBusy, setShowFeedbackForm]);
+  const setFeedbackFormVisibility = useCallback(
+    (isOpen) => {
+      setShowFeedbackForm(Boolean(isOpen));
+      if (!isOpen) {
+        setIsFeedbackFormBusy(false);
+      }
+    },
+    [setIsFeedbackFormBusy, setShowFeedbackForm]
+  );
+  const handleFeedbackLoadingChange = useCallback(
+    (isBusy) => {
+      setIsFeedbackFormBusy(Boolean(isBusy));
+    },
+    [setIsFeedbackFormBusy]
+  );
+  const handleFeedbackBackdropClick = useCallback(() => {
+    if (!isFeedbackFormBusy) {
+      closeFeedbackForm();
+    }
+  }, [closeFeedbackForm, isFeedbackFormBusy]);
   
   // Mobile state
   const isMobile = useIsMobile();
@@ -333,7 +364,7 @@ const Booking = () => {
       ...prev,
       [selectedRental.id]: true
     }));
-    setShowFeedbackForm(false);
+    closeFeedbackForm();
     await refresh();
   }
 
@@ -1134,7 +1165,7 @@ const Booking = () => {
             {/* Feedback Button */}
             {(rental.rental_status === "completed" || rental.rental_status === "active") && !feedbackSubmitted[rental.id] && (
               <button
-                onClick={() => setShowFeedbackForm(true)}
+                onClick={openFeedbackForm}
                 className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-[#052844] text-white rounded-lg hover:bg-[#063a5e] text-xs sm:text-sm font-medium transition-colors duration-150"
               >
                 <span>Give Feedback</span>
@@ -1148,28 +1179,6 @@ const Booking = () => {
               </div>
             )}
           </div>
-
-          {/* Feedback Form Modal */}
-          <AnimatePresence>
-            {showFeedbackForm && (
-              <div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4"
-                onClick={() => setShowFeedbackForm(false)}
-              >
-                <div onClick={(e) => e.stopPropagation()}>
-                  <FeedbackForm
-                    rentalId={selectedRental.id}
-                    userId={user.id}
-                    onSuccess={handleFeedbackSubmit}
-                    onSkip={() => setShowFeedbackForm(false)}
-                  />
-                </div>
-              </div>
-            )}
-          </AnimatePresence>
 
           {contractViewError[rental.id] && (
             <div className="p-2 sm:p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -1321,8 +1330,7 @@ const Booking = () => {
                       canCancelRental={canCancelConfirmed}
                       feedbackSubmitted={feedbackSubmitted}
                       onFeedbackSubmit={handleFeedbackSubmit}
-                      onShowFeedbackForm={() => setShowFeedbackForm(true)}
-                      showFeedbackForm={showFeedbackForm}
+                      onShowFeedbackForm={setFeedbackFormVisibility}
                       userId={user.id}
                       useCountdown={useCountdown}
                     />
@@ -1354,8 +1362,7 @@ const Booking = () => {
               canCancelRental={canCancelConfirmed}
               feedbackSubmitted={feedbackSubmitted}
               onFeedbackSubmit={handleFeedbackSubmit}
-              onShowFeedbackForm={() => setShowFeedbackForm(true)}
-              showFeedbackForm={showFeedbackForm}
+              onShowFeedbackForm={setFeedbackFormVisibility}
               userId={user.id}
               useCountdown={useCountdown}
             />
@@ -1374,6 +1381,43 @@ const Booking = () => {
             rental={rentalToCancel}
           />
         )}
+
+        <AnimatePresence>
+          {showFeedbackForm && selectedRental && user?.id && (
+            <motion.div
+              className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 sm:p-6"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 16 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              onClick={handleFeedbackBackdropClick}
+            >
+              <motion.div
+                className="absolute inset-0 bg-slate-950/30 backdrop-blur-sm"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+              />
+              <motion.div
+                initial={{ opacity: 0, y: 24, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 24, scale: 0.98 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
+                className="relative w-full max-w-lg pointer-events-auto"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <FeedbackForm
+                  rentalId={selectedRental.id}
+                  userId={user.id}
+                  onSuccess={handleFeedbackSubmit}
+                  onSkip={closeFeedbackForm}
+                  onLoadingChange={handleFeedbackLoadingChange}
+                />
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <ToastContainer
           position="bottom-right"
