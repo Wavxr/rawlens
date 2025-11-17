@@ -1,18 +1,19 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback, Suspense, lazy } from 'react';
 import { ChevronLeft, ChevronRight, Loader2, Plus, Menu, Clock } from 'lucide-react';
 import { getAllCameras } from '@services/cameraService';
 import { getCalendarBookings, getPotentialBookings } from '@services/bookingService';
-import BookingCalendarGrid from '@components/admin/bookings/BookingCalendarGrid';
-import PotentialBookingsSidebar from '@components/admin/bookings/PotentialBookingsSidebar';
-import MobilePotentialBookingsPanel from '@components/admin/bookings/MobilePotentialBookingsPanel';
-import ExtensionRequestSidebar from '@components/admin/bookings/ExtensionRequestSidebar';
-import MobileExtensionRequestSidebar from '@components/admin/bookings/MobileExtensionRequestSidebar';
-import CreateBookingModal from '@components/admin/bookings/CreateBookingModal';
-import BookingDetailsModal from '@components/admin/bookings/BookingDetailsModal';
-import EditPotentialBookingModal from '@components/admin/bookings/EditPotentialBookingModal';
-import ExtendBookingModal from '@components/admin/bookings/ExtendBookingModal';
-import BookingContextMenu from '@components/admin/bookings/BookingContextMenu';
 import useExtensionStore from '@stores/extensionStore';
+
+const BookingCalendarGrid = lazy(() => import('@components/admin/bookings/BookingCalendarGrid'));
+const PotentialBookingsSidebar = lazy(() => import('@components/admin/bookings/PotentialBookingsSidebar'));
+const MobilePotentialBookingsPanel = lazy(() => import('@components/admin/bookings/MobilePotentialBookingsPanel'));
+const ExtensionRequestSidebar = lazy(() => import('@components/admin/bookings/ExtensionRequestSidebar'));
+const MobileExtensionRequestSidebar = lazy(() => import('@components/admin/bookings/MobileExtensionRequestSidebar'));
+const CreateBookingModal = lazy(() => import('@components/admin/bookings/CreateBookingModal'));
+const BookingDetailsModal = lazy(() => import('@components/admin/bookings/BookingDetailsModal'));
+const EditPotentialBookingModal = lazy(() => import('@components/admin/bookings/EditPotentialBookingModal'));
+const ExtendBookingModal = lazy(() => import('@components/admin/bookings/ExtendBookingModal'));
+const BookingContextMenu = lazy(() => import('@components/admin/bookings/BookingContextMenu'));
 
 // Date helper functions
 function startOfMonth(date) {
@@ -396,19 +397,28 @@ const Bookings = () => {
               Loading calendars...
             </div>
           ) : (
-            <BookingCalendarGrid
-              cameras={cameras}
-              monthDate={monthDate}
-              bookingsByCamera={bookingsByCamera}
-              highlightedDates={highlightedDates}
-              selectedPotentialBooking={selectedPotentialBooking}
-              onDateRangeSelect={handleDateRangeSelect}
-              onDayClick={handleDayClick}
-              onBookingContextMenu={handleBookingContextMenu}
-              isDarkMode={isDarkMode}
-              showPotentialSidebar={showPotentialSidebar}
-              showExtensionSidebar={showExtensionSidebar}
-            />
+            <Suspense
+              fallback={
+                <div className={`flex items-center justify-center py-20 ${loadingTextColor}`}>
+                  <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                  Loading calendars...
+                </div>
+              }
+            >
+              <BookingCalendarGrid
+                cameras={cameras}
+                monthDate={monthDate}
+                bookingsByCamera={bookingsByCamera}
+                highlightedDates={highlightedDates}
+                selectedPotentialBooking={selectedPotentialBooking}
+                onDateRangeSelect={handleDateRangeSelect}
+                onDayClick={handleDayClick}
+                onBookingContextMenu={handleBookingContextMenu}
+                isDarkMode={isDarkMode}
+                showPotentialSidebar={showPotentialSidebar}
+                showExtensionSidebar={showExtensionSidebar}
+              />
+            </Suspense>
           )}
         </div>
 
@@ -416,16 +426,18 @@ const Bookings = () => {
         {showPotentialSidebar && (
           <div className={`hidden lg:block lg:w-1/3 transition-all duration-300`}>
             <div className="lg:sticky lg:top-6">
-              <PotentialBookingsSidebar
-                potentialBookings={potentialBookings}
-                selectedBooking={selectedPotentialBooking}
-                onSelectBooking={handlePotentialBookingSelect}
-                onClearSelection={clearPotentialSelection}
-                onBookingUpdate={handleBookingUpdate}
-                onEditBooking={handleEditBooking}
-                cameras={cameras}
-                isDarkMode={isDarkMode}
-              />
+              <Suspense fallback={null}>
+                <PotentialBookingsSidebar
+                  potentialBookings={potentialBookings}
+                  selectedBooking={selectedPotentialBooking}
+                  onSelectBooking={handlePotentialBookingSelect}
+                  onClearSelection={clearPotentialSelection}
+                  onBookingUpdate={handleBookingUpdate}
+                  onEditBooking={handleEditBooking}
+                  cameras={cameras}
+                  isDarkMode={isDarkMode}
+                />
+              </Suspense>
             </div>
           </div>
         )}
@@ -434,85 +446,101 @@ const Bookings = () => {
         {showExtensionSidebar && (
           <div className={`hidden lg:block lg:w-1/3 transition-all duration-300`}>
             <div className="lg:sticky lg:top-6">
-              <ExtensionRequestSidebar
-                isOpen={showExtensionSidebar}
-                onClose={() => setShowExtensionSidebar(false)}
-                isDarkMode={isDarkMode}
-              />
+              <Suspense fallback={null}>
+                <ExtensionRequestSidebar
+                  isOpen={showExtensionSidebar}
+                  onClose={() => setShowExtensionSidebar(false)}
+                  isDarkMode={isDarkMode}
+                />
+              </Suspense>
             </div>
           </div>
         )}
       </div>
 
       {/* Mobile Potential Bookings Panel - Only visible on mobile */}
-      <MobilePotentialBookingsPanel
-        potentialBookings={potentialBookings}
-        selectedBooking={selectedPotentialBooking}
-        onSelectBooking={handlePotentialBookingSelect}
-        onClearSelection={clearPotentialSelection}
-        onBookingUpdate={handleBookingUpdate}
-        onEditBooking={handleEditBooking}
-        cameras={cameras}
-        isDarkMode={isDarkMode}
-        isOpen={showPotentialSidebar}
-        onClose={() => {
-          setShowPotentialSidebar(false);
-          clearPotentialSelection();
-        }}
-      />
+      <Suspense fallback={null}>
+        <MobilePotentialBookingsPanel
+          potentialBookings={potentialBookings}
+          selectedBooking={selectedPotentialBooking}
+          onSelectBooking={handlePotentialBookingSelect}
+          onClearSelection={clearPotentialSelection}
+          onBookingUpdate={handleBookingUpdate}
+          onEditBooking={handleEditBooking}
+          cameras={cameras}
+          isDarkMode={isDarkMode}
+          isOpen={showPotentialSidebar}
+          onClose={() => {
+            setShowPotentialSidebar(false);
+            clearPotentialSelection();
+          }}
+        />
+      </Suspense>
 
       {/* Mobile Extension Requests Panel - Only visible on mobile */}
-      <MobileExtensionRequestSidebar
-        isOpen={showExtensionSidebar}
-        onClose={() => setShowExtensionSidebar(false)}
-        isDarkMode={isDarkMode}
-      />
+      <Suspense fallback={null}>
+        <MobileExtensionRequestSidebar
+          isOpen={showExtensionSidebar}
+          onClose={() => setShowExtensionSidebar(false)}
+          isDarkMode={isDarkMode}
+        />
+      </Suspense>
 
       {/* Modals */}
-      <CreateBookingModal
-        open={createBookingModal.open}
-        onClose={() => setCreateBookingModal({ open: false, camera: null, dateRange: null })}
-        cameras={cameras}
-        preselectedCamera={createBookingModal.camera}
-        preselectedDateRange={createBookingModal.dateRange}
-        onSuccess={handleBookingUpdate}
-        isDarkMode={isDarkMode}
-      />
+      <Suspense fallback={null}>
+        <CreateBookingModal
+          open={createBookingModal.open}
+          onClose={() => setCreateBookingModal({ open: false, camera: null, dateRange: null })}
+          cameras={cameras}
+          preselectedCamera={createBookingModal.camera}
+          preselectedDateRange={createBookingModal.dateRange}
+          onSuccess={handleBookingUpdate}
+          isDarkMode={isDarkMode}
+        />
+      </Suspense>
 
-      <BookingDetailsModal
-        open={bookingDetailsModal.open}
-        onClose={() => setBookingDetailsModal({ open: false, booking: null, camera: null })}
-        booking={bookingDetailsModal.booking}
-        camera={bookingDetailsModal.camera}
-        onBookingUpdate={handleBookingUpdate}
-        onExtendRental={(booking) => setExtendBookingModal({ open: true, booking })}
-        isDarkMode={isDarkMode}
-      />
+      <Suspense fallback={null}>
+        <BookingDetailsModal
+          open={bookingDetailsModal.open}
+          onClose={() => setBookingDetailsModal({ open: false, booking: null, camera: null })}
+          booking={bookingDetailsModal.booking}
+          camera={bookingDetailsModal.camera}
+          onBookingUpdate={handleBookingUpdate}
+          onExtendRental={(booking) => setExtendBookingModal({ open: true, booking })}
+          isDarkMode={isDarkMode}
+        />
+      </Suspense>
 
-      <EditPotentialBookingModal
-        open={!!editingBooking}
-        onClose={() => setEditingBooking(null)}
-        booking={editingBooking}
-        cameras={cameras || []}
-        onSuccess={handleEditSuccess}
-        isDarkMode={isDarkMode}
-      />
+      <Suspense fallback={null}>
+        <EditPotentialBookingModal
+          open={!!editingBooking}
+          onClose={() => setEditingBooking(null)}
+          booking={editingBooking}
+          cameras={cameras || []}
+          onSuccess={handleEditSuccess}
+          isDarkMode={isDarkMode}
+        />
+      </Suspense>
 
-      <ExtendBookingModal
-        isOpen={extendBookingModal.open}
-        onClose={() => setExtendBookingModal({ open: false, booking: null })}
-        booking={extendBookingModal.booking}
-      />
+      <Suspense fallback={null}>
+        <ExtendBookingModal
+          isOpen={extendBookingModal.open}
+          onClose={() => setExtendBookingModal({ open: false, booking: null })}
+          booking={extendBookingModal.booking}
+        />
+      </Suspense>
 
       {/* Context Menu */}
-      <BookingContextMenu
-        isOpen={contextMenu.open}
-        position={contextMenu.position}
-        booking={contextMenu.booking}
-        onClose={handleCloseContextMenu}
-        onViewDetails={handleContextViewDetails}
-        onExtendRental={handleContextExtendRental}
-      />
+      <Suspense fallback={null}>
+        <BookingContextMenu
+          isOpen={contextMenu.open}
+          position={contextMenu.position}
+          booking={contextMenu.booking}
+          onClose={handleCloseContextMenu}
+          onViewDetails={handleContextViewDetails}
+          onExtendRental={handleContextExtendRental}
+        />
+      </Suspense>
     </div>
   );
 };
