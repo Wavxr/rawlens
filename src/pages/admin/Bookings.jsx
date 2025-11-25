@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Loader2, Plus, Menu, Clock } from 'lucide-re
 import { getAllCameras } from '@services/cameraService';
 import { getCalendarBookings, getPotentialBookings } from '@services/bookingService';
 import useExtensionStore from '@stores/extensionStore';
+import useIsMobile from '@hooks/useIsMobile';
 
 const BookingCalendarGrid = lazy(() => import('@components/admin/bookings/BookingCalendarGrid'));
 const PotentialBookingsSidebar = lazy(() => import('@components/admin/bookings/PotentialBookingsSidebar'));
@@ -69,11 +70,11 @@ const Bookings = () => {
   const { getPendingExtensions } = useExtensionStore();
 
   // UI state
-  const [showPotentialSidebar, setShowPotentialSidebar] = useState(false);
-  const [showExtensionSidebar, setShowExtensionSidebar] = useState(false);
+  const [activePanel, setActivePanel] = useState(null);
   const [selectedPotentialBooking, setSelectedPotentialBooking] = useState(null);
   const [highlightedDates, setHighlightedDates] = useState([]);
-  const [isDarkMode] = useState(true);
+  const isDarkMode = true;
+  const isMobile = useIsMobile();
   const [error, setError] = useState('');
 
   // Modal state
@@ -166,8 +167,8 @@ const Bookings = () => {
       dateRange: { startDate, endDate }
     });
     // Close mobile panel when date is selected
-    if (window.innerWidth < 1024) { // lg breakpoint
-      setShowPotentialSidebar(false);
+    if (isMobile && activePanel === 'potential') {
+      setActivePanel(null);
       clearPotentialSelection();
     }
   };
@@ -189,10 +190,11 @@ const Bookings = () => {
       handleDateRangeSelect(camera, date, date);
     }
     // Close sidebars when calendar is interacted with
-    if (window.innerWidth < 1024) { // lg breakpoint
-      setShowPotentialSidebar(false);
-      setShowExtensionSidebar(false);
-      clearPotentialSelection();
+    if (isMobile && activePanel) {
+      if (activePanel === 'potential') {
+        clearPotentialSelection();
+      }
+      setActivePanel(null);
     }
   };
 
@@ -253,6 +255,31 @@ const Bookings = () => {
     setHighlightedDates([]);
   };
 
+  const isPotentialPanelActive = activePanel === 'potential';
+  const isExtensionPanelActive = activePanel === 'extension';
+
+  const togglePotentialPanel = () => {
+    setActivePanel((prev) => {
+      if (prev === 'potential') {
+        clearPotentialSelection();
+        return null;
+      }
+      return 'potential';
+    });
+  };
+
+  const toggleExtensionPanel = () => {
+    setActivePanel((prev) => {
+      if (prev === 'extension') {
+        return null;
+      }
+      if (prev === 'potential') {
+        clearPotentialSelection();
+      }
+      return 'extension';
+    });
+  };
+
   // Handle successful booking creation/update
   const handleBookingUpdate = () => {
     loadBookingData(); // Refresh data
@@ -272,32 +299,36 @@ const Bookings = () => {
   };
 
   const monthLabel = formatDisplay(monthDate);
-
-  // Theme classes
-  const bgColor = isDarkMode ? 'bg-gray-900' : 'bg-slate-100';
-  const textColor = isDarkMode ? 'text-gray-100' : 'text-slate-800';
-  const errorBg = isDarkMode ? 'bg-rose-900/30 border-rose-800 text-rose-300' : 'bg-rose-50 border-rose-200 text-rose-700';
-  const loadingTextColor = isDarkMode ? 'text-gray-400' : 'text-slate-600';
+  const navigationButtonClass = 'p-2 rounded-lg border border-gray-700 bg-gray-800 text-gray-200 hover:bg-gray-700 transition';
+  const createButtonClass = 'flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-gray-700 bg-gray-800 text-gray-200 hover:bg-gray-700 transition text-sm sm:text-base';
+  const controlButtonBase = 'flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border transition text-sm sm:text-base';
+  const controlButtonInactive = `${controlButtonBase} border-gray-700 bg-gray-800 text-gray-200 hover:bg-gray-700`;
+  const potentialButtonActive = `${controlButtonBase} border-blue-700 bg-blue-900 text-blue-200`;
+  const extensionButtonActive = `${controlButtonBase} border-purple-700 bg-purple-900 text-purple-200`;
+  const desktopLayoutClass = activePanel
+    ? 'lg:grid-cols-[minmax(0,3.5fr)_minmax(0,1.5fr)]'
+    : 'lg:grid-cols-[minmax(0,1fr)]';
 
   return (
-    <div className={`p-4 sm:p-6 min-h-screen transition-colors ${bgColor}`}>
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+    <div className="min-h-screen bg-gray-900">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+        {/* Header */}
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         {/* Top row - Month Navigation and Create Button */}
         <div className="flex items-center justify-between sm:justify-start gap-4">
           {/* Month Navigation */}
           <div className="flex items-center gap-2">
             <button
-              className={`p-2 rounded border transition ${isDarkMode ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-slate-200'} ${isDarkMode ? 'border-gray-700' : 'border-slate-300'} ${isDarkMode ? 'text-gray-300' : 'text-slate-700'}`}
+              className={navigationButtonClass}
               onClick={() => setMonthDate(prev => addMonths(prev, -1))}
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <div className={`text-lg sm:text-xl font-semibold ${textColor} min-w-0 text-center`}>
+            <div className="text-lg sm:text-xl font-semibold text-gray-100 min-w-0 text-center">
               {monthLabel}
             </div>
             <button
-              className={`p-2 rounded border transition ${isDarkMode ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-slate-200'} ${isDarkMode ? 'border-gray-700' : 'border-slate-300'} ${isDarkMode ? 'text-gray-300' : 'text-slate-700'}`}
+              className={navigationButtonClass}
               onClick={() => setMonthDate(prev => addMonths(prev, 1))}
             >
               <ChevronRight className="w-5 h-5" />
@@ -306,7 +337,7 @@ const Bookings = () => {
 
           {/* Create Booking Button - Mobile optimized */}
           <button
-            className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded border transition ${isDarkMode ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-slate-200'} ${isDarkMode ? 'border-gray-700' : 'border-slate-300'} ${isDarkMode ? 'text-gray-300' : 'text-slate-700'} text-sm sm:text-base`}
+            className={createButtonClass}
             onClick={() => setCreateBookingModal({ open: true, camera: null, dateRange: null })}
           >
             <Plus className="w-4 h-4" />
@@ -319,27 +350,15 @@ const Bookings = () => {
         <div className="flex items-center gap-2 sm:gap-4">
           {/* Potential Bookings Toggle */}
           <button
-            className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded border transition text-sm sm:text-base ${
-              showPotentialSidebar 
-                ? (isDarkMode ? 'bg-blue-900 border-blue-700 text-blue-200' : 'bg-blue-100 border-blue-300 text-blue-800')
-                : `${isDarkMode ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-slate-200'} ${isDarkMode ? 'border-gray-700' : 'border-slate-300'} ${isDarkMode ? 'text-gray-300' : 'text-slate-700'}`
-            }`}
-            onClick={() => {
-              const newState = !showPotentialSidebar;
-              setShowPotentialSidebar(newState);
-              if (newState) {
-                setShowExtensionSidebar(false); // Close extension sidebar
-              } else {
-                clearPotentialSelection();
-              }
-            }}
+            className={isPotentialPanelActive ? potentialButtonActive : controlButtonInactive}
+            onClick={togglePotentialPanel}
           >
             <Menu className="w-4 h-4" />
             <span className="hidden xs:inline">Potential</span>
             <span className="hidden sm:inline">Bookings</span>
             {potentialBookings.length > 0 && (
               <span className={`px-2 py-0.5 text-xs rounded-full ${
-                isDarkMode ? 'bg-blue-800 text-blue-200' : 'bg-blue-200 text-blue-800'
+                isPotentialPanelActive ? 'bg-blue-800 text-blue-200' : 'bg-blue-800/70 text-blue-200'
               }`}>
                 {potentialBookings.length}
               </span>
@@ -348,26 +367,15 @@ const Bookings = () => {
 
           {/* Extension Requests Toggle */}
           <button
-            className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded border transition text-sm sm:text-base ${
-              showExtensionSidebar 
-                ? (isDarkMode ? 'bg-purple-900 border-purple-700 text-purple-200' : 'bg-purple-100 border-purple-300 text-purple-800')
-                : `${isDarkMode ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-slate-200'} ${isDarkMode ? 'border-gray-700' : 'border-slate-300'} ${isDarkMode ? 'text-gray-300' : 'text-slate-700'}`
-            }`}
-            onClick={() => {
-              const newState = !showExtensionSidebar;
-              setShowExtensionSidebar(newState);
-              if (newState) {
-                setShowPotentialSidebar(false); // Close potential bookings sidebar
-                clearPotentialSelection();
-              }
-            }}
+            className={isExtensionPanelActive ? extensionButtonActive : controlButtonInactive}
+            onClick={toggleExtensionPanel}
           >
             <Clock className="w-4 h-4" />
             <span className="hidden xs:inline">Extension</span>
             <span className="hidden sm:inline">Requests</span>
             {getPendingExtensions().length > 0 && (
               <span className={`px-2 py-0.5 text-xs rounded-full ${
-                isDarkMode ? 'bg-purple-800 text-purple-200' : 'bg-purple-200 text-purple-800'
+                isExtensionPanelActive ? 'bg-purple-800 text-purple-200' : 'bg-purple-800/70 text-purple-200'
               }`}>
                 {getPendingExtensions().length}
               </span>
@@ -378,28 +386,24 @@ const Bookings = () => {
 
       {/* Error Display */}
       {error && (
-        <div className={`mb-4 p-3 rounded border ${errorBg}`}>
+        <div className="p-3 rounded-lg border border-rose-800 bg-rose-900/30 text-rose-200">
           {error}
         </div>
       )}
 
       {/* Main Content */}
-      <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
+      <div className={`grid grid-cols-1 gap-6 ${desktopLayoutClass}`}>
         {/* Calendar Grid */}
-        <div className={`transition-all duration-300 ${
-          showPotentialSidebar || showExtensionSidebar
-            ? 'lg:w-2/3' // On large screens with sidebar
-            : 'w-full' // Full width when no sidebar
-        }`}>
+        <div className="min-w-0">
           {loading ? (
-            <div className={`flex items-center justify-center py-20 ${loadingTextColor}`}>
+            <div className="flex items-center justify-center py-20 text-gray-400">
               <Loader2 className="w-5 h-5 animate-spin mr-2" />
               Loading calendars...
             </div>
           ) : (
             <Suspense
               fallback={
-                <div className={`flex items-center justify-center py-20 ${loadingTextColor}`}>
+                <div className="flex items-center justify-center py-20 text-gray-400">
                   <Loader2 className="w-5 h-5 animate-spin mr-2" />
                   Loading calendars...
                 </div>
@@ -415,16 +419,15 @@ const Bookings = () => {
                 onDayClick={handleDayClick}
                 onBookingContextMenu={handleBookingContextMenu}
                 isDarkMode={isDarkMode}
-                showPotentialSidebar={showPotentialSidebar}
-                showExtensionSidebar={showExtensionSidebar}
+                isPanelOpen={Boolean(activePanel)}
               />
             </Suspense>
           )}
         </div>
 
         {/* Desktop Potential Bookings Sidebar - Hidden on mobile */}
-        {showPotentialSidebar && (
-          <div className={`hidden lg:block lg:w-1/3 transition-all duration-300`}>
+        {isPotentialPanelActive && (
+          <div className="hidden lg:block min-w-0">
             <div className="lg:sticky lg:top-6">
               <Suspense fallback={null}>
                 <PotentialBookingsSidebar
@@ -443,13 +446,13 @@ const Bookings = () => {
         )}
 
         {/* Desktop Extension Requests Sidebar - Hidden on mobile */}
-        {showExtensionSidebar && (
-          <div className={`hidden lg:block lg:w-1/3 transition-all duration-300`}>
+        {isExtensionPanelActive && (
+          <div className="hidden lg:block min-w-0">
             <div className="lg:sticky lg:top-6">
               <Suspense fallback={null}>
                 <ExtensionRequestSidebar
-                  isOpen={showExtensionSidebar}
-                  onClose={() => setShowExtensionSidebar(false)}
+                  isOpen={isExtensionPanelActive}
+                  onClose={() => setActivePanel(null)}
                   isDarkMode={isDarkMode}
                 />
               </Suspense>
@@ -469,10 +472,12 @@ const Bookings = () => {
           onEditBooking={handleEditBooking}
           cameras={cameras}
           isDarkMode={isDarkMode}
-          isOpen={showPotentialSidebar}
+          isOpen={isPotentialPanelActive}
           onClose={() => {
-            setShowPotentialSidebar(false);
-            clearPotentialSelection();
+            if (activePanel === 'potential') {
+              clearPotentialSelection();
+            }
+            setActivePanel(null);
           }}
         />
       </Suspense>
@@ -480,8 +485,8 @@ const Bookings = () => {
       {/* Mobile Extension Requests Panel - Only visible on mobile */}
       <Suspense fallback={null}>
         <MobileExtensionRequestSidebar
-          isOpen={showExtensionSidebar}
-          onClose={() => setShowExtensionSidebar(false)}
+          isOpen={isExtensionPanelActive}
+          onClose={() => setActivePanel(null)}
           isDarkMode={isDarkMode}
         />
       </Suspense>
@@ -541,6 +546,7 @@ const Bookings = () => {
           onExtendRental={handleContextExtendRental}
         />
       </Suspense>
+      </div>
     </div>
   );
 };

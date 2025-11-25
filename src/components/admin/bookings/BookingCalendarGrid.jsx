@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { CalendarIcon } from 'lucide-react';
 import BookingCalendarCell from './BookingCalendarCell';
 
@@ -44,17 +44,6 @@ function useFilteredBookings(bookings) {
   );
 }
 
-function useThemeClasses(isDarkMode) {
-  return {
-    background: isDarkMode ? 'bg-gray-800' : 'bg-white',
-    border: isDarkMode ? 'border-gray-700' : 'border-slate-200',
-    primaryText: isDarkMode ? 'text-gray-100' : 'text-slate-800',
-    secondaryText: isDarkMode ? 'text-gray-400' : 'text-slate-500',
-    icon: isDarkMode ? 'text-gray-500' : 'text-slate-400',
-    placeholder: isDarkMode ? 'bg-gray-700' : 'bg-slate-100',
-  };
-}
-
 function CameraMiniCalendar({
   camera,
   monthDate,
@@ -69,7 +58,6 @@ function CameraMiniCalendar({
   const monthGridDates = useMemo(() => getMonthGridDates(monthDate), [monthDate]);
   const monthLabel = monthDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
   const confirmedBookings = useFilteredBookings(bookings);
-  const theme = useThemeClasses(isDarkMode);
 
   const isHighlighted = (date) =>
     !!date &&
@@ -85,45 +73,45 @@ function CameraMiniCalendar({
     confirmedBookings.some((booking) => isDateWithinBooking(date, booking));
 
   return (
-    <div className={`border rounded-xl overflow-hidden shadow-sm ${theme.background} ${theme.border}`}>
-      <div className={`p-3 flex items-center gap-3 border-b ${theme.border}`}>
+    <div className="rounded-xl border border-gray-700/70 bg-gray-800/80 shadow-sm backdrop-blur-sm">
+      <div className="flex items-center gap-3 border-b border-gray-700/70 px-4 py-3">
         {camera.image_url ? (
           <img
             src={camera.image_url}
             alt={camera.name}
-            className="w-8 h-8 sm:w-10 sm:h-10 rounded object-cover flex-shrink-0"
+            className="h-10 w-10 rounded object-cover"
             onError={(e) => {
               e.currentTarget.style.display = 'none';
             }}
           />
         ) : (
-          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded flex-shrink-0 ${theme.placeholder}`} />
+          <div className="h-10 w-10 rounded bg-gray-700/60" />
         )}
 
-        <div className="flex-1 min-w-0">
-          <div className={`font-medium text-sm sm:text-base truncate ${theme.primaryText}`}>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-medium text-gray-100 sm:text-base">
             {camera.name}
             {camera.serial_number && (
-              <span className={`ml-2 text-xs font-normal ${theme.secondaryText}`}>
+              <span className="ml-2 text-xs font-normal text-gray-400">
                 #{camera.serial_number}
               </span>
             )}
           </div>
-          <div className={`text-xs ${theme.secondaryText}`}>{monthLabel}</div>
+          <div className="text-xs text-gray-400">{monthLabel}</div>
         </div>
 
-        <CalendarIcon className={`w-4 h-4 flex-shrink-0 ${theme.icon}`} />
+        <CalendarIcon className="h-4 w-4 flex-shrink-0 text-gray-500" />
       </div>
 
-      <div className={`grid grid-cols-7 text-xs px-2 sm:px-3 pt-2 sm:pt-3 ${theme.secondaryText}`}>
+      <div className="grid grid-cols-7 px-4 pt-3 text-[11px] font-medium uppercase tracking-tight text-gray-400">
         {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((weekday) => (
-          <div key={weekday} className="text-center font-medium pb-1 sm:pb-2">
+          <div key={weekday} className="pb-2 text-center">
             {weekday}
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-0.5 sm:gap-1 p-2 sm:p-3 pt-1">
+      <div className="grid grid-cols-7 gap-1.5 px-4 pb-4 pt-2">
         {monthGridDates.map((date, index) => {
           const dayBookings = date
             ? confirmedBookings.filter((booking) => isDateWithinBooking(date, booking))
@@ -131,7 +119,7 @@ function CameraMiniCalendar({
 
           return (
             <BookingCalendarCell
-              key={index}
+              key={`${camera.id}-${index}`}
               date={date}
               camera={camera}
               bookings={dayBookings}
@@ -160,16 +148,15 @@ function BookingCalendarGrid({
   onDayClick,
   onBookingContextMenu,
   isDarkMode,
-  showPotentialSidebar,
-  showExtensionSidebar,
+  isPanelOpen = false,
 }) {
-  const gridLayout =
-    showPotentialSidebar || showExtensionSidebar
-      ? 'grid-cols-1 lg:grid-cols-2'
-      : 'grid-cols-1 md:grid-cols-3 xl:grid-cols-4';
+  const baseGridClass = 'grid grid-cols-1 gap-4 lg:gap-5';
+  const gridClass = isPanelOpen
+    ? `${baseGridClass} md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3`
+    : `${baseGridClass} md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4`;
 
   return (
-    <div className={`grid gap-3 sm:gap-4 ${gridLayout} transition-all duration-300`}>
+    <div className={gridClass}>
       {cameras.map((camera) => (
         <CameraMiniCalendar
           key={camera.id}
