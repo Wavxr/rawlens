@@ -40,12 +40,6 @@ const SuccessView = ({
               {calculatedPrice?.total !== undefined ? `₱${calculatedPrice.total.toFixed(2)}` : "N/A"}
             </span>
           </p>
-          <p className="text-xs sm:text-sm">
-            <span className="font-medium text-neutral-600">Reference ID:</span>{" "}
-            <span className="font-mono text-[10px] sm:text-xs bg-white px-2 py-1 rounded border border-neutral-200 break-all">
-              {submittedRentalData.id}
-            </span>
-          </p>
         </div>
       </div>
 
