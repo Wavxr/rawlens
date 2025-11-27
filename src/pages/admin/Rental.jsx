@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { AlertCircle, ChevronLeft, ChevronRight, Loader2, Search } from "lucide-react";
+import { AlertCircle, ChevronLeft, ChevronRight, ClipboardList, Loader2, Search } from "lucide-react";
 import { subscribeToAllRentals, unsubscribeFromChannel } from "@services/realtimeService";
 import { adminRejectApplication, adminStartRental, adminForceDeleteRental, adminRemoveCancelledRental } from "@services/rentalService";
 import { adminConfirmReceived, adminConfirmReturned, adminMarkDelivered } from "@services/bookingService";
@@ -269,54 +269,52 @@ export default function Rentals() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-blue-400 mx-auto mb-4" />
-          <p className="text-gray-300">Loading rental management...</p>
+      <div className="p-6 flex h-full min-h-[60vh] items-center justify-center">
+        <div className="text-center space-y-3">
+          <Loader2 className="h-10 w-10 animate-spin text-blue-400 mx-auto" />
+          <p className="text-gray-400 text-sm">Loading rental management...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900">
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-3 md:py-6">
-        <div className="mb-4 md:mb-6">
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-1 md:mb-2">
-            Rental Management
-          </h1>
-          <p className="text-xs sm:text-sm text-gray-300">
-            Manage rentals & customer relationships
-          </p>
+    <div className="p-4 md:p-6">
+      <div className="space-y-4 md:space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4">
+          <div className="space-y-1">
+            <h1 className="text-xl md:text-2xl font-bold text-white">Rental Management</h1>
+            <p className="text-gray-400 text-sm md:text-base">Track every rental request and status in one view</p>
+          </div>
         </div>
 
-        <div className="bg-gray-800 rounded-lg border border-gray-700 p-3 md:p-4 mb-4 md:mb-6">
-          <div className="flex flex-col lg:flex-row gap-2 md:gap-3 mb-3 md:mb-4">
+        <div className="bg-gradient-to-br from-gray-900/80 to-gray-800/50 backdrop-blur-xl border border-gray-700/50 rounded-xl p-3 md:p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
             <div className="flex-1">
               <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
                 <input
                   type="text"
-                  placeholder="Search customer, email, equipment..."
-                  className="w-full pl-9 pr-3 py-2 md:py-2.5 text-sm border border-gray-600 rounded-lg bg-gray-700 text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  placeholder="Search customer, email, or equipment"
+                  className="w-full rounded-lg border border-gray-600/50 bg-gray-800/60 py-2 pl-10 pr-3 text-sm text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
                 />
               </div>
             </div>
-            <div className="lg:w-64 flex items-center gap-2">
+            <div className="flex w-full items-center gap-2 md:w-72">
               <button
                 type="button"
                 onClick={handlePrevMonth}
                 title="Previous month"
-                className="p-2 rounded-md bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-700 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex h-9 w-9 items-center justify-center rounded-md border border-gray-600/50 bg-gray-800/60 text-gray-200 transition-colors hover:bg-blue-600/20 hover:text-white"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
               <select
                 value={selectedMonth}
                 onChange={(event) => handleMonthChange(event.target.value)}
-                className="flex-1 px-4 py-2 border border-gray-700 rounded-md bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                className="flex-1 rounded-md border border-gray-600/50 bg-gray-800/60 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
               >
                 {monthOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -328,29 +326,27 @@ export default function Rentals() {
                 type="button"
                 onClick={handleNextMonth}
                 title="Next month"
-                className="p-2 rounded-md bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-700 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex h-9 w-9 items-center justify-center rounded-md border border-gray-600/50 bg-gray-800/60 text-gray-200 transition-colors hover:bg-blue-600/20 hover:text-white"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="mt-3 flex flex-wrap gap-2">
             {statusFilters.map((filter) => (
               <button
                 key={filter.key}
                 onClick={() => handleStatusChange(filter.key)}
-                className={`inline-flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium border transition-all duration-200 ${
+                className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all ${
                   selectedStatus === filter.key
-                    ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                    : "bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600 hover:shadow-sm"
+                    ? "border-blue-500/70 bg-blue-600/80 text-white"
+                    : "border-gray-600/50 bg-gray-800/60 text-gray-200 hover:border-blue-500/40 hover:bg-gray-800"
                 }`}
               >
                 <span>{filter.label}</span>
                 <span
-                  className={`px-2 py-0.5 rounded-full text-xs ${
-                    selectedStatus === filter.key
-                      ? "bg-blue-500 text-white"
-                      : "bg-gray-600 text-gray-300"
+                  className={`inline-flex min-w-[1.75rem] items-center justify-center rounded-full px-2 py-0.5 text-xs ${
+                    selectedStatus === filter.key ? "bg-white/20 text-white" : "bg-gray-700 text-gray-200"
                   }`}
                 >
                   {filter.count}
@@ -361,19 +357,17 @@ export default function Rentals() {
         </div>
 
         {rentals.length === 0 ? (
-          <div className="bg-gray-800 rounded-xl border border-gray-700 p-12 text-center">
-            <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-white mb-2">
-              No rentals found
-            </h3>
-            <p className="text-gray-300">
+          <div className="text-center py-10 bg-gradient-to-br from-gray-900/70 to-gray-800/50 border border-gray-700/50 rounded-2xl">
+            <AlertCircle className="h-12 w-12 text-gray-500 mx-auto mb-3" />
+            <h3 className="text-lg font-semibold text-white mb-1">No rentals found</h3>
+            <p className="text-gray-400 text-sm max-w-md mx-auto">
               {searchTerm
                 ? "No rentals match your search criteria. Try adjusting your filters."
                 : "There are no rentals with the selected status at this time."}
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3 md:space-y-4">
             {rentals.map((rental) => (
               <RentalCard
                 key={rental.id}

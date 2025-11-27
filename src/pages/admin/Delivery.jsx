@@ -218,49 +218,52 @@ export default function Delivery() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-blue-400 mx-auto mb-4" />
-          <p className="text-gray-300">Loading delivery management...</p>
+      <div className="p-6 flex h-full min-h-[60vh] items-center justify-center">
+        <div className="text-center space-y-3">
+          <Loader2 className="h-10 w-10 animate-spin text-indigo-400 mx-auto" />
+          <p className="text-gray-400 text-sm">Loading delivery management...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900">
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 md:py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Delivery Management</h1>
-          <p className="text-gray-300">Track equipment logistics and manage shipping workflows efficiently.</p>
+    <div className="p-4 md:p-6">
+      <div className="space-y-4 md:space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4">
+          <div className="space-y-1">
+            <h1 className="text-xl md:text-2xl font-bold text-white">Delivery Management</h1>
+            <p className="text-gray-400 text-sm md:text-base">Monitor shipment progress and logistics status</p>
+          </div>
         </div>
-        <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 mb-6">
-          <div className="flex flex-col lg:flex-row gap-4">
+
+        <div className="bg-gradient-to-br from-gray-900/80 to-gray-800/50 backdrop-blur-xl border border-gray-700/50 rounded-xl p-3 md:p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
             <div className="flex-1">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
                 <input
                   type="text"
-                  placeholder="Search by customer name, email, or equipment..."
-                  className="w-full pl-10 pr-4 py-3 border border-gray-600 rounded-lg bg-gray-700 text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  placeholder="Search by customer, email, or equipment"
+                  className="w-full rounded-lg border border-gray-600/50 bg-gray-800/60 py-2 pl-10 pr-3 text-sm text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
                 />
               </div>
             </div>
-            <div className="lg:w-64 flex items-center gap-2">
+            <div className="flex w-full items-center gap-2 md:w-72">
               <button
                 type="button"
                 onClick={handlePrevMonth}
                 title="Previous month"
-                className="p-2 rounded-md bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-700 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex h-9 w-9 items-center justify-center rounded-md border border-gray-600/50 bg-gray-800/60 text-gray-200 transition-colors hover:bg-blue-600/20 hover:text-white"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
               <select
                 value={selectedMonth}
                 onChange={(event) => handleMonthChange(event.target.value)}
-                className="flex-1 px-4 py-2 border border-gray-700 rounded-md bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                className="flex-1 rounded-md border border-gray-600/50 bg-gray-800/60 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
               >
                 {monthOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -272,33 +275,27 @@ export default function Delivery() {
                 type="button"
                 onClick={handleNextMonth}
                 title="Next month"
-                className="p-2 rounded-md bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-700 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex h-9 w-9 items-center justify-center rounded-md border border-gray-600/50 bg-gray-800/60 text-gray-200 transition-colors hover:bg-blue-600/20 hover:text-white"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
             </div>
           </div>
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-3 flex flex-wrap gap-2">
             {DELIVERY_FILTERS.map((filter) => (
               <button
                 key={filter.key}
                 onClick={() => handleFilterChange(filter.key)}
-                className={`
-                  px-4 py-2 rounded-lg text-sm font-medium border transition-all duration-200
-                  flex items-center gap-2
-                  ${
-                    selectedFilter === filter.key
-                      ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                      : "bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600 hover:shadow-sm"
-                  }
-                `}
+                className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all ${
+                  selectedFilter === filter.key
+                    ? "border-blue-500/70 bg-blue-600/80 text-white"
+                    : "border-gray-600/50 bg-gray-800/60 text-gray-200 hover:border-blue-500/40 hover:bg-gray-800"
+                }`}
               >
                 <span>{filter.label}</span>
-                <span 
-                  className={`inline-flex items-center justify-center min-w-5 h-5 rounded-full text-xs font-medium ${
-                    selectedFilter === filter.key 
-                      ? 'bg-white/20' 
-                      : 'bg-gray-600/50 text-gray-200'
+                <span
+                  className={`inline-flex min-w-[1.75rem] items-center justify-center rounded-full px-2 py-0.5 text-xs ${
+                    selectedFilter === filter.key ? "bg-white/20 text-white" : "bg-gray-700 text-gray-200"
                   }`}
                 >
                   {filterCounts[filter.key] || 0}
@@ -307,18 +304,19 @@ export default function Delivery() {
             ))}
           </div>
         </div>
+
         {rentals.length === 0 ? (
-          <div className="bg-gray-800 rounded-xl border border-gray-700 p-12 text-center">
-            <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-white mb-2">No deliveries found</h3>
-            <p className="text-gray-300">
+          <div className="text-center py-10 bg-gradient-to-br from-gray-900/70 to-gray-800/50 border border-gray-700/50 rounded-2xl">
+            <AlertCircle className="h-12 w-12 text-gray-500 mx-auto mb-3" />
+            <h3 className="text-lg font-semibold text-white mb-1">No deliveries found</h3>
+            <p className="text-gray-400 text-sm max-w-md mx-auto">
               {searchTerm
                 ? "No deliveries match your search criteria. Try adjusting your filters."
                 : "There are no deliveries with the selected status at this time."}
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3 md:space-y-4">
             {rentals.map((rental) => (
               <ShippingCard
                 key={rental.id}
@@ -339,113 +337,112 @@ export default function Delivery() {
             ))}
           </div>
         )}
-        {selectedRental && (
+      </div>
+
+      {selectedRental && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={handleCloseModal}
+        >
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-            onClick={handleCloseModal}
+            className="bg-gradient-to-br from-gray-900/90 to-gray-800/85 border border-gray-700/50 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl shadow-black/40"
+            onClick={(event) => event.stopPropagation()}
           >
-            <div
-              className="bg-gray-800 rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <div className="p-4 md:p-6">
-                {/* Updated modal header with Manage Rental button */}
-                <div className="flex items-start justify-between mb-6">
-                  <div>
-                    <h2 className="text-2xl font-bold text-white">Delivery Details</h2>
-                    <p className="text-gray-300 mt-1">
-                      {selectedRental.cameras?.name || "Camera Equipment"}
-                      {selectedRental.cameras?.serial_number && (
-                        <span className="ml-2 text-sm text-gray-400">
-                          #{selectedRental.cameras.serial_number}
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {/* Added Manage Rental button */}
-                    <button
-                      onClick={() => handleManageRental(selectedRental)}
-                      className="inline-flex items-center px-3 py-1.5 border border-gray-600 text-sm font-medium rounded-md text-gray-200 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                    >
-                      <Truck className="mr-1.5 h-4 w-4" />
-                      Manage Rental
-                    </button>
-                    <button
-                      onClick={handleCloseModal}
-                      className="p-2 text-gray-400 hover:text-gray-200 transition-colors"
-                    >
-                      <X className="h-6 w-6" />
-                    </button>
-                  </div>
+            <div className="p-4 md:p-6 space-y-6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-white">Delivery Details</h2>
+                  <p className="text-gray-300 mt-1">
+                    {selectedRental.cameras?.name || "Camera Equipment"}
+                    {selectedRental.cameras?.serial_number && (
+                      <span className="ml-2 text-sm text-gray-400">
+                        #{selectedRental.cameras.serial_number}
+                      </span>
+                    )}
+                  </p>
                 </div>
-                <div className="mb-6">
-                  <RentalStepper rental={selectedRental} />
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleManageRental(selectedRental)}
+                    className="inline-flex items-center px-3 py-1.5 bg-gray-800/70 border border-gray-600/40 text-sm font-medium rounded-md text-gray-200 hover:bg-gray-700/80"
+                  >
+                    <Truck className="mr-1.5 h-4 w-4" />
+                    Manage Rental
+                  </button>
+                  <button
+                    onClick={handleCloseModal}
+                    className="p-2 text-gray-400 hover:text-gray-200 transition-colors"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-white">Customer Information</h3>
-                    {selectedRental?.booking_type === 'temporary' && (
-                      <div className="mb-3 px-3 py-2 bg-orange-900/20 border border-orange-700 rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 bg-orange-400 rounded-full"></div>
-                          <span className="text-orange-200 text-sm font-medium">Admin Managed (Instagram Customer)</span>
+              </div>
+
+              <RentalStepper rental={selectedRental} />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-white">Customer Information</h3>
+                  {selectedRental?.booking_type === 'temporary' && (
+                    <div className="px-3 py-2 bg-orange-900/20 border border-orange-700/40 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-orange-400 rounded-full"></div>
+                        <span className="text-orange-200 text-sm font-medium">Admin Managed (Instagram Customer)</span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="bg-gray-800/60 rounded-lg border border-gray-700/50 p-4 space-y-4">
+                    <div className="flex items-center space-x-3">
+                      <User className="h-5 w-5 text-gray-400" />
+                      <div>
+                        <p className="font-medium text-white">
+                          {selectedRental?.customer_name ||
+                           (selectedUser ? `${selectedUser.first_name} ${selectedUser.last_name}`.trim() : '') ||
+                           'Unknown Customer'}
+                        </p>
+                        <p className="text-sm text-gray-300">
+                          {selectedRental?.customer_email || selectedUser?.email || 'No email'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-gray-700/60">
+                      <div>
+                        <p className="text-xs text-gray-400 uppercase tracking-wide">Phone</p>
+                        <p className="text-sm text-white">
+                          {selectedRental?.customer_contact || selectedUser?.contact_number || "Not provided"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400 uppercase tracking-wide">Address</p>
+                        <p className="text-sm text-white">
+                          {selectedUser?.address ? (
+                            <>
+                              {selectedUser.address}
+                              {selectedUser.city && `, ${selectedUser.city}`}
+                              {selectedUser.state && `, ${selectedUser.state}`}
+                              {selectedUser.postal_code && ` ${selectedUser.postal_code}`}
+                            </>
+                          ) : (
+                            "Not provided"
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    {selectedUser?.emergency_contact && (
+                      <div className="pt-3 border-t border-gray-700/60">
+                        <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Emergency Contact</p>
+                        <div className="bg-gray-700/60 rounded p-3">
+                          <p className="text-sm text-white font-medium">{selectedUser.emergency_contact.name}</p>
+                          <p className="text-sm text-gray-300">{selectedUser.emergency_contact.phone}</p>
+                          <p className="text-sm text-gray-300">{selectedUser.emergency_contact.relationship}</p>
                         </div>
                       </div>
                     )}
-                    <div className="bg-gray-700 rounded-lg p-4 space-y-4">
-                      <div className="flex items-center space-x-3">
-                        <User className="h-5 w-5 text-gray-400" />
-                        <div>
-                          <p className="font-medium text-white">
-                            {selectedRental?.customer_name || 
-                             (selectedUser ? `${selectedUser.first_name} ${selectedUser.last_name}`.trim() : '') ||
-                             'Unknown Customer'}
-                          </p>
-                          <p className="text-sm text-gray-300">
-                            {selectedRental?.customer_email || selectedUser?.email || 'No email'}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-gray-600">
-                        <div>
-                          <p className="text-xs text-gray-400 uppercase tracking-wide">Phone</p>
-                          <p className="text-sm text-white">
-                            {selectedRental?.customer_contact || selectedUser?.contact_number || "Not provided"}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-400 uppercase tracking-wide">Address</p>
-                          <p className="text-sm text-white">
-                            {selectedUser?.address ? (
-                              <>
-                                {selectedUser.address}
-                                {selectedUser.city && `, ${selectedUser.city}`}
-                                {selectedUser.state && `, ${selectedUser.state}`}
-                                {selectedUser.postal_code && ` ${selectedUser.postal_code}`}
-                              </>
-                            ) : (
-                              "Not provided"
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                      {selectedUser?.emergency_contact && (
-                        <div className="pt-3 border-t border-gray-600">
-                          <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Emergency Contact</p>
-                          <div className="bg-gray-600 rounded p-3">
-                            <p className="text-sm text-white font-medium">{selectedUser.emergency_contact.name}</p>
-                            <p className="text-sm text-gray-300">{selectedUser.emergency_contact.phone}</p>
-                            <p className="text-sm text-gray-300">{selectedUser.emergency_contact.relationship}</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
                   </div>
-                  <div className="space-y-4">
+                </div>
+                <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-white">Rental & Equipment</h3>
-                  
-                  {/* Payment Status Section */}
+
                   {(() => {
                     const initialPayment = selectedRental?.payments?.find(p => p.payment_type === 'rental' && !p.extension_id);
                     const paymentStatus = initialPayment?.payment_status;
@@ -589,7 +586,6 @@ export default function Delivery() {
             </div>
           </div>
         )}
-      </div>
     </div>
-  )
+  );
 }

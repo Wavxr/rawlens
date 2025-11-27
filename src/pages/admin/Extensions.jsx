@@ -20,7 +20,7 @@ import {
 import { subscribeToAllExtensions, unsubscribeFromChannel } from '@services/realtimeService';
 import useAuthStore from '@stores/useAuthStore';
 import useExtensionStore from '@stores/extensionStore';
-import { toast } from 'react-toastify';
+import AdminInlineAlert from '@components/admin/layout/AdminInlineAlert';
 
 const Extensions = () => {
   const user = useAuthStore(state => state.user);
@@ -36,8 +36,16 @@ const Extensions = () => {
   const [selectedExtension, setSelectedExtension] = useState(null);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectNotes, setRejectNotes] = useState('');
+  const [feedback, setFeedback] = useState(null);
   const extensionSubscriptionRef = useRef(null);
   const checkedConflictsRef = useRef(new Set()); // Track which extensions have been checked
+
+  const showFeedback = useCallback((type, message) => {
+    if (!message) return;
+    setFeedback({ type, message });
+  }, []);
+
+  const dismissFeedback = useCallback(() => setFeedback(null), []);
 
   // Get filtered extensions from store (similar to payments)
   const allExtensions = storeReady ? extensions : [];
@@ -49,53 +57,50 @@ const Extensions = () => {
   useEffect(() => {
     const loadExtensions = async () => {
       try {
-        // Load ALL extensions (not just pending) to populate the store properly
         const result = await adminGetAllExtensions();
         if (result.success) {
           setExtensions(result.data);
           setStoreReady(true);
         } else {
           console.error('API Error:', result.error);
+          showFeedback('error', 'Failed to load extension requests.');
         }
       } catch (error) {
         console.error('Error loading extensions:', error);
+        showFeedback('error', 'Unexpected error loading extension requests.');
       } finally {
         setLoading(false);
       }
     };
-    
+
     loadExtensions();
-    
-    // Subscribe to real-time updates - the store will be updated by the realtime service
-    const channel = subscribeToAllExtensions((payload) => {
-      // The real-time service handles updating the store with hydrated data
-      console.log('Extension update received:', payload.eventType, payload.hydratedData?.id);
+
+    const channel = subscribeToAllExtensions(() => {
+      // store handles updates; no-op here
     });
 
     extensionSubscriptionRef.current = channel;
-    // Capture the ref value to avoid stale closure in cleanup
     const currentCheckedConflictsRef = checkedConflictsRef.current;
 
     return () => {
       if (extensionSubscriptionRef.current) {
         unsubscribeFromChannel(extensionSubscriptionRef.current);
       }
-      // Clear checked conflicts on unmount using captured ref
       currentCheckedConflictsRef.clear();
     };
-  }, [setExtensions]); // Include setExtensions in dependencies
+  }, [setExtensions, showFeedback]);
 
   const checkConflictForExtension = useCallback(async (extensionId, rentalId, newEndDate) => {
     try {
       setCheckingConflicts(prev => ({ ...prev, [extensionId]: true }));
       const result = await checkCameraAvailabilityForExtension(rentalId, newEndDate);
-      
+
       setConflicts(prev => ({
         ...prev,
         [extensionId]: {
           hasConflict: !result.isAvailable,
-          message: result.error || 'Camera is available for extension'
-        }
+          message: result.error || 'Camera is available for extension',
+        },
       }));
     } catch (error) {
       console.error('Error checking conflicts:', error);
@@ -103,22 +108,19 @@ const Extensions = () => {
         ...prev,
         [extensionId]: {
           hasConflict: true,
-          message: 'Unable to check availability'
-        }
+          message: 'Unable to check availability',
+        },
       }));
     } finally {
       setCheckingConflicts(prev => ({ ...prev, [extensionId]: false }));
     }
-  }, []); // Empty dependency array since it only uses state setters
+  }, []);
 
   useEffect(() => {
-    // When extensions from the store change, check for conflicts (only for pending extensions)
     if (pendingExtensions.length > 0 && storeReady) {
-      // Capture the ref value to avoid stale closure issues in cleanup
       const currentCheckedConflicts = checkedConflictsRef.current;
-      
-      pendingExtensions.forEach(ext => {
-        // Only check conflicts for pending extensions that haven't been checked yet
+
+      pendingExtensions.forEach((ext) => {
         if (!currentCheckedConflicts.has(ext.id)) {
           currentCheckedConflicts.add(ext.id);
           checkConflictForExtension(ext.id, ext.rental_id, ext.requested_end_date);
@@ -131,7 +133,7 @@ const Extensions = () => {
     // Check for conflicts first
     const conflict = conflicts[extensionId];
     if (conflict?.hasConflict) {
-      toast.error('Cannot approve extension with camera availability conflicts');
+      showFeedback('error', 'Cannot approve extension while camera availability conflicts exist.');
       return;
     }
 
@@ -140,12 +142,15 @@ const Extensions = () => {
       const result = await adminApproveExtension(extensionId);
       
       if (result.success) {
-        toast.success('Extension approved successfully!');
+        showFeedback('success', 'Extension approved successfully.');
       } else {
-        toast.error(result.error || 'Failed to approve extension');
+        showFeedback('error', result.error || 'Failed to approve extension.');
       }
-    } catch {
-      toast.error('Error approving extension');
+    } catch (error) {
+      showFeedback(
+        'error',
+        error instanceof Error ? error.message : 'Error approving extension.'
+      );
     } finally {
       setProcessingExtension(prev => ({ ...prev, [extensionId]: false }));
     }
@@ -159,15 +164,18 @@ const Extensions = () => {
       const result = await adminRejectExtension(selectedExtension.id, user.id, rejectNotes);
       
       if (result.success) {
-        toast.success('Extension request rejected');
+        showFeedback('success', 'Extension request rejected.');
         setShowRejectModal(false);
         setSelectedExtension(null);
         setRejectNotes('');
       } else {
-        toast.error(result.error || 'Failed to reject extension');
+        showFeedback('error', result.error || 'Failed to reject extension.');
       }
-    } catch {
-      toast.error('Error rejecting extension');
+    } catch (error) {
+      showFeedback(
+        'error',
+        error instanceof Error ? error.message : 'Error rejecting extension.'
+      );
     } finally {
       setProcessingExtension(prev => ({ ...prev, [selectedExtension.id]: false }));
     }
@@ -216,120 +224,121 @@ const Extensions = () => {
 
   if (loading || !storeReady) {
     return (
-      <div className="min-h-screen bg-gray-950">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
-          <div className="flex items-center justify-center h-64">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin text-blue-400" />
-              <span className="text-sm sm:text-base text-gray-300">Loading extension requests...</span>
-            </div>
-          </div>
+      <div className="p-6 flex h-full min-h-[60vh] items-center justify-center">
+        <div className="text-center space-y-3">
+          <Loader2 className="w-10 h-10 animate-spin text-blue-400 mx-auto" />
+          <p className="text-sm text-gray-400">Loading extension requests...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-950">
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
-        {/* Header */}
-        <div className="mb-6 sm:mb-8">
-          <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-r from-purple-500 to-indigo-600 flex items-center justify-center">
-              <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+    <div className="p-4 md:p-6">
+      <div className="space-y-4 md:space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-green-600/20 border border-green-600/30 text-green-300">
+              <Calendar className="h-5 w-5 text-green-400" />
             </div>
-            <div>
-              <h1 className="text-lg sm:text-2xl font-bold text-white">Extension Requests</h1>
-              <p className="text-xs sm:text-base text-gray-400">Manage rental extension requests from users</p>
+            <div className="space-y-1">
+              <h1 className="text-xl md:text-2xl font-bold text-white">Extension Requests</h1>
+              <p className="text-gray-400 text-sm md:text-base">Handle rental extensions and availability conflicts</p>
             </div>
           </div>
+        </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6">
+        {feedback ? (
+          <AdminInlineAlert
+            type={feedback.type}
+            message={feedback.message}
+            onDismiss={dismissFeedback}
+          />
+        ) : null}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
             {[
-              { 
-                label: 'Pending Requests', 
+              {
+                label: 'Pending Requests',
                 value: allExtensions.filter(e => e.extension_status === 'pending').length,
-                color: 'from-amber-500 to-orange-500',
-                icon: Clock
+                icon: Clock,
+                accent: 'bg-yellow-600/20 border border-yellow-600/30 text-yellow-400',
               },
-              { 
-                label: 'Approved Today', 
-                value: allExtensions.filter(e => 
-                  e.extension_status === 'approved' && 
+              {
+                label: 'Approved Today',
+                value: allExtensions.filter(e => (
+                  e.extension_status === 'approved' &&
                   new Date(e.approved_at).toDateString() === new Date().toDateString()
-                ).length,
-                color: 'from-green-500 to-emerald-500',
-                icon: CheckCircle2
+                )).length,
+                icon: CheckCircle2,
+                accent: 'bg-green-600/20 border border-green-600/30 text-green-400',
               },
-              { 
-                label: 'With Conflicts', 
+              {
+                label: 'With Conflicts',
                 value: Object.values(conflicts).filter(c => c.hasConflict).length,
-                color: 'from-red-500 to-rose-500',
-                icon: AlertTriangle
+                icon: AlertTriangle,
+                accent: 'bg-orange-600/20 border border-orange-600/30 text-orange-400',
               },
-              { 
-                label: 'Total Extensions', 
+              {
+                label: 'Total Extensions',
                 value: allExtensions.length,
-                color: 'from-blue-500 to-indigo-500',
-                icon: Calendar
-              }
-            ].map((stat) => {
-              const Icon = stat.icon;
-              return (
-                <div key={stat.label} className="bg-gray-900 rounded-lg sm:rounded-xl border border-gray-800 p-2 sm:p-4">
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <div className={`w-6 h-6 sm:w-10 sm:h-10 rounded-md sm:rounded-lg bg-gradient-to-r ${stat.color} flex items-center justify-center`}>
-                      <Icon className="w-3 h-3 sm:w-5 sm:h-5 text-white" />
-                    </div>
-                    <div>
-                      <div className="text-lg sm:text-2xl font-bold text-white">{stat.value}</div>
-                      <div className="text-xs sm:text-sm text-gray-400">{stat.label}</div>
-                    </div>
-                  </div>
+                icon: Calendar,
+                accent: 'bg-blue-600/20 border border-blue-600/30 text-blue-400',
+              },
+        ].map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <div key={stat.label} className="rounded-xl border border-gray-700/50 bg-gradient-to-br from-gray-900/80 to-gray-800/50 p-3 md:p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-gray-400">{stat.label}</p>
+                  <p className="mt-2 text-2xl font-semibold text-white">{stat.value}</p>
                 </div>
-              );
-            })}
-          </div>
+                <div className={`flex h-10 w-10 items-center justify-center rounded-lg p-2 ${stat.accent}`}>
+                  <Icon className="h-5 w-5" />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        </div>
 
-          {/* Filters */}
-          <div className="bg-gray-900 rounded-lg sm:rounded-xl border border-gray-800 p-3 sm:p-4">
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 text-gray-500" />
-                  <input
-                    type="text"
-                    placeholder="Search by camera, user name, email, or rental ID..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-2 bg-gray-800 border border-gray-700 rounded-md sm:rounded-lg text-sm text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
+        <div className="bg-gradient-to-br from-gray-900/80 to-gray-800/50 backdrop-blur-xl border border-gray-700/50 rounded-xl p-3 md:p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+                <input
+                  type="text"
+                  placeholder="Search camera, renter, email, or rental ID"
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  className="w-full rounded-lg border border-gray-600/50 bg-gray-800/60 py-2 pl-10 pr-3 text-sm text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                />
               </div>
-              <div>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-3 sm:px-4 py-2 bg-gray-800 border border-gray-700 text-white text-sm rounded-md sm:rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="all">All Status</option>
-                  <option value="pending">Pending</option>
-                  <option value="approved">Approved</option>
-                  <option value="rejected">Rejected</option>
-                </select>
-              </div>
+            </div>
+            <div className="w-full sm:w-auto">
+              <select
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value)}
+                className="w-full rounded-lg border border-gray-600/50 bg-gray-800/60 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+              >
+                <option value="all">All status</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+              </select>
             </div>
           </div>
         </div>
 
         {/* Extension Cards */}
         {filteredExtensions.length === 0 ? (
-          <div className="bg-gray-900 rounded-lg sm:rounded-xl border border-gray-800 p-6 sm:p-8 text-center">
-            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-lg bg-gray-800 flex items-center justify-center mx-auto mb-3 sm:mb-4">
-              <Calendar className="w-6 h-6 sm:w-8 sm:h-8 text-gray-500" />
+          <div className="text-center py-10 bg-gradient-to-br from-gray-900/70 to-gray-800/50 border border-gray-700/50 rounded-2xl">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-900/60">
+              <Calendar className="h-8 w-8 text-gray-500" />
             </div>
-            <h3 className="text-base sm:text-lg font-semibold text-white mb-2">No Extension Requests</h3>
+            <h3 className="text-lg font-semibold text-white mb-2">No extension requests</h3>
             <p className="text-sm text-gray-400">
               {searchTerm || statusFilter !== 'pending' 
                 ? 'No extension requests match your filters.' 
@@ -347,7 +356,7 @@ const Extensions = () => {
               const renter = rental?.users;
 
               return (
-                <div key={extension.id} className="bg-gray-800 rounded-lg sm:rounded-xl border border-gray-700 overflow-hidden">
+                <div key={extension.id} className="rounded-xl sm:rounded-2xl border border-gray-700/50 bg-gradient-to-br from-gray-900/80 to-gray-800/55 backdrop-blur-xl overflow-hidden transition-all duration-200 hover:border-gray-600/50">
                   {/* Header */}
                   <div className={`px-3 sm:px-6 py-3 sm:py-4 border-b ${
                     extension.extension_status === 'pending' 
@@ -425,7 +434,7 @@ const Extensions = () => {
                   <div className="p-3 sm:p-6">
                     {/* Conflict Warning */}
                     {conflict?.hasConflict && (
-                      <div className="mb-3 sm:mb-4 p-3 sm:p-4 bg-red-900/20 border border-red-800 rounded-lg">
+                      <div className="mb-3 sm:mb-4 p-3 sm:p-4 bg-red-900/25 border border-red-800/70 rounded-lg">
                         <div className="flex items-start gap-2 sm:gap-3">
                           <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-red-400 flex-shrink-0 mt-0.5" />
                           <div>
@@ -474,7 +483,7 @@ const Extensions = () => {
                     </div>
 
                     {/* Renter Information */}
-                    <div className="bg-gray-900/30 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+                    <div className="bg-gray-900/40 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6 border border-gray-800/60">
                       <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
                         <User className="w-3 h-3 sm:w-4 sm:h-4 text-blue-400" />
                         <h4 className="text-sm sm:text-base font-medium text-blue-400">Renter Information</h4>
@@ -503,7 +512,7 @@ const Extensions = () => {
                         <button
                           onClick={() => handleApproveExtension(extension.id)}
                           disabled={isProcessing || conflict?.hasConflict}
-                          className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium text-sm sm:text-base rounded-md sm:rounded-lg hover:from-green-700 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                          className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-3 bg-green-600 hover:bg-green-700 text-white font-medium text-sm sm:text-base rounded-md sm:rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                         >
                           {isProcessing === 'approving' ? (
                             <>
@@ -542,7 +551,7 @@ const Extensions = () => {
 
                     {/* Admin Notes for Rejected Extensions */}
                     {extension.extension_status === 'rejected' && extension.admin_notes && (
-                      <div className="bg-red-900/20 border border-red-800 rounded-lg p-3 sm:p-4">
+                      <div className="bg-red-900/25 border border-red-800/70 rounded-lg p-3 sm:p-4">
                         <div className="flex items-start gap-2 sm:gap-3">
                           <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 text-red-400 flex-shrink-0 mt-0.5" />
                           <div>
